@@ -46,7 +46,7 @@ const closeStatusModal = () => {
     endDate: "",
   })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [sellers, setSellers] = useState([])
+  const [seller, setSeller] = useState([])
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
@@ -336,7 +336,7 @@ const handleStatusChange = async (_id, newStatus) => {
                         <span className="font-medium text-gray-900">{seller.sellerName}</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">${Number(seller?.totalSales || 0).toFixed(2)}</div>
+                        <div className="font-medium text-gray-900">${Number(seller.totalSales || 0).toFixed(2)}</div>
                         <div className="text-sm text-gray-500">{seller.salesCount} ventas</div>
                       </div>
                     </div>
@@ -354,7 +354,7 @@ const handleStatusChange = async (_id, newStatus) => {
                         <span className="font-medium text-gray-900">{plan.planName}</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">${Number(seller?.totalSales || 0).toFixed(2)}</div>
+                        <div className="font-medium text-gray-900">${Number(seller.totalSales || 0).toFixed(2)}</div>
                         <div className="text-sm text-gray-500">{plan.salesCount} ventas</div>
                       </div>
                     </div>
