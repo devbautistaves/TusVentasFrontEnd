@@ -20,7 +20,7 @@ const GuidesPage = () => {
         </TabsList>
 
         <TabsContent value="videos">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
                 <h2 className="font-semibold mb-2">Cómo concretar una venta</h2>
@@ -43,7 +43,7 @@ const GuidesPage = () => {
                 <h2 className="font-semibold mb-2">Guía de estrategias de venta</h2>
                 <p className="text-sm text-gray-600">Descargá o leé la guía completa en PDF.</p>
                 <a
-                  href="/docs/estrategias-venta.pdf"
+                  href="https://docs.google.com/document/d/1xQ5sKgnbCcKeqz8TbjGyYWaRYgNiov9NIL9LTJGHf-8/edit?usp=sharing"
                   className="text-blue-600 text-sm underline"
                   target="_blank"
                   rel="noopener noreferrer"
