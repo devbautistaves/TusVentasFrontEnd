@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "quavito79:fTxCH10YJ8FSimQ2@cluster0.wzrxbrq.mongodb.net/"
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://tusventasbackend.onrender.com"
 
 const api = axios.create({
   baseURL: API_BASE_URL,
