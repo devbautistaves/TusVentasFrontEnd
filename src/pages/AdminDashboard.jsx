@@ -272,14 +272,14 @@ const handleStatusChange = async (_id, newStatus) => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <DashboardCard
           title="Ventas Totales"
-          value={`$${stats?.stats?.totalSales?.toFixed(2) || "0.00"}`}
+          value={`$${Number(stats?.stats?.totalSales || 0).toFixed(2)}`}
           subtitle={`${stats?.stats?.totalCount || 0} ventas registradas`}
           icon={<FiDollarSign className="h-6 w-6 text-blue-500" />}
         />
 
         <DashboardCard
           title="Comisiones Pagadas"
-          value={`$${stats?.stats?.totalCommissions?.toFixed(2) || "0.00"}`}
+          value={`$${Number(stats?.stats?.totalCommissions || 0).toFixed(2)}`}
           subtitle="Total en comisiones"
           icon={<FiDollarSign className="h-6 w-6 text-green-500" />}
         />
@@ -336,7 +336,7 @@ const handleStatusChange = async (_id, newStatus) => {
                         <span className="font-medium text-gray-900">{seller.sellerName}</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">${seller.totalSales.toFixed(2)}</div>
+                        <div className="font-medium text-gray-900">${Number(seller?.totalSales || 0).toFixed(2)}</div>
                         <div className="text-sm text-gray-500">{seller.salesCount} ventas</div>
                       </div>
                     </div>
@@ -354,7 +354,7 @@ const handleStatusChange = async (_id, newStatus) => {
                         <span className="font-medium text-gray-900">{plan.planName}</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">${plan.totalSales.toFixed(2)}</div>
+                        <div className="font-medium text-gray-900">${Number(seller?.totalSales || 0).toFixed(2)}</div>
                         <div className="text-sm text-gray-500">{plan.salesCount} ventas</div>
                       </div>
                     </div>
@@ -385,7 +385,7 @@ const handleStatusChange = async (_id, newStatus) => {
                         <h4 className="font-medium text-gray-900">{plan.name}</h4>
                         <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
                         <div className="mt-2">
-                          <span className="text-lg font-bold text-green-600">${plan.price.toFixed(2)}</span>
+                          <span className="text-lg font-bold text-green-600">${Number(plan?.price || 0).toFixed(2)}</span>
                           <span
                             className={`ml-3 px-2 py-1 text-xs rounded-full ${
                               plan.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
@@ -447,10 +447,10 @@ const handleStatusChange = async (_id, newStatus) => {
                             <span className="text-gray-500">Ubicación:</span> {user.location}
                           </div>
                           <div>
-                            <span className="text-gray-500">Comisión:</span> {(user.commissionRate * 100).toFixed(1)}%
+                            <span className="text-gray-500">Comisión:</span> {Number(user.commissionRate * 100).toFixed(1)}%
                           </div>
                           <div>
-                            <span className="text-gray-500">Ventas Totales:</span> ${user.totalSales.toFixed(2)}
+                            <span className="text-gray-500">Ventas Totales:</span> ${Number(user?.totalSales || 0).toFixed(2)}
                           </div>
                         </div>
                         <div className="mt-2">
@@ -501,8 +501,8 @@ const handleStatusChange = async (_id, newStatus) => {
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">${sale.planPrice.toFixed(2)}</div>
-                        <div className="text-sm text-green-600">Comisión: ${sale.commission.toFixed(2)}</div>
+                        <div className="font-medium text-gray-900">${Number(sale?.planPrice || 0).toFixed(2)}</div>
+                        <div className="text-sm text-green-600">Comisión: ${Number(sale?.commission || 0).toFixed(2)}</div>
   <span
     className={`block mb-1 px-2 py-1 text-xs rounded-full ${
       sale.status === "completed"
