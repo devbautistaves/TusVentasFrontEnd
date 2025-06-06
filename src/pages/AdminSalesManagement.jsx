@@ -139,7 +139,7 @@ const AdminSalesManagement = () => {
   }
 
   const openImageModal = (imagePath) => {
-    const imageUrl = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/uploads/${imagePath}`
+    const imageUrl = `${process.env.REACT_APP_API_URL || "https://tusventasbackend.onrender.com"}/uploads/${imagePath}`
     setSelectedImage(imageUrl)
   }
 

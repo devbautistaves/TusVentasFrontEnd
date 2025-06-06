@@ -8,7 +8,7 @@ const getApiUrl = () => {
   }
 
   // Development API URL
-  return process.env.REACT_APP_API_URL || "http://localhost:5000"
+  return process.env.REACT_APP_API_URL || "https://tusventasbackend.onrender.com"
 }
 
 const API_BASE_URL = getApiUrl()
