@@ -273,7 +273,7 @@ const SalesForm = () => {
                     <option value="">Selecciona un plan</option>
                     {plans.map((plan) => (
                       <option key={plan._id} value={plan._id}>
-                        {plan.name} - ${plan.price.toFixed(2)}
+                        {plan.name} - ${Number(plan.price || 0).toFixed(2)}
                       </option>
                     ))}
                   </select>
@@ -547,13 +547,13 @@ const SalesForm = () => {
                   </div>
                   <div>
                     <p className="text-sm text-blue-700">Precio del Plan:</p>
-                    <p className="font-medium">${selectedPlan.price.toFixed(2)}</p>
+                    <p className="font-medium">${Number(selectedPlan.price || 0).toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-blue-700">
                       Tu Comisión ({(currentUser.commissionRate * 100).toFixed(1)}%):
                     </p>
-                    <p className="font-medium">${commission.toFixed(2)}</p>
+                    <p className="font-medium">${Number(commission || 0).toFixed(2)}</p>
                   </div>
                 </div>
               </div>
