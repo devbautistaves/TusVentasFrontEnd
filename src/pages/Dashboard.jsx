@@ -89,7 +89,7 @@ const Dashboard = () => {
         <h1 className="text-2xl font-bold text-gray-800">Dashboard de Ventas</h1>
         <p className="text-gray-600">
           Bienvenido, {currentUser.name} - Rol: {currentUser.role} - Comisión:{" "}
-          {Number(currentUser.commissionRate * 100).toFixed(1)}%
+          {(currentUser.commissionRate * 100).toFixed(1)}%
         </p>
       </div>
 
@@ -103,21 +103,21 @@ const Dashboard = () => {
 
         <DashboardCard
           title="Comisiones"
-          value={`$${Number(stats?.stats?.totalCommissions || 0).toFixed(2)}`}
-          subtitle={`${Number(currentUser.commissionRate * 100).toFixed(1)}% de comisión`}
+          value={`$${stats?.stats?.totalCommissions?.toFixed(2) || "0.00"}`}
+          subtitle={`${(currentUser.commissionRate * 100).toFixed(1)}% de comisión`}
           icon={<FiTrendingUp className="h-6 w-6 text-green-500" />}
         />
 
         <DashboardCard
           title="Comisión Actual"
-          value={`${Number(currentUser?.commissionRate || 0 * 100).toFixed(1)}%`}
+          value={`${(currentUser.commissionRate * 100).toFixed(1)}%`}
           subtitle="Tasa de comisión"
           icon={<FiPercent className="h-6 w-6 text-purple-500" />}
         />
 
         <DashboardCard
           title="Promedio por Venta"
-          value={`$${Number(stats?.stats?.avgSale || 0).toFixed(2)}`}
+          value={`$${stats?.stats?.avgSale?.toFixed(2) || "0.00"}`}
           subtitle="Por transacción"
           icon={<FiBarChart2 className="h-6 w-6 text-orange-500" />}
         />

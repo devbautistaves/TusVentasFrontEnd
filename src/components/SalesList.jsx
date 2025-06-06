@@ -180,9 +180,9 @@ const SalesList = ({ sales, loading, compact = false }) => {
                   <div className="text-right ml-4">
                     <div className="flex items-center text-lg font-bold text-gray-900">
                       <FiDollarSign className="mr-1" />
-                      {Number(sale.planPrice || sale.amount || 0).toFixed(2)}
+                      {(sale.planPrice || sale.amount || 0).toFixed(2)}
                     </div>
-                    <div className="text-sm text-green-600">Comisión: ${Number(sale.commission || 0).toFixed(2)}</div>
+                    <div className="text-sm text-green-600">Comisión: ${(sale.commission || 0).toFixed(2)}</div>
                     <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${getStatusColor(sale.status)}`}>
                       {getStatusText(sale.status)}
                     </span>
