@@ -4,38 +4,34 @@ const Card = ({ children }) => <div className="bg-white shadow rounded p-4">{chi
 const CardContent = ({ children }) => <div>{children}</div>;
 
 const Tabs = ({ children }) => <div>{children}</div>;
-const TabsList = ({ children }) => <div className="flex gap-2 mb-4">{children}</div>;
-const TabsTrigger = ({ value, children }) => <button className="px-3 py-1 rounded bg-gray-100">{children}</button>;
+
 const TabsContent = ({ value, children }) => <div>{children}</div>;
 const GuidesPage = () => {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Guías y Tutoriales</h1>
+    <div className="p-6 ">
+      <h1 className="text-2xl font-bold mb-4 text-center p-5">Guías y Tutoriales</h1>
 
-      <Tabs defaultValue="videos" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="videos"><FiPlay className="inline mr-2" /> Videos</TabsTrigger>
-          <TabsTrigger value="docs"><FiFileText className="inline mr-2" /> Documentos</TabsTrigger>
-          <TabsTrigger value="faq"><FiHelpCircle className="inline mr-2" /> Preguntas Frecuentes</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="videos" className="w-full  ">
 
-        <TabsContent value="videos">
-          <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <h2 className="font-semibold mb-2">Cómo concretar una venta</h2>
-                <iframe
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                  title="Video tutorial"
-                  className="w-full aspect-video rounded"
-                  allowFullScreen
-                ></iframe>
-              </CardContent>
-            </Card>
-            {/* Agregar más videos si querés */}
-          </div>
-        </TabsContent>
 
+     <TabsContent value="videos">
+  <div className="flex justify-center">
+    <div className="grid">
+      <Card>
+        <CardContent className="p-5">
+          <h2 className="font-semibold mb-2 text-center">Cómo concretar una venta</h2>
+          <iframe
+            src="https://www.youtube.com/watch?v=8Pwgvy7gR8Y"
+            title="Video tutorial"
+            className="w-full aspect-video rounded"
+            allowFullScreen
+          ></iframe>
+        </CardContent>
+      </Card>
+      {/* Agregar más videos si querés */}
+    </div>
+  </div>
+</TabsContent>
         <TabsContent value="docs">
           <div className="space-y-4">
             <Card>
@@ -57,15 +53,62 @@ const GuidesPage = () => {
         </TabsContent>
 
         <TabsContent value="faq">
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <h2 className="font-semibold mb-2">¿Cómo modifico una venta ya cargada?</h2>
-                <p className="text-sm text-gray-700">Podés editar una venta desde el historial haciendo clic en "Editar" en la línea correspondiente.</p>
-              </CardContent>
-            </Card>
-            {/* Agregar más preguntas frecuentes */}
-          </div>
+  <div className="space-y-4">
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Cómo modifico una venta ya cargada?</h2>
+        <p className="text-sm text-gray-700">Podés editar una venta desde el historial haciendo clic en "Editar" en la línea correspondiente.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Qué pasa si el DNI del cliente no pasa el scoring?</h2>
+        <p className="text-sm text-gray-700">Podés solicitar el DNI de un familiar. Siempre aclarale al cliente que la facturación seguirá estando a su nombre.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Cuándo se considera cerrada una venta?</h2>
+        <p className="text-sm text-gray-700">Una venta se considera cerrada una vez el equipo este instalado.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Qué incluye la instalación gratuita?</h2>
+        <p className="text-sm text-gray-700">La instalación incluye sensores, panel, sirena y configuración de la app, todo sin costo si el DNI es aprobado.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Cómo hago el seguimiento de una venta?</h2>
+        <p className="text-sm text-gray-700">Tenés que mantener contacto con el cliente hasta que se realice la instalación. No se da por finalizada hasta entonces.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Puedo cargar ventas fuera de mi zona?</h2>
+        <p className="text-sm text-gray-700">Sí, pero asegurate de que la zona esté habilitada para instalaciones. Consultalo si tenés dudas.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Qué hago si el cliente no responde después de aprobar el DNI?</h2>
+        <p className="text-sm text-gray-700">Seguí insistiendo con respeto. Si en 48 hs no hay respuesta, notificá al equipo para dar seguimiento.</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿El video de bienvenida lo mando yo?</h2>
+        <p className="text-sm text-gray-700">Si, el video te lo vamos a dejar en la seccion de objetos utiles y hooks!</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold mb-2">¿Qué datos necesito para cargar una venta?</h2>
+        <p className="text-sm text-gray-700">Nombre, DNI (foto FRONTAL y número), dirección, teléfono, y que acepte recibir el equipo sin abonar instalación.</p>
+      </CardContent>
+    </Card>
+  </div>
         </TabsContent>
       </Tabs>
     </div>
