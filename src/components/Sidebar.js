@@ -2,10 +2,9 @@
 
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { FiHome, FiPlus, FiList, FiUser, FiUsers, FiSettings, FiBarChart2, FiPackage } from "react-icons/fi"
-import { FiBookOpen } from "react-icons/fi";
+import { FiHome, FiPlus, FiList, FiBarChart2, FiBookOpen, FiX } from "react-icons/fi"
 
-const Sidebar = () => {
+const Sidebar = ({ onClose }) => {
   const { currentUser } = useAuth()
   const location = useLocation()
 
@@ -14,6 +13,10 @@ const Sidebar = () => {
   console.log("Sidebar - Is admin:", currentUser?.role === "admin")
 
   const isActive = (path) => location.pathname === path
+
+  const handleLinkClick = () => {
+    if (onClose) onClose()
+  }
 
   const menuItems = [
     {
@@ -35,12 +38,12 @@ const Sidebar = () => {
       roles: ["seller", "admin"],
     },
     {
-    name: "Guías y Tutoriales",
-    path: "/guides",
-    icon: FiBookOpen,
-    roles: ["seller", "admin"], // o solo ["seller"] si lo querés exclusivo
-  },
-];
+      name: "Guías y Tutoriales",
+      path: "/guides",
+      icon: FiBookOpen,
+      roles: ["seller", "admin"],
+    },
+  ]
 
   const adminMenuItems = [
     {
@@ -49,15 +52,20 @@ const Sidebar = () => {
       icon: FiBarChart2,
       roles: ["admin"],
     },
-
   ]
 
   const filteredMenuItems = menuItems.filter((item) => item.roles.includes(currentUser?.role))
-
   const filteredAdminItems = adminMenuItems.filter((item) => item.roles.includes(currentUser?.role))
 
   return (
-    <div className="bg-white shadow-lg h-screen w-64 fixed left-0 top-0 overflow-y-auto">
+    <div className="bg-white shadow-lg h-screen w-64 overflow-y-auto">
+      {/* Mobile close button */}
+      <div className="lg:hidden flex justify-end p-4">
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-900">
+          <FiX className="h-6 w-6" />
+        </button>
+      </div>
+
       <div className="p-4">
         <h2 className="text-xl font-bold text-gray-800">Sales Management</h2>
         <p className="text-sm text-gray-600">Panel de Vendedor</p>
@@ -70,7 +78,6 @@ const Sidebar = () => {
           </div>
           <div>
             <p className="font-medium text-gray-800">{currentUser?.name || "Usuario"}</p>
-
             <p className="text-xs text-blue-600 font-medium">
               {currentUser?.role === "admin" ? "Administrador" : "Vendedor"} ({currentUser?.role})
             </p>
@@ -88,6 +95,7 @@ const Sidebar = () => {
                 <li key={item.path}>
                   <Link
                     to={item.path}
+                    onClick={handleLinkClick}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                       isActive(item.path)
                         ? "bg-blue-100 text-blue-700 border-r-2 border-blue-700"
@@ -113,6 +121,7 @@ const Sidebar = () => {
                   <li key={item.path}>
                     <Link
                       to={item.path}
+                      onClick={handleLinkClick}
                       className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                         isActive(item.path)
                           ? "bg-red-100 text-red-700 border-r-2 border-red-700"

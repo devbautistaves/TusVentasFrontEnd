@@ -1,6 +1,19 @@
 import axios from "axios"
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "https://tusventasbackend.onrender.com"
+// Determine API URL based on environment
+const getApiUrl = () => {
+  // Production API URL
+  if (process.env.NODE_ENV === "production") {
+    return process.env.REACT_APP_API_URL || "https://tusventasbackend.onrender.com"
+  }
+
+  // Development API URL
+  return process.env.REACT_APP_API_URL || "http://localhost:5000"
+}
+
+const API_BASE_URL = getApiUrl()
+
+console.log("API Base URL:", API_BASE_URL)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,14 +51,28 @@ api.interceptors.response.use(
       method: error.config?.method,
       status: error.response?.status,
       data: error.response?.data,
+      message: error.message,
     })
+
+    // Handle network errors
+    if (!error.response) {
+      console.error("Network error - API might be down")
+      return Promise.reject({
+        ...error,
+        message: "Error de conexión. Verifica tu conexión a internet.",
+      })
+    }
 
     if (error.response?.status === 401) {
       console.warn("Unauthorized - clearing auth data")
       localStorage.removeItem("token")
       localStorage.removeItem("user")
       delete api.defaults.headers.common["Authorization"]
-      window.location.href = "/login"
+
+      // Only redirect if not already on login page
+      if (!window.location.hash.includes("/login")) {
+        window.location.hash = "/login"
+      }
     }
 
     return Promise.reject(error)

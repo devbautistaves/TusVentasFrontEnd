@@ -14,53 +14,66 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if user is logged in on page load
-    const token = localStorage.getItem("token")
-    const user = localStorage.getItem("user")
-
-    if (token && user) {
+    const initializeAuth = async () => {
       try {
-        const parsedUser = JSON.parse(user)
+        const token = localStorage.getItem("token")
+        const user = localStorage.getItem("user")
 
-        // Validate user data
-        if (parsedUser && parsedUser.id && parsedUser.email) {
-          console.log("User found in localStorage:", parsedUser.email, "Role:", parsedUser.role)
-          setCurrentUser(parsedUser)
+        if (token && user) {
+          try {
+            const parsedUser = JSON.parse(user)
 
-          // Verify token is still valid by making a test request
-          api
-            .get("/api/users/profile")
-            .then((response) => {
-              if (response.data.success) {
-                console.log("Token verified successfully")
+            // Validate user data
+            if (parsedUser && parsedUser.id && parsedUser.email) {
+              console.log("User found in localStorage:", parsedUser.email, "Role:", parsedUser.role)
+              setCurrentUser(parsedUser)
+              api.defaults.headers.common["Authorization"] = `Bearer ${token}`
+
+              // Verify token is still valid by making a test request
+              try {
+                const response = await api.get("/api/users/profile")
+                if (response.data.success) {
+                  console.log("Token verified successfully")
+                  // Update user data if needed
+                  if (response.data.user) {
+                    const updatedUser = response.data.user
+                    localStorage.setItem("user", JSON.stringify(updatedUser))
+                    setCurrentUser(updatedUser)
+                  }
+                }
+              } catch (verifyError) {
+                console.warn("Token verification failed, logging out")
+                localStorage.removeItem("token")
+                localStorage.removeItem("user")
+                delete api.defaults.headers.common["Authorization"]
+                setCurrentUser(null)
               }
-            })
-            .catch((error) => {
-              console.warn("Token verification failed, logging out")
+            } else {
+              console.warn("Invalid user data in localStorage")
               localStorage.removeItem("token")
               localStorage.removeItem("user")
-              delete api.defaults.headers.common["Authorization"]
-              setCurrentUser(null)
-            })
-
-          api.defaults.headers.common["Authorization"] = `Bearer ${token}`
-        } else {
-          console.warn("Invalid user data in localStorage")
-          localStorage.removeItem("token")
-          localStorage.removeItem("user")
+            }
+          } catch (parseError) {
+            console.error("Error parsing user from localStorage:", parseError)
+            localStorage.removeItem("token")
+            localStorage.removeItem("user")
+          }
         }
       } catch (error) {
-        console.error("Error parsing user from localStorage:", error)
-        localStorage.removeItem("token")
-        localStorage.removeItem("user")
+        console.error("Error initializing auth:", error)
+      } finally {
+        setLoading(false)
       }
     }
 
-    setLoading(false)
+    initializeAuth()
   }, [])
 
   const login = async (email, password) => {
     try {
       setError(null)
+      setLoading(true)
+
       const response = await api.post("/api/auth/login", { email, password })
 
       if (response.data.success) {
@@ -77,14 +90,19 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error("Login error:", err.response?.data || err.message)
-      setError(err.response?.data?.error || "Login failed. Please try again.")
+      const errorMessage = err.response?.data?.error || err.message || "Error de conexión. Intenta nuevamente."
+      setError(errorMessage)
       return false
+    } finally {
+      setLoading(false)
     }
   }
 
   const register = async (userData) => {
     try {
       setError(null)
+      setLoading(true)
+
       const response = await api.post("/api/auth/register", userData)
 
       if (response.data.success) {
@@ -101,8 +119,11 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error("Registration error:", err.response?.data || err.message)
-      setError(err.response?.data?.error || "Registration failed. Please try again.")
+      const errorMessage = err.response?.data?.error || err.message || "Error de conexión. Intenta nuevamente."
+      setError(errorMessage)
       return false
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -112,6 +133,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user")
     delete api.defaults.headers.common["Authorization"]
     setCurrentUser(null)
+    setError(null)
   }
 
   const updateProfile = async (profileData) => {
@@ -131,7 +153,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error("Profile update error:", err.response?.data || err.message)
-      setError(err.response?.data?.error || "Profile update failed. Please try again.")
+      const errorMessage = err.response?.data?.error || err.message || "Error al actualizar perfil."
+      setError(errorMessage)
       return false
     }
   }
@@ -147,5 +170,5 @@ export const AuthProvider = ({ children }) => {
     setError,
   }
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
