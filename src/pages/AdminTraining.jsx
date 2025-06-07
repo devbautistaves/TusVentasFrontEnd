@@ -78,8 +78,10 @@ const handleSubmit = async (e) => {
     formDataToSend.append("message", formData.message)
     formDataToSend.append("type", formData.type)
     formDataToSend.append("priority", formData.priority)
-    formDataToSend.append("recipients", JSON.stringify(formData.recipientType === "all" ? [] : formData.recipients))
-    formDataToSend.append("meetingInfo", JSON.stringify({
+formDataToSend.append("recipientType", formData.recipientType);
+formDataToSend.append("recipients", JSON.stringify(
+  formData.recipientType === "all" ? [] : formData.recipients
+));    formDataToSend.append("meetingInfo", JSON.stringify({
       date: formData.meetingDate,
       link: formData.meetingLink,
       platform: formData.meetingPlatform,
