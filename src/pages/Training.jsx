@@ -64,26 +64,26 @@ const Training = () => {
       console.error("Error marking as read:", err)
     }
   }
-
-  const downloadAttachment = async (notificationId, filename, originalName) => {
-    try {
-      const response = await api.get(`/api/notifications/attachment/${notificationId}/${filename}`, {
-        responseType: "blob",
-      })
-
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement("a")
-      link.href = url
-      link.setAttribute("download", originalName)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error("Error downloading file:", err)
-    }
+function NotificationAttachments({ notification }) {
+  if (!notification.attachments || notification.attachments.length === 0) {
+    return <p>No hay archivos adjuntos.</p>;
   }
 
+  return (
+    <div>
+      {notification.attachments.map((attachment) => (
+        <div key={attachment._id} style={{ marginBottom: 10 }}>
+
+          <img
+            src={attachment.url}
+            alt={attachment.originalName}
+            style={{ maxWidth: '300px', maxHeight: '300px' }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "urgent":
@@ -203,58 +203,46 @@ const Training = () => {
                       <p className="text-gray-700 mb-3">{notification.message}</p>
 
                       {/* Meeting Info */}
-                      {notification.meetingInfo && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <FiCalendar className="h-4 w-4 text-blue-600" />
-                            <span className="font-medium text-blue-900">Información de la Reunión</span>
-                          </div>
-                          <div className="space-y-1 text-sm text-blue-800">
-                            <p>
-                              <strong>Fecha:</strong> {new Date(notification.meetingInfo.date).toLocaleString()}
-                            </p>
-                            <p>
-                              <strong>Plataforma:</strong> {notification.meetingInfo.platform}
-                            </p>
-                            <p>
-                              <strong>Duración:</strong> {notification.meetingInfo.duration} minutos
-                            </p>
-                            {notification.meetingInfo.link && (
-                              <a
-                                href={notification.meetingInfo.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-medium"
-                              >
-                                <FiVideo className="h-4 w-4" />
-                                <span>Unirse a la reunión</span>
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      )}
+{/* Meeting Info */}
+{notification.meetingInfo?.date && (
+  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+    <div className="flex items-center space-x-2 mb-2">
+      <FiCalendar className="h-4 w-4 text-blue-600" />
+      <span className="font-medium text-blue-900">Información de la Reunión</span>
+    </div>
+    <div className="space-y-1 text-sm text-blue-800">
+      <p>
+        <strong>Fecha:</strong> {new Date(notification.meetingInfo.date).toLocaleString()}
+      </p>
+      <p>
+        <strong>Plataforma:</strong> {notification.meetingInfo.platform}
+      </p>
+      <p>
+        <strong>Duración:</strong> {notification.meetingInfo.duration} minutos
+      </p>
+      {notification.meetingInfo.link && (
+        <a
+          href={notification.meetingInfo.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-medium"
+        >
+          <FiVideo className="h-4 w-4" />
+          <span>Unirse a la reunión</span>
+        </a>
+      )}
+    </div>
+  </div>
+)}
 
-                      {/* Attachments */}
-                      {notification.attachments && notification.attachments.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-gray-900">Archivos adjuntos:</h4>
-                          {notification.attachments.map((attachment, index) => (
-                            <button
-                              key={index}
-                              onClick={() =>
-                                downloadAttachment(notification._id, attachment.filename, attachment.originalName)
-                              }
-                              className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
-                            >
-                              <FiDownload className="h-4 w-4" />
-                              <span className="text-sm">{attachment.originalName}</span>
-                              <span className="text-xs text-gray-500">
-                                ({(attachment.size / 1024 / 1024).toFixed(2)} MB)
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                     {notification.attachments && notification.attachments.length > 0 && (
+  <div className="space-y-2 mt-4">
+    <h4 className="font-medium text-gray-900">Archivos adjuntos:</h4>
+
+{notification && <NotificationAttachments notification={notification} />}
+
+  </div>
+)}
 
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
                         <div className="flex items-center space-x-2 text-sm text-gray-500">

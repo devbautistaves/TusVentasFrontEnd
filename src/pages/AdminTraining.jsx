@@ -23,6 +23,8 @@ const AdminTraining = () => {
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
 
+
+
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -59,59 +61,65 @@ const AdminTraining = () => {
     }))
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-    setSuccess("")
 
-    try {
-      const submitData = new FormData()
 
-      // Add form fields
-      Object.keys(formData).forEach((key) => {
-        if (key === "recipients") {
-          submitData.append(key, JSON.stringify(formData[key]))
-        } else {
-          submitData.append(key, formData[key])
-        }
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  setLoading(true)
+  setError("")
+  setSuccess("")
+
+  try {
+    // Crear FormData para multipart/form-data
+    const formDataToSend = new FormData()
+
+    // Agregar campos de texto
+    formDataToSend.append("title", formData.title)
+    formDataToSend.append("message", formData.message)
+    formDataToSend.append("type", formData.type)
+    formDataToSend.append("priority", formData.priority)
+    formDataToSend.append("recipients", JSON.stringify(formData.recipientType === "all" ? [] : formData.recipients))
+    formDataToSend.append("meetingInfo", JSON.stringify({
+      date: formData.meetingDate,
+      link: formData.meetingLink,
+      platform: formData.meetingPlatform,
+      duration: formData.meetingDuration,
+    }))
+
+    // Agregar archivos bajo el campo "attachments"
+    files.forEach(file => {
+      formDataToSend.append("attachments", file)
+    })
+
+    // Enviar al backend con multipart/form-data
+    const response = await api.post("/api/notifications", formDataToSend, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+
+    if (response.data.success) {
+      setSuccess("Notificación enviada exitosamente")
+      setFormData({
+        title: "",
+        message: "",
+        type: "info",
+        priority: "medium",
+        recipientType: "all",
+        recipients: [],
+        meetingDate: "",
+        meetingLink: "",
+        meetingPlatform: "zoom",
+        meetingDuration: 60,
       })
-
-      // Add files
-      files.forEach((file) => {
-        submitData.append("files", file)
-      })
-
-      const response = await api.post("/api/notifications", submitData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
-
-      if (response.data.success) {
-        setSuccess("Notificación enviada exitosamente")
-        setFormData({
-          title: "",
-          message: "",
-          type: "info",
-          priority: "medium",
-          recipientType: "all",
-          recipients: [],
-          meetingDate: "",
-          meetingLink: "",
-          meetingPlatform: "zoom",
-          meetingDuration: 60,
-        })
-        setFiles([])
-        document.getElementById("files").value = ""
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || "Error al enviar la notificación")
-    } finally {
-      setLoading(false)
+      setFiles([])
+      document.getElementById("files").value = ""
     }
+  } catch (err) {
+    console.error(err)
+    setError(err.response?.data?.error || "Error al enviar la notificación")
+  } finally {
+    setLoading(false)
   }
-
+}
   return (
     <div className="p-6">
       <div className="mb-6">
