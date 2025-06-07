@@ -30,7 +30,7 @@ function App() {
         <meta name="robots" content="index" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://tusventas.digital" />
-        <meta property="og:image" content="%PUBLIC_URL%/bannertusventas.png" />
+        <meta property="og:image" content="https://tusventas.digital/bannertusventas.png" />
         <meta property="og:locale" content="es_AR" />
         <meta property="og:site_name" content="TusVentasDigitales" />
         <title>TusVentas - Sé tu propio jefe</title>
