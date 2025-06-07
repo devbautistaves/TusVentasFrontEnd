@@ -17,6 +17,7 @@ import AdminTraining from "./pages/AdminTraining"
 import Chat from "./pages/Chat"
 import { Helmet } from "react-helmet";
 import GuidesPage from "./pages/GuidesPage"
+import Landing from "./pages/Landing"
 
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
