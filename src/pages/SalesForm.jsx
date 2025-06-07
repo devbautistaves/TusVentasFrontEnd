@@ -38,8 +38,7 @@ const SalesForm = () => {
       },
     },
   })
-  const [dniPhoto, setDniPhoto] = useState(null)
-  const [dniPhotoPreview, setDniPhotoPreview] = useState(null)
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
@@ -95,33 +94,6 @@ const SalesForm = () => {
     }
   }
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      // Validate file type
-      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"]
-      if (!allowedTypes.includes(file.type)) {
-        setError("Solo se permiten archivos de imagen (JPEG, PNG, GIF)")
-        return
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("El archivo no puede ser mayor a 5MB")
-        return
-      }
-
-      setDniPhoto(file)
-
-      // Create preview
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setDniPhotoPreview(e.target.result)
-      }
-      reader.readAsDataURL(file)
-      setError(null)
-    }
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -169,7 +141,6 @@ const SalesForm = () => {
       formDataToSend.append("planId", formData.planId)
       formDataToSend.append("description", formData.description)
       formDataToSend.append("customerInfo", JSON.stringify(formData.customerInfo))
-      formDataToSend.append("dniPhoto", dniPhoto)
 
       // Debug FormData contents
       for (const pair of formDataToSend.entries()) {
@@ -202,8 +173,6 @@ const SalesForm = () => {
             },
           },
         })
-        setDniPhoto(null)
-        setDniPhotoPreview(null)
 
         // Redirect after 2 seconds
         setTimeout(() => {
@@ -388,59 +357,6 @@ const SalesForm = () => {
                       className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="12345678"
                     />
-                  </div>
-                </div>
-              </div>
-
-              {/* DNI Photo Upload */}
-              <div className="mt-6">
-                <label htmlFor="dniPhoto" className="block text-sm font-medium text-gray-700 mb-1">
-                  Foto del DNI *
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
-                  <div className="space-y-1 text-center">
-                    {dniPhotoPreview ? (
-                      <div className="mb-4">
-                        <img
-                          src={dniPhotoPreview || "/placeholder.svg"}
-                          alt="Preview del DNI"
-                          className="mx-auto h-32 w-auto object-contain rounded-md"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDniPhoto(null)
-                            setDniPhotoPreview(null)
-                          }}
-                          className="mt-2 text-sm text-red-600 hover:text-red-500"
-                        >
-                          Eliminar imagen
-                        </button>
-                      </div>
-                    ) : (
-                      <FiImage className="mx-auto h-12 w-12 text-gray-400" />
-                    )}
-                    <div className="flex text-sm text-gray-600">
-                      <label
-                        htmlFor="dniPhoto"
-                        className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                      >
-                        <span className="flex items-center">
-                          <FiUpload className="mr-1" />
-                          {dniPhotoPreview ? "Cambiar imagen" : "Subir foto del DNI"}
-                        </span>
-                        <input
-                          id="dniPhoto"
-                          name="dniPhoto"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="sr-only"
-                          required
-                        />
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500">PNG, JPG, GIF hasta 5MB</p>
                   </div>
                 </div>
               </div>
