@@ -43,7 +43,7 @@ function App() {
 
             {/* Admin Routes */}
             <Route
-              path="admin"
+              path="admin/dashboard"
               element={
                 <AdminRoute>
                   <AdminDashboard />
