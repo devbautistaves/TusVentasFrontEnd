@@ -2,7 +2,7 @@
 
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { FiHome, FiPlus, FiList, FiBarChart2, FiBookOpen, FiX } from "react-icons/fi"
+import { FiHome, FiPlus, FiList, FiBarChart2, FiBookOpen, FiX, FiUser} from "react-icons/fi"
 
 const Sidebar = ({ onClose }) => {
   const { currentUser } = useAuth()
@@ -38,17 +38,30 @@ const Sidebar = ({ onClose }) => {
       roles: ["seller", "admin"],
     },
     {
-      name: "Guías y Tutoriales",
-      path: "/guides",
-      icon: FiBookOpen,
+      name: "Entrenamiento",
+      path: "/training",
+      icon: FiUser,
       roles: ["seller", "admin"],
     },
+        {
+      name: "Chat",
+      path: "/chat",
+      icon: FiUser,
+      roles: ["seller", "admin"],
+    },
+
   ]
 
   const adminMenuItems = [
     {
       name: "Dashboard Admin",
       path: "/admin/dashboard",
+      icon: FiBarChart2,
+      roles: ["admin"],
+    },
+        {
+      name: "Training Admin",
+      path: "/admin/training",
       icon: FiBarChart2,
       roles: ["admin"],
     },
