@@ -46,7 +46,7 @@ function App() {
 
           {/* Protected Routes */}
           <Route
-            path="/"
+            path="/app"
             element={
               <ProtectedRoute>
                 <Layout />

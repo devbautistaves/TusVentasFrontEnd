@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
-  FiBarChart3,
+  FiBarChart2,
   FiUsers,
   FiDollarSign,
   FiTrendingUp,
@@ -21,7 +21,7 @@ const Landing = () => {
 
   const features = [
     {
-      icon: <FiBarChart3 className="w-8 h-8" />,
+      icon: <FiBarChart2 className="w-8 h-8" />,
       title: "Dashboard Inteligente",
       description: "Visualiza tus ventas, comisiones y métricas en tiempo real con gráficos interactivos.",
     },
