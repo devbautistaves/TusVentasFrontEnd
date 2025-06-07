@@ -37,10 +37,16 @@ const Sidebar = ({ onClose }) => {
       icon: FiList,
       roles: ["seller", "admin"],
     },
+        {
+      name: "Guias y Metodologias",
+      path: "/guia",
+      icon: FiBookOpen,
+      roles: ["seller", "admin"],
+    },
     {
       name: "Entrenamiento",
       path: "/training",
-      icon: FiUser,
+      icon: FiBookOpen,
       roles: ["seller", "admin"],
     },
         {

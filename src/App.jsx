@@ -16,6 +16,7 @@ import Training from "./pages/Training"
 import AdminTraining from "./pages/AdminTraining"
 import Chat from "./pages/Chat"
 import { Helmet } from "react-helmet";
+import GuidesPage from "./pages/GuidesPage"
 
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
             <Route path="sales/new" element={<SalesForm />} />
             <Route path="sales/history" element={<SalesHistory />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="guia" element={<GuidesPage />} />
             <Route path="training" element={<Training />} />
             <Route path="chat" element={<Chat />} />
 
