@@ -1,6 +1,11 @@
 {
-  "short_name": "Sistema Ventas",
-  "name": "Sistema de Ventas",
+  "short_name": "TusVentas",
+  "name": "TusVentas - Sé tu propio jefe",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "description": "Convertite en tu propio jefe vendiendo con nosotros. Ingresos por comisión, flexibilidad horaria y apoyo constante. Sumate a TusVentas y construí tu negocio hoy mismo.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,8 +13,27 @@
       "type": "image/x-icon"
     }
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+
+  "keywords": [
+    "Ventas",
+    "Comisiones",
+    "Emprender",
+    "Ingresos Extra",
+    "Independencia Financiera",
+    "Ser tu propio jefe",
+    "Comercializadora",
+    "Oportunidad Laboral",
+    "TusVentas",
+    "Bautista Vescio",
+    "Distribuidor",
+    "Trabajo Independiente"
+  ],
+  "author": "BautistaVes",
+  "copyright": "BautistaVes",
+  "robots": "index",
+  "og:type": "website",
+  "og:url": "https://tusventas.digital",
+  "og:image": "%PUBLIC_URL%/bannertusventas.png",
+  "og:locale": "es_AR",
+  "og:site_name": "TusVentasDigitales"
 }
