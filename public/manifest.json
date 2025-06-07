@@ -33,7 +33,7 @@
   "robots": "index",
   "og:type": "website",
   "og:url": "https://tusventas.digital",
-  "og:image": "%PUBLIC_URL%/bannertusventas.png",
+  "og:image": "https://tusventas.digital/bannertusventas.png",
   "og:locale": "es_AR",
   "og:site_name": "TusVentasDigitales"
 }
