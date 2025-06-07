@@ -21,37 +21,37 @@ const Sidebar = ({ onClose }) => {
   const menuItems = [
     {
       name: "Dashboard",
-      path: "/dashboard",
+      path: "/app/dashboard",
       icon: FiHome,
       roles: ["seller", "admin"],
     },
     {
       name: "Nueva Venta",
-      path: "/sales/new",
+      path: "/app/sales/new",
       icon: FiPlus,
       roles: ["seller", "admin"],
     },
     {
       name: "Historial de Ventas",
-      path: "/sales/history",
+      path: "/app/sales/history",
       icon: FiList,
       roles: ["seller", "admin"],
     },
         {
       name: "Guias y Metodologias",
-      path: "/guia",
+      path: "/app/guia",
       icon: FiBookOpen,
       roles: ["seller", "admin"],
     },
     {
       name: "Entrenamiento",
-      path: "/training",
+      path: "/app/training",
       icon: FiBookOpen,
       roles: ["seller", "admin"],
     },
         {
       name: "Chat",
-      path: "/chat",
+      path: "/app/chat",
       icon: FiUser,
       roles: ["seller", "admin"],
     },
@@ -61,13 +61,13 @@ const Sidebar = ({ onClose }) => {
   const adminMenuItems = [
     {
       name: "Dashboard Admin",
-      path: "/admin/dashboard",
+      path: "/app/admin/dashboard",
       icon: FiBarChart2,
       roles: ["admin"],
     },
         {
       name: "Training Admin",
-      path: "/admin/training",
+      path: "/app/admin/training",
       icon: FiBarChart2,
       roles: ["admin"],
     },
