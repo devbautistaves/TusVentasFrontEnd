@@ -144,7 +144,7 @@ const SalesForm = () => {
 
       const response = await api.post("/api/sales", formDataToSend, {
         headers: {
-          "Content-Type": "multipart/form-data",
+          "Content-Type": "application/json"
         },
       })
 
