@@ -54,24 +54,24 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="/app/dashboard" element={<Dashboard />} />
-            <Route path="/app/sales/new" element={<SalesForm />} />
-            <Route path="/app/sales/history" element={<SalesHistory />} />
-            <Route path="/app/profile" element={<Profile />} />
-            <Route path="/app/guia" element={<GuidesPage />} />
-            <Route path="/app/training" element={<Training />} />
-            <Route path="/app/chat" element={<Chat />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="sales/new" element={<SalesForm />} />
+            <Route path="sales/history" element={<SalesHistory />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="guia" element={<GuidesPage />} />
+            <Route path="training" element={<Training />} />
+            <Route path="chat" element={<Chat />} />
 
             {/* Admin Routes */}
             <Route
-              path="/app/admin/dashboard"
+              path="admin/dashboard"
               element={
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>
               }
             />
-            <Route path="/app/admin/training" element={<AdminTraining />} />
+            <Route path="admin/training" element={<AdminTraining />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
