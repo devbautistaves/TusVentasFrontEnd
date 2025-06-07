@@ -100,11 +100,7 @@ const SalesForm = () => {
     setIsLoading(true)
     setError(null)
 
-    if (!dniPhoto) {
-      setError("La foto del DNI es obligatoria")
-      setIsLoading(false)
-      return
-    }
+
 
     // Validate all required fields
     const requiredFields = [
@@ -134,7 +130,6 @@ const SalesForm = () => {
         planId: formData.planId,
         description: formData.description,
         customerInfo: formData.customerInfo,
-        dniPhoto: dniPhoto.name,
       })
 
       const formDataToSend = new FormData()
