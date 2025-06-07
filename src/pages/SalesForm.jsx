@@ -132,21 +132,11 @@ const SalesForm = () => {
         customerInfo: formData.customerInfo,
       })
 
-      const formDataToSend = new FormData()
-      formDataToSend.append("planId", formData.planId)
-      formDataToSend.append("description", formData.description)
-      formDataToSend.append("customerInfo", JSON.stringify(formData.customerInfo))
-
-      // Debug FormData contents
-      for (const pair of formDataToSend.entries()) {
-        console.log(pair[0] + ": " + (pair[1] instanceof File ? pair[1].name : pair[1]))
-      }
-
-      const response = await api.post("/api/sales", formDataToSend, {
-        headers: {
-          "Content-Type": "application/json"
-        },
-      })
+const response = await api.post("/api/sales", {
+  planId: formData.planId,
+  description: formData.description,
+  customerInfo: formData.customerInfo,
+})
 
       if (response.data.success) {
         setSuccess(true)
