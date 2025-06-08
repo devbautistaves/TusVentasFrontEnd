@@ -23,92 +23,57 @@ const Landing = () => {
     {
       icon: <FiBarChart2 className="w-8 h-8" />,
       title: "Dashboard Inteligente",
-      description: "Visualiza tus ventas, comisiones y métricas en tiempo real con gráficos interactivos.",
+      description: "Mirá tus ventas, comisiones y métricas en tiempo real con gráficos claros e interactivos.",
     },
     {
       icon: <FiUsers className="w-8 h-8" />,
       title: "Gestión de Equipo",
-      description: "Administra tu equipo de vendedores, asigna comisiones y monitorea el rendimiento.",
+      description: "Seguí cada venta que generás, consultá el estado de tus clientes y accedé a toda tu actividad desde un solo lugar.",
     },
     {
       icon: <FiDollarSign className="w-8 h-8" />,
       title: "Control de Comisiones",
-      description: "Calcula automáticamente las comisiones y mantén un registro detallado de pagos.",
+      description: "Consultá cuánto ganaste, cuánto vas a cobrar y cuándo. Todo automatizado, sin hacer cuentas.",
     },
     {
       icon: <FiMessageCircle className="w-8 h-8" />,
       title: "Chat Integrado",
-      description: "Comunícate con tu equipo a través de chat grupal y conversaciones privadas.",
+      description: "Accedé a soporte o hablá con otros vendedores a través del chat integrado.",
     },
     {
       icon: <FiCalendar className="w-8 h-8" />,
       title: "Sistema de Entrenamientos",
-      description: "Programa reuniones, sube documentos y mantén a tu equipo siempre capacitado.",
+      description: "Accedé a capacitaciones, documentos y guías para mejorar tus ventas todos los días.",
     },
     {
       icon: <FiShield className="w-8 h-8" />,
       title: "Seguridad Total",
-      description: "Protección de datos con encriptación y autenticación de dos factores.",
+      description: "Tus datos están protegidos con encriptación y verificación en dos pasos.",
     },
   ]
 
   const testimonials = [
     {
-      name: "María González",
-      role: "Gerente de Ventas",
+      name: "Luciana Romero",
+      role: "Vendedora Independiente",
       image: "/placeholder.svg?height=60&width=60",
-      text: "TusVentas transformó completamente nuestra gestión. Aumentamos las ventas un 40% en 3 meses.",
+      text: "Empecé sin experiencia y en la primera semana ya tenía mis primeras comisiones. Todo está listo para salir a vender.",
     },
     {
       name: "Carlos Rodríguez",
-      role: "Director Comercial",
+      role: "Vendedor Independiente",
       image: "/placeholder.svg?height=60&width=60",
-      text: "La mejor inversión que hicimos. El control de comisiones y reportes nos ahorra horas semanales.",
+      text: "TusVentas me cambió el juego. Vendo planes de seguridad, tengo todo el sistema armado y solo tengo que enfocarme en conseguir clientes.",
     },
     {
       name: "Ana Martínez",
-      role: "Vendedora Senior",
+      role: "Vendedora Independiente",
       image: "/placeholder.svg?height=60&width=60",
-      text: "Como vendedora, me encanta poder ver mis comisiones en tiempo real y el chat con el equipo.",
+      text: "Me encanta ver cuánto gané al instante. Ya no tengo que hacer cuentas, todo está cargado automáticamente.",
     },
   ]
 
-  const plans = [
-    {
-      name: "Starter",
-      price: "Gratis",
-      description: "Perfecto para empezar",
-      features: ["Hasta 5 vendedores", "Dashboard básico", "Gestión de ventas", "Soporte por email"],
-      popular: false,
-    },
-    {
-      name: "Professional",
-      price: "$29/mes",
-      description: "Para equipos en crecimiento",
-      features: [
-        "Vendedores ilimitados",
-        "Dashboard avanzado",
-        "Chat integrado",
-        "Sistema de entrenamientos",
-        "Reportes personalizados",
-        "Soporte prioritario",
-      ],
-      popular: true,
-    },
-    {
-      name: "Enterprise",
-      price: "Personalizado",
-      description: "Para grandes organizaciones",
-      features: [
-        "Todo lo de Professional",
-        "API personalizada",
-        "Integraciones avanzadas",
-        "Soporte 24/7",
-        "Consultoría incluida",
-      ],
-      popular: false,
-    },
-  ]
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -165,9 +130,9 @@ const Landing = () => {
             <div className="space-y-8">
               <div className="space-y-4">
                 <h1 className="text-5xl lg:text-7xl font-bold text-white leading-tight">
-                  POTENCIA TUS{" "}
+                  VENDE{" "}
                   <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                    VENTAS
+                    ALARMAS MONITOREADAS
                   </span>{" "}
                   CON LA PLATAFORMA{" "}
                   <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
@@ -175,8 +140,7 @@ const Landing = () => {
                   </span>
                 </h1>
                 <p className="text-xl text-gray-300 leading-relaxed">
-                  ¡Únete a más de 5000 vendedores que ya transformaron su negocio! Gestiona tu equipo, controla
-                  comisiones y aumenta tus ventas con nuestra plataforma todo-en-uno.
+                  Más de 5000 personas ya empezaron a ganar dinero con TusVentas. Elegí qué vender, accedé a productos listos para ofrecer como sistemas de seguridad, y cobrá comisiones sin invertir en stock
                 </p>
               </div>
 
@@ -199,11 +163,11 @@ const Landing = () => {
               <div className="flex items-center space-x-8 text-gray-400">
                 <div className="flex items-center space-x-2">
                   <FiCheck className="w-5 h-5 text-emerald-400" />
-                  <span>Sin tarjeta de crédito</span>
+                  <span>Rapido y facil.</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <FiCheck className="w-5 h-5 text-emerald-400" />
-                  <span>Setup en 5 minutos</span>
+                  <span>Entrenamiento diario y mentorias gratis.</span>
                 </div>
               </div>
             </div>
@@ -263,12 +227,11 @@ const Landing = () => {
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
               Todo lo que necesitas para{" "}
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                vender más
+                empezar a vender y ganar comisiones
               </span>
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Una plataforma completa diseñada para maximizar tus ventas y optimizar la gestión de tu equipo comercial.
-            </p>
+Una plataforma lista para usar, con productos reales y todas las herramientas para que empieces a ganar desde el día uno.            </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -358,74 +321,15 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="precios" className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-              Planes que se adaptan a{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                tu negocio
-              </span>
-            </h2>
-            <p className="text-xl text-gray-300">Comienza gratis y escala según tus necesidades</p>
-          </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {plans.map((plan, index) => (
-              <div
-                key={index}
-                className={`relative bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 border transition-all duration-300 ${
-                  plan.popular ? "border-emerald-500 scale-105" : "border-gray-700 hover:border-emerald-500/50"
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                      Más Popular
-                    </span>
-                  </div>
-                )}
-
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent mb-2">
-                    {plan.price}
-                  </div>
-                  <p className="text-gray-300">{plan.description}</p>
-                </div>
-
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center space-x-3">
-                      <FiCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                      <span className="text-gray-300">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  onClick={() => navigate("/register")}
-                  className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 ${
-                    plan.popular
-                      ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-600 hover:to-cyan-600"
-                      : "border-2 border-emerald-400 text-emerald-400 hover:bg-emerald-400 hover:text-white"
-                  }`}
-                >
-                  Comenzar Ahora
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-emerald-600 to-cyan-600">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">¿Listo para transformar tus ventas?</h2>
+          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">¿Listo para empezar a ganar dinero vendiendo?</h2>
           <p className="text-xl text-emerald-100 mb-8">
-            Únete a miles de vendedores que ya están maximizando sus resultados con TusVentas
+Únete a miles de vendedores independientes que ya están generando ingresos con TusVentas. ¡Solo tenés que activar tu cuenta y salir a vender!
+
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
@@ -457,7 +361,7 @@ const Landing = () => {
                   TusVentas
                 </span>
               </div>
-              <p className="text-gray-400">La plataforma líder para gestión de ventas y equipos comerciales.</p>
+              <p className="text-gray-400">Con TusVentas recibís productos listos para vender, un sistema de comisiones automatizado y todo lo que necesitás para empezar hoy mismo.</p>
             </div>
 
             <div>
