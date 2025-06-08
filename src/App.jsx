@@ -25,6 +25,7 @@ function App() {
       <>
 
         <Helmet>
+        <meta name="title" content="TusVentas - Sé tu propio jefe" />
         <meta name="keywords" content="Ventas, Comisiones, Emprender, Ingresos Extra, Independencia Financiera, Ser tu propio jefe, Comercializadora, Oportunidad Laboral, TusVentas, Bautista Vescio, Distribuidor, Trabajo Independiente" />
         <meta name="description" content="Convertite en tu propio jefe vendiendo con nosotros. Ingresos por comisión, flexibilidad horaria y apoyo constante. Sumate a TusVentas y construí tu negocio hoy mismo." />
         <meta name="author" content="BautistaVes" />
