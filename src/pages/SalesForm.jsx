@@ -161,7 +161,7 @@ const response = await api.post("/api/sales", {
 
         // Redirect after 2 seconds
         setTimeout(() => {
-          navigate("/dashboard")
+          navigate("/app/dashboard")
         }, 2000)
       } else {
         setError(response.data.error || "Error al registrar la venta")

@@ -50,7 +50,7 @@ const Register = () => {
       const success = await register(registerData)
 
       if (success) {
-        navigate("/dashboard")
+        navigate("app/dashboard")
       }
     } finally {
       setIsLoading(false)
