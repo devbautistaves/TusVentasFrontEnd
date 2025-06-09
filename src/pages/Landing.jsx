@@ -27,8 +27,8 @@ const Landing = () => {
     },
     {
       icon: <FiUsers className="w-8 h-8" />,
-      title: "Gestión de Equipo",
-      description: "Seguí cada venta que generás, consultá el estado de tus clientes y accedé a toda tu actividad desde un solo lugar.",
+      title: "Supervisión Acompañada",
+      description: "Nosotros supervisamos tu actividad para que puedas concentrarte en vender. Accedé a tus ventas, clientes y movimientos desde un solo lugar.",
     },
     {
       icon: <FiDollarSign className="w-8 h-8" />,
