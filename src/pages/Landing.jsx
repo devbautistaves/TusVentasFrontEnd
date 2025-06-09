@@ -295,7 +295,7 @@ Una plataforma lista para usar, con productos reales y todas las herramientas pa
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* Testimonials Section
       <section id="testimonios" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-800/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -331,7 +331,7 @@ Una plataforma lista para usar, con productos reales y todas las herramientas pa
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
 
 
