@@ -173,48 +173,60 @@ const Landing = () => {
             </div>
 
             <div className="relative">
-              <div className="relative bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 rounded-3xl p-8 backdrop-blur-sm border border-emerald-500/30">
-                <div className="bg-gray-800 rounded-2xl p-6 shadow-2xl">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-white font-semibold">Dashboard de Ventas</h3>
+              <div className="bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 rounded-3xl p-6 backdrop-blur-sm border border-emerald-500/30">
+                <div className="bg-gray-800 rounded-2xl p-5 shadow-xl space-y-5">
+
+                  {/* Encabezado */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-semibold text-base">Dashboard de Ventas</h3>
                     <div className="flex space-x-2">
-                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                      <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
+                      <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg p-4">
-                      <div className="text-white text-2xl font-bold">$45,230</div>
-                      <div className="text-emerald-100 text-sm">Ventas del Mes</div>
-                    </div>
-                    <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-white text-2xl font-bold">127</div>
-                      <div className="text-gray-300 text-sm">Ventas Totales</div>
-                    </div>
-                  </div>
-
+                  {/* Ventas activadas */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300">Plan Premium</span>
-                      <span className="text-emerald-400">$1,200</span>
+                    <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl p-4">
+                      <div className="text-white text-xl font-bold">$300,000</div>
+                      <div className="text-white text-sm">10 Ventas Activadas</div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300">Plan Básico</span>
-                      <span className="text-emerald-400">$800</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300">Plan Starter</span>
-                      <span className="text-emerald-400">$400</span>
+                    <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl p-4">
+                      <div className="text-white text-xl font-bold">$1,000,000</div>
+                      <div className="text-white text-sm">30 Ventas Activadas</div>
                     </div>
                   </div>
+
+                  {/* Promedio */}
+                  <div className="bg-gray-700 rounded-xl p-3">
+                    <div className="flex justify-between text-sm text-gray-300">
+                      <span>Promedio mensual por vendedor</span>
+                      <span className="text-emerald-400 font-semibold">39 ventas</span>
+                    </div>
+                  </div>
+
+                  {/* Info adicional */}
+                  <div className="text-sm space-y-2 text-gray-300">
+                    <div className="flex justify-between">
+                      <span>Planes de Alarmas</span>
+                      <span className="text-emerald-400">Desde $43.300</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Bonificaciones a clientes</span>
+                      <span className="text-emerald-400">Activas</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Bonos mensuales</span>
+                      <span className="text-emerald-400">En efectivo</span>
+                    </div>
+                    <div className="text-emerald-300 pt-2 text-xs text-center">
+                      Empezá rápido, sin trámites. Capacitación y apoyo diario.
+                    </div>
+                  </div>
+
                 </div>
               </div>
-
-              {/* Floating elements */}
-              <div className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full opacity-20 animate-pulse"></div>
-              <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full opacity-20 animate-pulse delay-1000"></div>
             </div>
           </div>
         </div>
