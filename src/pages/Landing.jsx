@@ -130,17 +130,17 @@ const Landing = () => {
             <div className="space-y-8">
               <div className="space-y-4">
                 <h1 className="text-5xl lg:text-7xl font-bold text-white leading-tight">
-                  VENDE{" "}
+                  VENDÉ ALARMAS{" "}
                   <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                    ALARMAS MONITOREADAS
+                    EN TODO EL PAIS
                   </span>{" "}
-                  CON LA PLATAFORMA{" "}
+                  Y GANÁ PLATA{" "}
                   <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                    LÍDER
+                    DESDE TU CELULAR
                   </span>
                 </h1>
                 <p className="text-xl text-gray-300 leading-relaxed">
-                  Más de 5000 personas ya empezaron a ganar dinero con TusVentas. Elegí qué vender, accedé a productos listos para ofrecer como sistemas de seguridad, y cobrá comisiones sin invertir en stock
+                Miles de personas ya están generando ingresos desde su celular con TusVentas. Sumate hoy y descubrí lo fácil que es vender alarmas monitoreadas, sin stock, sin inversión y con todo el respaldo que necesitás para crecer.
                 </p>
               </div>
 
