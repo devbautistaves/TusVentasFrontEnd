@@ -30,7 +30,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
   const handleLogout = () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
-    router.push("/")
+    router.push("/login")
   }
 
   const adminLinks = [

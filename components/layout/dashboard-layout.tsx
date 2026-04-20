@@ -23,7 +23,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
     const userData = localStorage.getItem("user")
 
     if (!token || !userData) {
-      router.push("/")
+      router.push("/login")
       return
     }
 
@@ -37,7 +37,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
       setUser(parsedUser)
     } catch {
-      router.push("/")
+      router.push("/login")
     } finally {
       setIsLoading(false)
     }
