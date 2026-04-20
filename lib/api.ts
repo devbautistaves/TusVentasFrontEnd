@@ -162,6 +162,33 @@ export const notificationsAPI = {
     }),
 }
 
+// Announcements (Admin)
+export const announcementsAPI = {
+  create: (token: string, data: CreateAnnouncementData) =>
+    fetchAPI<{ success: boolean; notification: Notification }>("/api/notifications", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  sendToAll: (token: string, data: { title: string; message: string; type?: string }) =>
+    fetchAPI<{ success: boolean }>("/api/notifications/send-all", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface CreateAnnouncementData {
+  title: string
+  message: string
+  type: "general" | "meeting" | "material" | "urgent"
+  targetUsers?: string[] // Si no se especifica, se envia a todos
+  meetingDate?: string
+  meetingLink?: string
+  attachments?: string[]
+}
+
 // Chat
 export const chatAPI = {
   getRooms: (token: string) =>

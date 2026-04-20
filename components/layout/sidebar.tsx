@@ -15,6 +15,7 @@ import {
   Folder,
   DollarSign,
   MessageSquare,
+  Megaphone,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -39,6 +40,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
     { href: "/admin/users", label: "Usuarios", icon: Users },
     { href: "/admin/plans", label: "Planes", icon: Package },
     { href: "/admin/commissions", label: "Comisiones", icon: DollarSign },
+    { href: "/admin/announcements", label: "Anuncios", icon: Megaphone },
     { href: "/admin/notifications", label: "Notificaciones", icon: Bell },
     { href: "/admin/chat", label: "Chat", icon: MessageSquare },
   ]
