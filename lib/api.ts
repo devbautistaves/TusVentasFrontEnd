@@ -162,31 +162,60 @@ export const notificationsAPI = {
     }),
 }
 
-// Announcements (Admin)
+// Announcements (Admin) - Uses multipart/form-data for file uploads
 export const announcementsAPI = {
-  create: (token: string, data: CreateAnnouncementData) =>
-    fetchAPI<{ success: boolean; notification: Notification }>("/api/notifications", {
-      method: "POST",
-      token,
-      body: JSON.stringify(data),
-    }),
+  create: async (token: string, data: CreateAnnouncementData, files?: File[]) => {
+    const formData = new FormData()
+    formData.append("title", data.title)
+    formData.append("message", data.message)
+    formData.append("type", data.type || "info")
+    formData.append("priority", data.priority || "medium")
+    formData.append("recipientType", data.recipientType || "all")
+    
+    if (data.recipients && data.recipients.length > 0) {
+      formData.append("recipients", JSON.stringify(data.recipients))
+    }
+    
+    if (data.meetingInfo) {
+      formData.append("meetingInfo", JSON.stringify(data.meetingInfo))
+    }
+    
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append("attachments", file)
+      })
+    }
 
-  sendToAll: (token: string, data: { title: string; message: string; type?: string }) =>
-    fetchAPI<{ success: boolean }>("/api/notifications/send-all", {
+    const response = await fetch(`${API_URL}/api/notifications`, {
       method: "POST",
-      token,
-      body: JSON.stringify(data),
-    }),
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Error de conexion" }))
+      throw new Error(error.message || error.error || "Error en la solicitud")
+    }
+
+    return response.json()
+  },
 }
 
 export interface CreateAnnouncementData {
   title: string
   message: string
-  type: "general" | "meeting" | "material" | "urgent"
-  targetUsers?: string[] // Si no se especifica, se envia a todos
-  meetingDate?: string
-  meetingLink?: string
-  attachments?: string[]
+  type?: "info" | "warning" | "success" | "meeting" | "material"
+  priority?: "low" | "medium" | "high" | "urgent"
+  recipientType?: "all" | "selected"
+  recipients?: string[]
+  meetingInfo?: {
+    date: string
+    time: string
+    link?: string
+    location?: string
+  }
 }
 
 // Chat

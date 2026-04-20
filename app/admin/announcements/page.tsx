@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { useToast } from "@/hooks/use-toast"
-import { usersAPI, User } from "@/lib/api"
+import { usersAPI, notificationsAPI, User } from "@/lib/api"
 import { 
   Megaphone, 
   Send, 
@@ -36,7 +36,12 @@ import {
   Plus,
   Clock,
   Link as LinkIcon,
-  CheckCircle2
+  CheckCircle2,
+  Upload,
+  X,
+  Paperclip,
+  Info,
+  Bell
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -45,23 +50,27 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tusventasbackend.onr
 interface AnnouncementFormData {
   title: string
   message: string
-  type: "general" | "meeting" | "material" | "urgent"
-  targetType: "all" | "specific"
-  targetUsers: string[]
+  type: "info" | "warning" | "success" | "meeting" | "material"
+  priority: "low" | "medium" | "high" | "urgent"
+  recipientType: "all" | "selected"
+  recipients: string[]
   meetingDate: string
   meetingTime: string
   meetingLink: string
+  meetingLocation: string
 }
 
 const initialFormData: AnnouncementFormData = {
   title: "",
   message: "",
-  type: "general",
-  targetType: "all",
-  targetUsers: [],
+  type: "info",
+  priority: "medium",
+  recipientType: "all",
+  recipients: [],
   meetingDate: "",
   meetingTime: "",
   meetingLink: "",
+  meetingLocation: "",
 }
 
 export default function AnnouncementsPage() {
@@ -70,11 +79,14 @@ export default function AnnouncementsPage() {
   const [users, setUsers] = useState<User[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formData, setFormData] = useState<AnnouncementFormData>(initialFormData)
+  const [attachments, setAttachments] = useState<File[]>([])
   const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   useEffect(() => {
     fetchUsers()
+    fetchRecentAnnouncements()
   }, [])
 
   const fetchUsers = async () => {
@@ -84,12 +96,41 @@ export default function AnnouncementsPage() {
     setIsLoading(true)
     try {
       const response = await usersAPI.getAll(token)
-      setUsers(response.users.filter((u) => u.role === "seller"))
+      setUsers(response.users.filter((u) => u.role === "seller" && u.isActive))
     } catch (error) {
       console.error("Error fetching users:", error)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchRecentAnnouncements = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      const response = await notificationsAPI.getAll(token)
+      setRecentAnnouncements(response.notifications?.slice(0, 10) || [])
+    } catch (error) {
+      console.error("Error fetching announcements:", error)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length + attachments.length > 5) {
+      toast({
+        title: "Limite de archivos",
+        description: "Maximo 5 archivos por anuncio",
+        variant: "destructive",
+      })
+      return
+    }
+    setAttachments((prev) => [...prev, ...files])
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSendAnnouncement = async () => {
@@ -107,48 +148,59 @@ export default function AnnouncementsPage() {
 
     setIsSending(true)
     try {
-      const payload: any = {
-        title: formData.title,
-        message: formData.message,
-        type: formData.type,
+      const formDataToSend = new FormData()
+      formDataToSend.append("title", formData.title)
+      formDataToSend.append("message", formData.message)
+      formDataToSend.append("type", formData.type)
+      formDataToSend.append("priority", formData.priority)
+      formDataToSend.append("recipientType", formData.recipientType)
+
+      if (formData.recipientType === "selected" && formData.recipients.length > 0) {
+        formDataToSend.append("recipients", JSON.stringify(formData.recipients))
       }
 
       if (formData.type === "meeting" && formData.meetingDate) {
-        payload.meetingDate = `${formData.meetingDate}T${formData.meetingTime || "00:00"}`
-        payload.meetingLink = formData.meetingLink
+        const meetingInfo = {
+          date: formData.meetingDate,
+          time: formData.meetingTime || "00:00",
+          link: formData.meetingLink || null,
+          location: formData.meetingLocation || null,
+        }
+        formDataToSend.append("meetingInfo", JSON.stringify(meetingInfo))
       }
+
+      attachments.forEach((file) => {
+        formDataToSend.append("attachments", file)
+      })
 
       const response = await fetch(`${API_URL}/api/notifications`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: formDataToSend,
       })
 
-      if (!response.ok) throw new Error("Error al enviar")
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error al enviar")
+      }
+
+      const result = await response.json()
 
       toast({
         title: "Anuncio enviado",
-        description: "El anuncio ha sido enviado a todos los vendedores",
+        description: "El anuncio ha sido enviado y los vendedores recibiran un email",
       })
 
-      setRecentAnnouncements((prev) => [
-        {
-          ...payload,
-          createdAt: new Date().toISOString(),
-          id: Date.now(),
-        },
-        ...prev,
-      ])
-
+      setRecentAnnouncements((prev) => [result.notification, ...prev])
       setFormData(initialFormData)
+      setAttachments([])
       setIsDialogOpen(false)
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "No se pudo enviar el anuncio",
+        description: error.message || "No se pudo enviar el anuncio",
         variant: "destructive",
       })
     } finally {
@@ -170,18 +222,37 @@ export default function AnnouncementsPage() {
           label: "Material",
           color: "text-green-500 bg-green-500/10",
         }
-      case "urgent":
+      case "warning":
         return {
           icon: AlertTriangle,
-          label: "Urgente",
-          color: "text-red-500 bg-red-500/10",
+          label: "Aviso",
+          color: "text-yellow-500 bg-yellow-500/10",
+        }
+      case "success":
+        return {
+          icon: CheckCircle2,
+          label: "Exito",
+          color: "text-green-500 bg-green-500/10",
         }
       default:
         return {
-          icon: Megaphone,
-          label: "General",
+          icon: Info,
+          label: "Informacion",
           color: "text-primary bg-primary/10",
         }
+    }
+  }
+
+  const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return { label: "Urgente", color: "text-red-500 bg-red-500/10" }
+      case "high":
+        return { label: "Alta", color: "text-orange-500 bg-orange-500/10" }
+      case "low":
+        return { label: "Baja", color: "text-gray-500 bg-gray-500/10" }
+      default:
+        return { label: "Media", color: "text-blue-500 bg-blue-500/10" }
     }
   }
 
@@ -189,25 +260,29 @@ export default function AnnouncementsPage() {
     {
       title: "Reunion de equipo",
       type: "meeting" as const,
+      priority: "high" as const,
       icon: Calendar,
       description: "Programar una reunion con el equipo",
     },
     {
       title: "Nuevo material",
       type: "material" as const,
+      priority: "medium" as const,
       icon: FileText,
       description: "Compartir material de ventas",
     },
     {
-      title: "Aviso urgente",
-      type: "urgent" as const,
+      title: "Aviso importante",
+      type: "warning" as const,
+      priority: "urgent" as const,
       icon: AlertTriangle,
       description: "Enviar comunicado urgente",
     },
     {
       title: "Anuncio general",
-      type: "general" as const,
-      icon: Megaphone,
+      type: "info" as const,
+      priority: "medium" as const,
+      icon: Bell,
       description: "Comunicado general al equipo",
     },
   ]
@@ -230,7 +305,7 @@ export default function AnnouncementsPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Anuncios</h1>
             <p className="text-muted-foreground">
-              Envia comunicados y avisos a tu equipo de vendedores
+              Envia comunicados, reuniones y material a tu equipo de vendedores
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -240,35 +315,59 @@ export default function AnnouncementsPage() {
                 Nuevo Anuncio
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Crear Anuncio</DialogTitle>
                 <DialogDescription>
-                  Envia un comunicado a todos los vendedores
+                  Los vendedores recibiran una notificacion en la app y un email
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel>Tipo de anuncio</FieldLabel>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(value: any) =>
-                        setFormData((prev) => ({ ...prev, type: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="meeting">Reunion</SelectItem>
-                        <SelectItem value="material">Material</SelectItem>
-                        <SelectItem value="urgent">Urgente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </FieldGroup>
+                <div className="grid grid-cols-2 gap-4">
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Tipo</FieldLabel>
+                      <Select
+                        value={formData.type}
+                        onValueChange={(value: any) =>
+                          setFormData((prev) => ({ ...prev, type: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="info">Informacion</SelectItem>
+                          <SelectItem value="meeting">Reunion</SelectItem>
+                          <SelectItem value="material">Material</SelectItem>
+                          <SelectItem value="warning">Aviso</SelectItem>
+                          <SelectItem value="success">Exito</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </FieldGroup>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Prioridad</FieldLabel>
+                      <Select
+                        value={formData.priority}
+                        onValueChange={(value: any) =>
+                          setFormData((prev) => ({ ...prev, priority: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Baja</SelectItem>
+                          <SelectItem value="medium">Media</SelectItem>
+                          <SelectItem value="high">Alta</SelectItem>
+                          <SelectItem value="urgent">Urgente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </FieldGroup>
+                </div>
 
                 <FieldGroup>
                   <Field>
@@ -296,6 +395,64 @@ export default function AnnouncementsPage() {
                     />
                   </Field>
                 </FieldGroup>
+
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel>Destinatarios</FieldLabel>
+                    <Select
+                      value={formData.recipientType}
+                      onValueChange={(value: any) =>
+                        setFormData((prev) => ({ ...prev, recipientType: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los vendedores</SelectItem>
+                        <SelectItem value="selected">Seleccionar vendedores</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </FieldGroup>
+
+                {formData.recipientType === "selected" && (
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Seleccionar vendedores</FieldLabel>
+                      <div className="border rounded-lg p-3 max-h-32 overflow-y-auto space-y-2">
+                        {users.map((user) => (
+                          <label
+                            key={user._id}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-secondary/50 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.recipients.includes(user._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    recipients: [...prev.recipients, user._id],
+                                  }))
+                                } else {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    recipients: prev.recipients.filter(
+                                      (id) => id !== user._id
+                                    ),
+                                  }))
+                                }
+                              }}
+                              className="rounded border-border"
+                            />
+                            <span className="text-sm">{user.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </Field>
+                  </FieldGroup>
+                )}
 
                 {formData.type === "meeting" && (
                   <>
@@ -333,7 +490,7 @@ export default function AnnouncementsPage() {
                     </div>
                     <FieldGroup>
                       <Field>
-                        <FieldLabel>Link de la reunion (opcional)</FieldLabel>
+                        <FieldLabel>Link de reunion (Meet, Zoom, etc.)</FieldLabel>
                         <Input
                           placeholder="https://meet.google.com/..."
                           value={formData.meetingLink}
@@ -346,13 +503,86 @@ export default function AnnouncementsPage() {
                         />
                       </Field>
                     </FieldGroup>
+                    <FieldGroup>
+                      <Field>
+                        <FieldLabel>Ubicacion (opcional)</FieldLabel>
+                        <Input
+                          placeholder="Oficina central, Sala de reuniones..."
+                          value={formData.meetingLocation}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              meetingLocation: e.target.value,
+                            }))
+                          }
+                        />
+                      </Field>
+                    </FieldGroup>
                   </>
                 )}
+
+                {/* Attachments */}
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel>Archivos adjuntos (max 5)</FieldLabel>
+                    <div className="space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={attachments.length >= 5}
+                        className="w-full"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Subir archivos
+                      </Button>
+                      {attachments.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                          {attachments.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between bg-secondary/50 rounded-lg px-3 py-2"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="text-sm truncate">{file.name}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeAttachment(index)}
+                                className="h-6 w-6 p-0 shrink-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Field>
+                </FieldGroup>
               </div>
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => {
+                    setIsDialogOpen(false)
+                    setFormData(initialFormData)
+                    setAttachments([])
+                  }}
                   disabled={isSending}
                 >
                   Cancelar
@@ -370,7 +600,7 @@ export default function AnnouncementsPage() {
                   ) : (
                     <>
                       <Send className="mr-2 h-4 w-4" />
-                      Enviar a todos
+                      Enviar
                     </>
                   )}
                 </Button>
@@ -402,7 +632,7 @@ export default function AnnouncementsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{recentAnnouncements.length}</p>
-                  <p className="text-sm text-muted-foreground">Anuncios enviados hoy</p>
+                  <p className="text-sm text-muted-foreground">Anuncios enviados</p>
                 </div>
               </div>
             </CardContent>
@@ -414,7 +644,7 @@ export default function AnnouncementsPage() {
                   <Clock className="h-6 w-6 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">Ahora</p>
+                  <p className="text-2xl font-bold">Email + App</p>
                   <p className="text-sm text-muted-foreground">Entrega instantanea</p>
                 </div>
               </div>
@@ -436,11 +666,12 @@ export default function AnnouncementsPage() {
                   <button
                     key={item.type}
                     onClick={() => {
-                      setFormData((prev) => ({
-                        ...prev,
+                      setFormData({
+                        ...initialFormData,
                         type: item.type,
-                        title: item.type === "general" ? "" : item.title,
-                      }))
+                        priority: item.priority,
+                        title: item.type === "info" ? "" : item.title,
+                      })
                       setIsDialogOpen(true)
                     }}
                     className="p-4 rounded-lg border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
@@ -489,17 +720,18 @@ export default function AnnouncementsPage() {
             ) : (
               <div className="space-y-3">
                 {recentAnnouncements.map((announcement) => {
-                  const config = getTypeConfig(announcement.type)
-                  const Icon = config.icon
+                  const typeConfig = getTypeConfig(announcement.type)
+                  const priorityConfig = getPriorityConfig(announcement.priority)
+                  const Icon = typeConfig.icon
                   return (
                     <div
-                      key={announcement.id}
+                      key={announcement._id}
                       className="flex items-start gap-4 p-4 rounded-lg border border-border/50 bg-secondary/20"
                     >
                       <div
                         className={cn(
                           "h-10 w-10 rounded-full flex items-center justify-center shrink-0",
-                          config.color
+                          typeConfig.color
                         )}
                       >
                         <Icon className="h-5 w-5" />
@@ -513,15 +745,15 @@ export default function AnnouncementsPage() {
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                               {announcement.message}
                             </p>
-                            {announcement.meetingDate && (
+                            {announcement.meetingInfo && (
                               <div className="flex items-center gap-2 mt-2 text-xs text-blue-500">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(announcement.meetingDate).toLocaleString("es-AR")}
-                                {announcement.meetingLink && (
+                                {announcement.meetingInfo.date} {announcement.meetingInfo.time}
+                                {announcement.meetingInfo.link && (
                                   <>
                                     <LinkIcon className="h-3 w-3 ml-2" />
                                     <a
-                                      href={announcement.meetingLink}
+                                      href={announcement.meetingInfo.link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="underline"
@@ -532,20 +764,36 @@ export default function AnnouncementsPage() {
                                 )}
                               </div>
                             )}
+                            {announcement.attachments?.length > 0 && (
+                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <Paperclip className="h-3 w-3" />
+                                {announcement.attachments.length} archivo(s) adjunto(s)
+                              </div>
+                            )}
                           </div>
-                          <div className="text-right shrink-0">
+                          <div className="text-right shrink-0 space-y-1">
                             <span
                               className={cn(
                                 "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                                config.color
+                                typeConfig.color
                               )}
                             >
-                              {config.label}
+                              {typeConfig.label}
                             </span>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(announcement.createdAt).toLocaleTimeString(
+                            <span
+                              className={cn(
+                                "block px-2 py-1 rounded-full text-xs font-medium",
+                                priorityConfig.color
+                              )}
+                            >
+                              {priorityConfig.label}
+                            </span>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(announcement.createdAt).toLocaleDateString(
                                 "es-AR",
                                 {
+                                  day: "2-digit",
+                                  month: "short",
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 }
