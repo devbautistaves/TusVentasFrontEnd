@@ -3,7 +3,7 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "24"
   NEXT_PUBLIC_API_URL = "https://tusventasbackend.onrender.com"
 
 [[plugins]]
