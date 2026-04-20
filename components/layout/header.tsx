@@ -1,0 +1,154 @@
+"use client"
+
+import { Bell, Search, Menu } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useEffect, useState } from "react"
+import { notificationsAPI, Notification } from "@/lib/api"
+import Link from "next/link"
+
+interface HeaderProps {
+  userName: string
+  role: "admin" | "seller"
+  onMenuClick?: () => void
+}
+
+export function Header({ userName, role, onMenuClick }: HeaderProps) {
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      try {
+        const [countRes, notifRes] = await Promise.all([
+          notificationsAPI.getUnreadCount(token),
+          notificationsAPI.getAll(token),
+        ])
+        setUnreadCount(countRes.count)
+        setNotifications(notifRes.notifications.slice(0, 5))
+      } catch (error) {
+        console.error("Error fetching notifications:", error)
+      }
+    }
+
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+
+  return (
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 backdrop-blur px-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden"
+        onClick={onMenuClick}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+
+      {/* Search */}
+      <div className="flex-1 max-w-md">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            className="pl-9 bg-secondary/50 border-border/50"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        {/* Notifications */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="flex items-center justify-between">
+              Notificaciones
+              {unreadCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {unreadCount} sin leer
+                </span>
+              )}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No hay notificaciones
+              </div>
+            ) : (
+              notifications.map((notif) => (
+                <DropdownMenuItem key={notif._id} className="flex flex-col items-start gap-1 p-3">
+                  <span className={`text-sm ${!notif.isRead ? "font-semibold" : ""}`}>
+                    {notif.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground line-clamp-2">
+                    {notif.message}
+                  </span>
+                </DropdownMenuItem>
+              ))
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={`/${role}/notifications`} className="w-full text-center text-sm text-primary">
+                Ver todas
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* User menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden md:block text-sm font-medium">{userName}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={`/${role}/settings`}>Perfil</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/${role}/settings`}>Configuracion</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  )
+}
