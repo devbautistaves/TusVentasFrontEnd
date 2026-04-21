@@ -213,9 +213,7 @@ export default function AdminPlansPage() {
           {plans.map((plan) => (
             <Card
               key={plan._id}
-              className={`border-border/50 bg-card/50 ${
-                !plan.isActive ? "opacity-60" : ""
-              }`}
+              className="border-border/50 bg-card/50"
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -264,13 +262,9 @@ export default function AdminPlansPage() {
                 )}
                 <div className="pt-4 border-t border-border">
                   <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      plan.isActive
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-red-500/20 text-red-400"
-                    }`}
+                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-green-500/20 text-green-400"
                   >
-                    {plan.isActive ? "Activo" : "Inactivo"}
+                    Activo
                   </span>
                 </div>
               </CardContent>
