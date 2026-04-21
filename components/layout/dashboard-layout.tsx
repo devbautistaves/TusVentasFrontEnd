@@ -74,7 +74,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:transform-none`}
       >
-        <Sidebar role={user.role} userName={user.name} />
+        <Sidebar role={user.role} userName={user.name} onLinkClick={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main content */}

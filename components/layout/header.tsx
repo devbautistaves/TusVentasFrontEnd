@@ -1,6 +1,7 @@
 "use client"
 
-import { Bell, Search, Menu } from "lucide-react"
+import { Bell, Search, Menu, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -25,6 +26,13 @@ interface HeaderProps {
 export function Header({ userName, role, onMenuClick }: HeaderProps) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const router = useRouter()
+
+  const handleLogout = () => {
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    router.push("/login")
+  }
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -145,6 +153,14 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href={`/${role}/settings`}>Configuracion</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={handleLogout}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesion
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

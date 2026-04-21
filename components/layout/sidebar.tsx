@@ -22,9 +22,10 @@ import { Button } from "@/components/ui/button"
 interface SidebarProps {
   role: "admin" | "seller"
   userName: string
+  onLinkClick?: () => void
 }
 
-export function Sidebar({ role, userName }: SidebarProps) {
+export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -37,6 +38,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
   const adminLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/sales", label: "Ventas", icon: ShoppingCart },
+    { href: "/admin/new-sale", label: "Nueva Venta", icon: TrendingUp },
     { href: "/admin/users", label: "Usuarios", icon: Users },
     { href: "/admin/plans", label: "Planes", icon: Package },
     { href: "/admin/commissions", label: "Comisiones", icon: DollarSign },
@@ -82,6 +84,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={onLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
@@ -100,6 +103,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
         <div className="border-t border-border p-4 space-y-2">
           <Link
             href={role === "admin" ? "/admin/settings" : "/seller/settings"}
+            onClick={onLinkClick}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
           >
             <Settings className="h-5 w-5" />
