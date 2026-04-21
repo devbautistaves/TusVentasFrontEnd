@@ -56,12 +56,12 @@ export default function SellerChatPage() {
         chatAPI.getPrivateAdminChat(token),
       ])
 
-      if (groupRes.room) {
-        setGroupRoom(groupRes.room)
-        setSelectedRoom(groupRes.room)
+      if (groupRes.chatRoom) {
+        setGroupRoom(groupRes.chatRoom)
+        setSelectedRoom(groupRes.chatRoom)
       }
-      if (privateRes.room) {
-        setPrivateRoom(privateRes.room)
+      if (privateRes.chatRoom) {
+        setPrivateRoom(privateRes.chatRoom)
       }
     } catch (error) {
       console.log("[v0] Error fetching chat data:", error)

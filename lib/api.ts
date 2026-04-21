@@ -96,7 +96,7 @@ export const salesAPI = {
     }),
 
   updateStatus: (token: string, id: string, status: string, notes?: string) =>
-    fetchAPI<Sale>(`/sales/${id}`, {
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
       method: "PUT",
       token,
       body: JSON.stringify({ status, notes }),
@@ -224,23 +224,26 @@ export const chatAPI = {
     fetchAPI<{ success: boolean; rooms: ChatRoom[] }>("/api/chat/rooms", { token }),
 
   getGroupChat: (token: string) =>
-    fetchAPI<{ success: boolean; room: ChatRoom }>("/api/chat/group", { token }),
+    fetchAPI<{ success: boolean; chatRoom: ChatRoom }>("/api/chat/group", { token }),
 
   getPrivateAdminChat: (token: string) =>
-    fetchAPI<{ success: boolean; room: ChatRoom }>("/api/chat/private-admin", { token }),
+    fetchAPI<{ success: boolean; chatRoom: ChatRoom }>("/api/chat/private-admin", { token }),
 
   getPrivateChats: (token: string) =>
-    fetchAPI<{ success: boolean; rooms: ChatRoom[] }>("/api/chat/private-chats", { token }),
+    fetchAPI<{ success: boolean; chatRooms: ChatRoom[] }>("/api/chat/private-chats", { token }),
 
   getMessages: (token: string, roomId: string) =>
     fetchAPI<{ success: boolean; messages: ChatMessage[] }>(`/api/chat/${roomId}/messages`, { token }),
 
   sendMessage: (token: string, roomId: string, content: string) =>
-    fetchAPI<{ success: boolean; message: ChatMessage }>(`/api/chat/${roomId}/messages`, {
+    fetchAPI<{ success: boolean; data: ChatMessage }>(`/api/chat/${roomId}/messages`, {
       method: "POST",
       token,
       body: JSON.stringify({ content }),
     }),
+
+  getPrivateChat: (token: string, userId: string) =>
+    fetchAPI<{ success: boolean; room: ChatRoom }>(`/api/chat/private/${userId}`, { token }),
 }
 
 // Types

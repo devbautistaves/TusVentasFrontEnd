@@ -54,11 +54,11 @@ export default function AdminChatPage() {
         usersAPI.getAll(token),
       ])
 
-      if (groupRes.room) {
-        setGroupRoom(groupRes.room)
-        setSelectedRoom(groupRes.room)
+      if (groupRes.chatRoom) {
+        setGroupRoom(groupRes.chatRoom)
+        setSelectedRoom(groupRes.chatRoom)
       }
-      setPrivateChats(privateRes.rooms || [])
+      setPrivateChats(privateRes.chatRooms || [])
       setUsers(usersRes.users || [])
     } catch (error) {
       console.log("[v0] Error fetching chat data:", error)

@@ -105,36 +105,35 @@ export default function NewSalePage() {
       const token = localStorage.getItem("token")
       if (!token) throw new Error("No autenticado")
 
+      // Construir descripcion completa con todos los datos adicionales
+      const fullDescription = [
+        formData.description,
+        `\n--- Datos Adicionales ---`,
+        `Fecha Nacimiento: ${formData.customerBirthDate || "No especificado"}`,
+        `Contacto Emergencia: ${formData.emergencyContactName} - ${formData.emergencyContactPhone}`,
+        `Detalle Plan: ${formData.planDetail || selectedPlan.name}`,
+        `Abono: ${formData.customPrice ? `$${formData.customPrice}` : formatCurrency(selectedPlan.price)}`,
+        `Pago Abono: ${formData.paymentMethodAbono === "credit_card" ? `Tarjeta ${formData.cardBrand.toUpperCase()}` : `CBU: ${formData.cbuNumber}`}`,
+        `Pago Instalacion: ${formData.paymentMethodInstallation === "transfer" ? "Transferencia" : "Mercado Pago"}`,
+        formData.floor ? `Piso: ${formData.floor}` : "",
+        formData.apartment ? `Depto: ${formData.apartment}` : "",
+      ].filter(Boolean).join("\n")
+
       await salesAPI.create(token, {
         planId: selectedPlan._id,
-        description: formData.description,
+        description: fullDescription,
         customerInfo: {
           name: formData.customerName,
           email: formData.customerEmail,
           phone: formData.customerPhone,
           dni: formData.customerDni,
-          birthDate: formData.customerBirthDate,
           address: {
             street: formData.street,
             number: formData.number,
-            floor: formData.floor,
-            apartment: formData.apartment,
             city: formData.city,
             province: formData.province,
             postalCode: formData.postalCode,
           },
-          emergencyContact: {
-            name: formData.emergencyContactName,
-            phone: formData.emergencyContactPhone,
-          },
-        },
-        paymentInfo: {
-          methodAbono: formData.paymentMethodAbono,
-          cardBrand: formData.paymentMethodAbono === "credit_card" ? formData.cardBrand : undefined,
-          cbuNumber: formData.paymentMethodAbono === "cbu" ? formData.cbuNumber : undefined,
-          methodInstallation: formData.paymentMethodInstallation,
-          customPrice: formData.customPrice ? parseFloat(formData.customPrice) : undefined,
-          planDetail: formData.planDetail,
         },
       })
 
