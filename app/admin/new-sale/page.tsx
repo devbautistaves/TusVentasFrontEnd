@@ -119,7 +119,7 @@ export default function NewSalePage() {
         formData.apartment ? `Depto: ${formData.apartment}` : "",
       ].filter(Boolean).join("\n")
 
-      await salesAPI.create(token, {
+      const result = await salesAPI.create(token, {
         planId: selectedPlan._id,
         description: fullDescription,
         customerInfo: {
@@ -137,13 +137,15 @@ export default function NewSalePage() {
         },
       })
 
-      toast({
-        title: "Venta registrada",
-        description: "La venta se ha registrado correctamente",
-      })
-
-      router.push("/admin/sales")
+      if (result.success) {
+        toast({
+          title: "Venta registrada",
+          description: "La venta se ha registrado correctamente",
+        })
+        router.push("/admin/sales")
+      }
     } catch (error) {
+      console.log("[v0] Error al crear venta:", error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Error al registrar la venta",

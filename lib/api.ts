@@ -21,12 +21,13 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers,
   })
 
+  const data = await response.json().catch(() => ({ success: false, message: "Error de conexion" }))
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Error de conexion" }))
-    throw new Error(error.message || error.error || "Error en la solicitud")
+    throw new Error(data.message || data.error || "Error en la solicitud")
   }
 
-  return response.json()
+  return data as T
 }
 
 // Auth
