@@ -328,8 +328,10 @@ export default function AdminSalesPage() {
                 </div>
 
                 <div className="border-t border-border pt-4">
-                  <p className="text-sm text-muted-foreground mb-2">Observaciones</p>
-                  <p className="text-foreground">{selectedSale.description}</p>
+                  <p className="text-sm text-muted-foreground mb-2">Observaciones y Datos Adicionales</p>
+                  <pre className="text-foreground text-sm whitespace-pre-wrap bg-secondary/30 p-3 rounded-lg">
+                    {selectedSale.description || "Sin observaciones"}
+                  </pre>
                 </div>
 
                 {selectedSale.statusHistory && selectedSale.statusHistory.length > 0 && (

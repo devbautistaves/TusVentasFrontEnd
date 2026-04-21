@@ -90,10 +90,44 @@ export default function NewSalePage() {
       return
     }
 
+    // Validar campos requeridos del cliente
+    const requiredFields = [
+      { field: "customerName", label: "Nombre del cliente" },
+      { field: "customerEmail", label: "Email del cliente" },
+      { field: "customerPhone", label: "Telefono del cliente" },
+      { field: "customerDni", label: "DNI del cliente" },
+      { field: "street", label: "Calle" },
+      { field: "number", label: "Numero" },
+      { field: "city", label: "Ciudad" },
+      { field: "province", label: "Provincia" },
+      { field: "postalCode", label: "Codigo postal" },
+    ]
+
+    for (const { field, label } of requiredFields) {
+      if (!formData[field as keyof typeof formData]) {
+        toast({
+          title: "Error",
+          description: `El campo "${label}" es obligatorio`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     if (!formData.emergencyContactName || !formData.emergencyContactPhone) {
       toast({
         title: "Error",
         description: "Debes completar el contacto de emergencia",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar CBU si es el metodo de pago seleccionado
+    if (formData.paymentMethodAbono === "cbu" && formData.cbuNumber.length !== 22) {
+      toast({
+        title: "Error",
+        description: "El CBU debe tener 22 digitos",
         variant: "destructive",
       })
       return
@@ -145,7 +179,6 @@ export default function NewSalePage() {
         router.push("/seller/sales")
       }
     } catch (error) {
-      console.log("[v0] Error al crear venta:", error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Error al registrar la venta",
