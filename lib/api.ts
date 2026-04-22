@@ -96,6 +96,9 @@ export const usersAPI = {
     }),
 }
 
+// Alias for convenience
+export const userAPI = usersAPI
+
 // Sales
 export const salesAPI = {
   getAll: (token: string) =>
@@ -320,6 +323,7 @@ export interface Sale {
   paymentInfo?: PaymentInfo
   // Campos de costos para supervisor
   installationCost?: number
+  adminCost?: number
   adCost?: number
   sellerCommissionPaid?: number
   createdAt: string

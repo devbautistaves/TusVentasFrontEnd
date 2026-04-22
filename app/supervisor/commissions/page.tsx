@@ -28,8 +28,7 @@ import { salesAPI, Sale } from "@/lib/api"
 import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2 } from "lucide-react"
 
 // Constantes de comision supervisor
-const SUPERVISOR_BASE_COMMISSION = 720000
-const ADMIN_COST = 35000
+const SUPERVISOR_BASE_COMMISSION = 750000 // Importe base de comision
 const SUPERVISOR_PERCENTAGE = 0.40
 
 export default function SupervisorCommissionsPage() {
@@ -44,6 +43,7 @@ export default function SupervisorCommissionsPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [costForm, setCostForm] = useState({
     installationCost: 0,
+    adminCost: 0,
     adCost: 0,
     sellerCommissionPaid: 0,
   })
@@ -89,6 +89,7 @@ export default function SupervisorCommissionsPage() {
   const cancelledSales = monthSales.filter(s => s.status === "cancelled")
 
   // Calcular comision detallada
+  // Base: $750,000 - Descontar: Instalacion, Administracion, Anuncio, Comision Vendedor
   const calculateDetailedCommission = () => {
     let details: Array<{
       sale: Sale
@@ -103,19 +104,21 @@ export default function SupervisorCommissionsPage() {
     let totalBeforePercentage = 0
 
     completedSales.forEach(sale => {
-      const baseCommission = SUPERVISOR_BASE_COMMISSION
+      const baseCommission = SUPERVISOR_BASE_COMMISSION // $750,000
       const installationCost = sale.installationCost || 0
+      const adminCost = sale.adminCost || 0
       const adCost = sale.adCost || 0
       const sellerCommission = sale.sellerCommissionPaid || 0
       
-      const netCommission = baseCommission - installationCost - ADMIN_COST - adCost - sellerCommission
+      // Neto = Base - Instalacion - Admin - Anuncio - Comision Vendedor
+      const netCommission = baseCommission - installationCost - adminCost - adCost - sellerCommission
       totalBeforePercentage += netCommission
 
       details.push({
         sale,
         baseCommission,
         installationCost,
-        adminCost: ADMIN_COST,
+        adminCost,
         adCost,
         sellerCommission,
         netCommission,
@@ -148,6 +151,7 @@ export default function SupervisorCommissionsPage() {
     setSelectedSale(sale)
     setCostForm({
       installationCost: sale.installationCost || 0,
+      adminCost: sale.adminCost || 0,
       adCost: sale.adCost || 0,
       sellerCommissionPaid: sale.sellerCommissionPaid || 0,
     })
@@ -188,7 +192,7 @@ export default function SupervisorCommissionsPage() {
       "Plan",
       "Estado",
       "Fecha",
-      "Comision Base",
+      "Base",
       "Costo Instalacion",
       "Costo Admin",
       "Costo Anuncio",
@@ -513,6 +517,19 @@ export default function SupervisorCommissionsPage() {
                     type="number"
                     value={costForm.installationCost}
                     onChange={(e) => setCostForm(prev => ({ ...prev, installationCost: Number(e.target.value) }))}
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="adminCost">Costo de Administracion (JV)</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="adminCost"
+                    type="number"
+                    value={costForm.adminCost}
+                    onChange={(e) => setCostForm(prev => ({ ...prev, adminCost: Number(e.target.value) }))}
                     className="bg-secondary/50 pl-8"
                   />
                 </div>
