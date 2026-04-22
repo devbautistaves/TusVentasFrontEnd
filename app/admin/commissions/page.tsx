@@ -60,6 +60,7 @@ export default function AdminCommissionsPage() {
   const [isCostsDialogOpen, setIsCostsDialogOpen] = useState(false)
   const [costForm, setCostForm] = useState({
     installationCost: 0,
+    adminCost: 0,
     adCost: 0,
     sellerCommissionPaid: 0,
   })
@@ -212,6 +213,7 @@ export default function AdminCommissionsPage() {
     setSelectedSale(sale)
     setCostForm({
       installationCost: sale.installationCost || 0,
+      adminCost: sale.adminCost || 0,
       adCost: sale.adCost || 0,
       sellerCommissionPaid: sale.sellerCommissionPaid || 0,
     })
@@ -904,6 +906,19 @@ export default function AdminCommissionsPage() {
                     type="number"
                     value={costForm.installationCost}
                     onChange={(e) => setCostForm(prev => ({ ...prev, installationCost: Number(e.target.value) }))}
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="adminCost">Costo de Administracion (JV)</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="adminCost"
+                    type="number"
+                    value={costForm.adminCost}
+                    onChange={(e) => setCostForm(prev => ({ ...prev, adminCost: Number(e.target.value) }))}
                     className="bg-secondary/50 pl-8"
                   />
                 </div>

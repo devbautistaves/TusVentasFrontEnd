@@ -256,7 +256,8 @@ export default function AdminChatPage() {
                     </div>
                   ) : (
                     messages.map((msg, index) => {
-                      const isOwnMessage = msg.senderName === "Admin"
+                      const messageSenderName = msg.senderName || msg.sender?.name || "Usuario"
+                      const isOwnMessage = msg.sender?.role === "admin" || messageSenderName === "Admin"
                       const showDate =
                         index === 0 ||
                         formatDate(msg.createdAt) !==
@@ -286,7 +287,7 @@ export default function AdminChatPage() {
                                     : "bg-blue-500/20 text-blue-400"
                                 )}
                               >
-                                {getInitials(msg.senderName)}
+                                {getInitials(messageSenderName)}
                               </AvatarFallback>
                             </Avatar>
                             <div
@@ -299,7 +300,7 @@ export default function AdminChatPage() {
                             >
                               {!isOwnMessage && (
                                 <p className="text-xs font-medium mb-1 opacity-70">
-                                  {msg.senderName}
+                                  {messageSenderName}
                                 </p>
                               )}
                               <p className="text-sm">{msg.content}</p>

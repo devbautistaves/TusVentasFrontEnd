@@ -5,33 +5,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { ExternalLink, FileText, Image, Video, Presentation, Download } from "lucide-react"
 
+const MARKETING_FOLDER_URL = "https://drive.google.com/drive/folders/1SWJEfm92y0YF6djzklKaEPsdKgZgsHHA"
+
 const marketingResources = [
   {
     title: "Catalogo de Productos",
     description: "PDF con todos los planes y precios actualizados",
     icon: FileText,
-    link: "https://drive.google.com/drive/folders/example",
+    link: MARKETING_FOLDER_URL,
     type: "PDF",
   },
   {
     title: "Imagenes Promocionales",
     description: "Banners y graficos para redes sociales",
     icon: Image,
-    link: "https://drive.google.com/drive/folders/example",
+    link: MARKETING_FOLDER_URL,
     type: "Imagenes",
   },
   {
     title: "Videos de Capacitacion",
     description: "Tutoriales y guias de venta",
     icon: Video,
-    link: "https://drive.google.com/drive/folders/example",
+    link: MARKETING_FOLDER_URL,
     type: "Videos",
   },
   {
     title: "Presentaciones",
     description: "Slides para reuniones con clientes",
     icon: Presentation,
-    link: "https://drive.google.com/drive/folders/example",
+    link: MARKETING_FOLDER_URL,
     type: "Presentacion",
   },
 ]
@@ -61,7 +63,7 @@ export default function MarketingPage() {
                 </p>
               </div>
               <a
-                href="https://drive.google.com/drive/folders/example"
+                href={MARKETING_FOLDER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
               >

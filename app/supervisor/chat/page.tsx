@@ -247,7 +247,8 @@ export default function SupervisorChatPage() {
                     </div>
                   ) : (
                     messages.map((msg, index) => {
-                      const isOwnMessage = msg.senderName === currentUser?.name
+                      const messageSenderName = msg.senderName || msg.sender?.name || "Usuario"
+                      const isOwnMessage = messageSenderName === currentUser?.name
                       const showDate =
                         index === 0 ||
                         formatDate(msg.createdAt) !==
@@ -277,7 +278,7 @@ export default function SupervisorChatPage() {
                                     : "bg-blue-500/20 text-blue-400"
                                 )}
                               >
-                                {getInitials(msg.senderName)}
+                                {getInitials(messageSenderName)}
                               </AvatarFallback>
                             </Avatar>
                             <div
@@ -290,7 +291,7 @@ export default function SupervisorChatPage() {
                             >
                               {!isOwnMessage && (
                                 <p className="text-xs font-medium mb-1 opacity-70">
-                                  {msg.senderName}
+                                  {messageSenderName}
                                 </p>
                               )}
                               <p className="text-sm">{msg.content}</p>

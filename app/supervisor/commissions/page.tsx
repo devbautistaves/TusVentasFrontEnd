@@ -166,7 +166,12 @@ export default function SupervisorCommissionsPage() {
     if (!token) return
 
     try {
-      await salesAPI.updateCosts(token, selectedSale._id, costForm)
+      await salesAPI.updateCosts(token, selectedSale._id, {
+        installationCost: costForm.installationCost || 0,
+        adminCost: costForm.adminCost || 0,
+        adCost: costForm.adCost || 0,
+        sellerCommissionPaid: costForm.sellerCommissionPaid || 0,
+      })
       toast({
         title: "Costos actualizados",
         description: "Los costos de la venta se han actualizado correctamente",

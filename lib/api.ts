@@ -124,11 +124,25 @@ export const salesAPI = {
   getAdminSales: (token: string) =>
     fetchAPI<{ success: boolean; sales: Sale[] }>("/api/admin/sales", { token }),
 
-  updateCosts: (token: string, id: string, costs: { installationCost?: number; adCost?: number; sellerCommissionPaid?: number }) =>
+  updateCosts: (token: string, id: string, costs: { installationCost?: number; adminCost?: number; adCost?: number; sellerCommissionPaid?: number }) =>
     fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/costs`, {
       method: "PUT",
       token,
       body: JSON.stringify(costs),
+    }),
+
+  assignSeller: (token: string, id: string, sellerId: string) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/assign`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ sellerId }),
+    }),
+
+  update: (token: string, id: string, data: Partial<Sale>) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
     }),
 }
 
@@ -443,9 +457,15 @@ export interface ChatRoom {
 
 export interface ChatMessage {
   _id: string
-  roomId: string
-  senderId: string
-  senderName: string
+  roomId?: string
+  chatRoom?: string
+  senderId?: string
+  sender?: {
+    _id: string
+    name: string
+    role: string
+  }
+  senderName?: string
   content: string
   attachments?: string[]
   createdAt: string

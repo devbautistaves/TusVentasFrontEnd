@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { salesAPI, usersAPI, Sale, User } from "@/lib/api"
-import { Search, Filter, Eye, Edit2, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign } from "lucide-react"
+import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
+import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign } from "lucide-react"
 
 export default function AdminSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -40,7 +40,7 @@ export default function AdminSalesPage() {
   const [statusNotes, setStatusNotes] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
   // Nuevos estados para edicion de vendedor y costos
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserType[]>([])
   const [isCostsDialogOpen, setIsCostsDialogOpen] = useState(false)
   const [costsData, setCostsData] = useState({
     installationCost: "",
@@ -125,20 +125,27 @@ export default function AdminSalesPage() {
     if (!token) return
 
     try {
+      // Actualizar costos
       await salesAPI.updateCosts(token, selectedSale._id, {
         installationCost: costsData.installationCost ? Number(costsData.installationCost) : 0,
         adCost: costsData.adCost ? Number(costsData.adCost) : 0,
         sellerCommissionPaid: costsData.sellerCommissionPaid ? Number(costsData.sellerCommissionPaid) : 0,
       })
       
-      // Si cambio el vendedor, actualizar tambien
+      // Si cambio el vendedor, asignar al nuevo vendedor
       if (costsData.newSellerId && costsData.newSellerId !== selectedSale.sellerId) {
-        await salesAPI.updateStatus(token, selectedSale._id, selectedSale.status, `Venta reasignada a otro vendedor`)
+        try {
+          await salesAPI.assignSeller(token, selectedSale._id, costsData.newSellerId)
+        } catch (assignError) {
+          console.error("Error assigning seller:", assignError)
+          // Intentar endpoint alternativo de update
+          await salesAPI.update(token, selectedSale._id, { sellerId: costsData.newSellerId } as any)
+        }
       }
       
       toast({
-        title: "Costos actualizados",
-        description: "Los costos de la venta se han actualizado correctamente",
+        title: "Cambios guardados",
+        description: "Los costos y asignacion de la venta se han actualizado correctamente",
       })
       setIsCostsDialogOpen(false)
       fetchSales()
@@ -146,7 +153,7 @@ export default function AdminSalesPage() {
       console.error("Error updating costs:", error)
       toast({
         title: "Error",
-        description: "No se pudieron actualizar los costos",
+        description: "No se pudieron actualizar los cambios",
         variant: "destructive",
       })
     } finally {
@@ -361,7 +368,7 @@ export default function AdminSalesPage() {
                 {/* Datos del Cliente */}
                 <div className="space-y-3">
                   <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
-                    <User className="h-4 w-4 text-primary" />
+                    <UserIcon className="h-4 w-4 text-primary" />
                     Datos del Cliente
                   </h4>
                   <div className="grid gap-3 md:grid-cols-2">
