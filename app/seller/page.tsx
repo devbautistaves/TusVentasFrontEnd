@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Spinner } from "@/components/ui/spinner"
 import { dashboardAPI, salesAPI, DashboardStats, Sale } from "@/lib/api"
+import { getActivatedSalesThisMonth, calculateTotalCommission, getCommissionPerSale, getCommissionTier } from "@/lib/commissions"
 import {
   ShoppingCart,
   DollarSign,
   Plus,
-  Clock,
   CheckCircle,
+  TrendingUp,
 } from "lucide-react"
 import {
   AreaChart,
