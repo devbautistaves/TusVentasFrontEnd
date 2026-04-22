@@ -16,16 +16,19 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers["Authorization"] = `Bearer ${token}`
   }
 
-  console.log("[v0] API Request:", endpoint, fetchOptions.method || "GET")
-  
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...fetchOptions,
     headers,
   })
 
-  const data = await response.json().catch(() => ({ success: false, message: "Error de conexion" }))
-
-  console.log("[v0] API Response:", response.status, data)
+  const responseText = await response.text()
+  
+  let data
+  try {
+    data = JSON.parse(responseText)
+  } catch {
+    data = { success: false, message: responseText || "Error de conexion" }
+  }
 
   if (!response.ok) {
     throw new Error(data.message || data.error || `Error ${response.status}`)
