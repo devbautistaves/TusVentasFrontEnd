@@ -302,14 +302,24 @@ export interface Sale {
   planId: string
   planName: string
   planPrice: number
+  customPrice?: number
   commission: number
   commissionRate: number
   description: string
+  planDetail?: string
   status: "pending" | "completed" | "cancelled" | "pending_appointment" | "appointed"
   statusHistory: StatusHistoryItem[]
   customerInfo: CustomerInfo
+  paymentInfo?: PaymentInfo
   createdAt: string
   updatedAt: string
+}
+
+export interface PaymentInfo {
+  paymentMethodAbono: "credit_card" | "cbu"
+  cardBrand?: "visa" | "mastercard"
+  cbuNumber?: string
+  paymentMethodInstallation: "transfer" | "mercadopago"
 }
 
 export interface StatusHistoryItem {
@@ -324,19 +334,29 @@ export interface CustomerInfo {
   email: string
   phone: string
   dni: string
+  birthDate?: string
   address: {
     street: string
     number: string
+    floor?: string
+    apartment?: string
     city: string
     province: string
     postalCode: string
+  }
+  emergencyContact?: {
+    name: string
+    phone: string
   }
 }
 
 export interface CreateSaleData {
   planId: string
   description: string
+  planDetail?: string
+  customPrice?: number
   customerInfo: CustomerInfo
+  paymentInfo?: PaymentInfo
 }
 
 export interface Plan {

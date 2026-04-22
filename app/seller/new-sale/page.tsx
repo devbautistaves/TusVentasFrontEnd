@@ -154,18 +154,33 @@ export default function NewSalePage() {
     const saleData = {
       planId: selectedPlan._id,
       description: shortDescription,
+      planDetail: formData.planDetail,
+      customPrice: formData.customPrice ? Number(formData.customPrice) : undefined,
       customerInfo: {
         name: formData.customerName,
         email: formData.customerEmail,
         phone: formData.customerPhone,
         dni: formData.customerDni,
+        birthDate: formData.customerBirthDate,
         address: {
           street: formData.street,
           number: formData.number,
+          floor: formData.floor || undefined,
+          apartment: formData.apartment || undefined,
           city: formData.city,
           province: formData.province,
           postalCode: formData.postalCode,
         },
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone,
+        },
+      },
+      paymentInfo: {
+        paymentMethodAbono: formData.paymentMethodAbono as "credit_card" | "cbu",
+        cardBrand: formData.paymentMethodAbono === "credit_card" ? formData.cardBrand as "visa" | "mastercard" : undefined,
+        cbuNumber: formData.paymentMethodAbono === "cbu" ? formData.cbuNumber : undefined,
+        paymentMethodInstallation: formData.paymentMethodInstallation as "transfer" | "mercadopago",
       },
     }
 

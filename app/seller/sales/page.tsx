@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { salesAPI, Sale } from "@/lib/api"
-import { Search, Filter, Eye, Plus, Calendar, User, Phone, MapPin, Mail } from "lucide-react"
+import { Search, Filter, Eye, Plus, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText } from "lucide-react"
 
 export default function SellerSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -196,10 +196,7 @@ export default function SellerSalesPage() {
                       </td>
                       <td className="py-3 px-4 text-foreground">{sale.customerInfo.dni}</td>
                       <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium text-foreground">{sale.planName}</p>
-                          <p className="text-sm text-primary">Comision: {formatCurrency(sale.commission || 0)}</p>
-                        </div>
+                        <p className="font-medium text-foreground">{sale.planName}</p>
                       </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={sale.status} />
@@ -244,76 +241,171 @@ export default function SellerSalesPage() {
               </DialogDescription>
             </DialogHeader>
             {selectedSale && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
+              <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Header con estado y fecha */}
+                <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
                   <StatusBadge status={selectedSale.status} />
                   <span className="text-sm text-muted-foreground">
                     {new Date(selectedSale.createdAt).toLocaleString("es-AR")}
                   </span>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Cliente
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="text-muted-foreground">Nombre:</span> {selectedSale.customerInfo.name}</p>
-                      <p><span className="text-muted-foreground">DNI:</span> {selectedSale.customerInfo.dni}</p>
-                      <p className="flex items-center gap-2">
+                {/* Datos del Cliente */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <User className="h-4 w-4 text-primary" />
+                    Datos del Cliente
+                  </h4>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Nombre Completo</p>
+                      <p className="font-medium text-foreground">{selectedSale.customerInfo.name}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">DNI</p>
+                      <p className="font-medium text-foreground">{selectedSale.customerInfo.dni}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-medium text-foreground flex items-center gap-2">
                         <Mail className="h-3 w-3 text-muted-foreground" />
                         {selectedSale.customerInfo.email}
                       </p>
-                      <p className="flex items-center gap-2">
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Telefono</p>
+                      <p className="font-medium text-foreground flex items-center gap-2">
                         <Phone className="h-3 w-3 text-muted-foreground" />
                         {selectedSale.customerInfo.phone}
                       </p>
                     </div>
                   </div>
+                </div>
 
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Direccion
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <p>{selectedSale.customerInfo.address.street} {selectedSale.customerInfo.address.number}</p>
-                      <p>{selectedSale.customerInfo.address.city}, {selectedSale.customerInfo.address.province}</p>
-                      <p>CP: {selectedSale.customerInfo.address.postalCode}</p>
-                    </div>
+                {/* Direccion */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Direccion de Instalacion
+                  </h4>
+                  <div className="bg-secondary/20 p-3 rounded-lg">
+                    <p className="font-medium text-foreground">
+                      {selectedSale.customerInfo.address.street} {selectedSale.customerInfo.address.number}
+                      {selectedSale.customerInfo.address.floor && `, Piso ${selectedSale.customerInfo.address.floor}`}
+                      {selectedSale.customerInfo.address.apartment && ` Dpto ${selectedSale.customerInfo.address.apartment}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedSale.customerInfo.address.city}, {selectedSale.customerInfo.address.province}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      CP: {selectedSale.customerInfo.address.postalCode}
+                    </p>
                   </div>
                 </div>
 
-                <div className="border-t border-border pt-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Plan</p>
+                {/* Contacto de Emergencia */}
+                {selectedSale.customerInfo.emergencyContact && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <UserPlus className="h-4 w-4 text-primary" />
+                      Contacto de Emergencia
+                    </h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Nombre</p>
+                        <p className="font-medium text-foreground">{selectedSale.customerInfo.emergencyContact.name}</p>
+                      </div>
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Telefono</p>
+                        <p className="font-medium text-foreground flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          {selectedSale.customerInfo.emergencyContact.phone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Plan y Precio */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Plan Contratado
+                  </h4>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Plan</p>
                       <p className="font-semibold text-foreground">{selectedSale.planName}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mi Comision</p>
-                      <p className="font-semibold text-primary">{formatCurrency(selectedSale.commission || 0)}</p>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Precio del Abono</p>
+                      <p className="font-semibold text-primary">
+                        {formatCurrency(selectedSale.customPrice || selectedSale.planPrice || 0)}
+                      </p>
                     </div>
                   </div>
+                  {selectedSale.planDetail && (
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Detalle del Plan</p>
+                      <p className="text-sm text-foreground">{selectedSale.planDetail}</p>
+                    </div>
+                  )}
                 </div>
 
-                <div className="border-t border-border pt-4">
-                  <p className="text-sm text-muted-foreground mb-2">Observaciones y Datos Adicionales</p>
-                  <pre className="text-foreground text-sm whitespace-pre-wrap bg-secondary/30 p-3 rounded-lg">
-                    {selectedSale.description || "Sin observaciones"}
-                  </pre>
-                </div>
+                {/* Metodo de Pago */}
+                {selectedSale.paymentInfo && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Metodo de Pago
+                    </h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Pago del Abono</p>
+                        <p className="font-medium text-foreground">
+                          {selectedSale.paymentInfo.paymentMethodAbono === "credit_card" 
+                            ? `Tarjeta de Credito (${selectedSale.paymentInfo.cardBrand?.toUpperCase() || ""})`
+                            : "Debito Automatico CBU"}
+                        </p>
+                        {selectedSale.paymentInfo.cbuNumber && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            CBU: {selectedSale.paymentInfo.cbuNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Pago de Instalacion</p>
+                        <p className="font-medium text-foreground">
+                          {selectedSale.paymentInfo.paymentMethodInstallation === "transfer" 
+                            ? "Transferencia Bancaria"
+                            : "Mercado Pago"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
+                {/* Observaciones */}
+                {selectedSale.description && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground border-b border-border pb-2">
+                      Observaciones
+                    </h4>
+                    <pre className="text-foreground text-sm whitespace-pre-wrap bg-secondary/20 p-3 rounded-lg">
+                      {selectedSale.description}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Historial de Estados */}
                 {selectedSale.statusHistory && selectedSale.statusHistory.length > 0 && (
-                  <div className="border-t border-border pt-4">
-                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground border-b border-border pb-2">
                       Historial de Estados
                     </h4>
                     <div className="space-y-2">
                       {selectedSale.statusHistory.map((history, index) => (
-                        <div key={index} className="flex items-center justify-between text-sm p-2 rounded bg-secondary/30">
+                        <div key={index} className="flex items-center justify-between text-sm p-2 rounded bg-secondary/20">
                           <StatusBadge status={history.status} />
                           <span className="text-muted-foreground">
                             {new Date(history.changedAt).toLocaleString("es-AR")}
