@@ -31,6 +31,14 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   }
 
   if (!response.ok) {
+    // Si el token expiro o es invalido, limpiar sesion y redirigir
+    if (response.status === 401 || response.status === 403) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token")
+        localStorage.removeItem("user")
+        window.location.href = "/login"
+      }
+    }
     throw new Error(data.message || data.error || `Error ${response.status}`)
   }
 

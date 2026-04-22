@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "./sidebar"
 import { Header } from "./header"
 import { Spinner } from "@/components/ui/spinner"
-import { User } from "@/lib/api"
+import { User, usersAPI } from "@/lib/api"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -18,6 +18,42 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    router.push("/login")
+  }, [router])
+
+  // Validar token con el backend
+  const validateSession = useCallback(async (token: string, userData: string) => {
+    try {
+      const parsedUser = JSON.parse(userData) as User
+      
+      // Verificar token con el backend
+      const response = await usersAPI.getProfile(token)
+      
+      if (!response.user) {
+        handleLogout()
+        return
+      }
+
+      // Actualizar datos del usuario si cambiaron
+      localStorage.setItem("user", JSON.stringify(response.user))
+      
+      if (requiredRole && response.user.role !== requiredRole) {
+        router.push(response.user.role === "admin" ? "/admin" : "/seller")
+        return
+      }
+
+      setUser(response.user)
+    } catch {
+      // Token invalido o expirado
+      handleLogout()
+    } finally {
+      setIsLoading(false)
+    }
+  }, [requiredRole, router, handleLogout])
+
   useEffect(() => {
     const token = localStorage.getItem("token")
     const userData = localStorage.getItem("user")
@@ -27,21 +63,18 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       return
     }
 
-    try {
-      const parsedUser = JSON.parse(userData) as User
-      
-      if (requiredRole && parsedUser.role !== requiredRole) {
-        router.push(parsedUser.role === "admin" ? "/admin" : "/seller")
-        return
-      }
+    validateSession(token, userData)
 
-      setUser(parsedUser)
-    } catch {
-      router.push("/login")
-    } finally {
-      setIsLoading(false)
+    // Listener para detectar logout en otras pestanas
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "token" && !e.newValue) {
+        router.push("/login")
+      }
     }
-  }, [router, requiredRole])
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [router, validateSession])
 
   if (isLoading) {
     return (
