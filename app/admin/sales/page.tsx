@@ -92,7 +92,7 @@ export default function AdminSalesPage() {
     if (!token) return
 
     try {
-      await salesAPI.updateStatus(token, selectedSale._id, newStatus)
+      await salesAPI.updateStatus(token, selectedSale._id, newStatus, statusNotes)
       toast({
         title: "Estado actualizado",
         description: "El estado de la venta se ha actualizado correctamente",
