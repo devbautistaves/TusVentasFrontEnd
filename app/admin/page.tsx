@@ -8,16 +8,12 @@ import { Spinner } from "@/components/ui/spinner"
 import { dashboardAPI, salesAPI, AdminStats, Sale } from "@/lib/api"
 import {
   ShoppingCart,
-  DollarSign,
   Users,
-  TrendingUp,
   CheckCircle,
   Clock,
   XCircle,
   Calendar,
   ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
 } from "lucide-react"
 import {
   BarChart,
@@ -80,8 +76,6 @@ export default function AdminDashboardPage() {
 
   // Calcular estadisticas desde las ventas reales
   const totalSales = allSales.length
-  const totalRevenue = allSales.reduce((acc, sale) => acc + (sale.planPrice || 0), 0)
-  const totalCommissions = allSales.reduce((acc, sale) => acc + (sale.commission || 0), 0)
   const activatedSales = allSales.filter(s => s.status === "completed").length
   const pendingSales = allSales.filter(s => s.status === "pending" || s.status === "pending_appointment" || s.status === "appointed").length
 
@@ -147,67 +141,22 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Ingresos Totales */}
-          <Card className="border-border/50 bg-gradient-to-br from-green-500/10 via-card to-card overflow-hidden relative">
+          {/* Vendedores */}
+          <Card className="border-border/50 bg-gradient-to-br from-blue-500/10 via-card to-card overflow-hidden relative">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Ingresos Totales</p>
-                  <p className="text-4xl md:text-5xl font-bold text-foreground">{formatCurrency(totalRevenue)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Vendedores Activos</p>
+                  <p className="text-5xl font-bold text-foreground">{stats?.stats.totalUsers || 0}</p>
                   <div className="flex items-center gap-2 pt-2">
                     <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                      <Wallet className="h-4 w-4" />
-                      Valor total de planes vendidos
+                      <Users className="h-4 w-4" />
+                      Equipo de ventas
                     </span>
                   </div>
                 </div>
-                <div className="h-16 w-16 rounded-2xl bg-green-500/20 flex items-center justify-center">
-                  <DollarSign className="h-8 w-8 text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Secondary Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Comisiones Totales</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(totalCommissions)}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-purple-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Ganancia Neta</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(totalRevenue - totalCommissions)}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                  <ArrowUpRight className="h-6 w-6 text-emerald-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Vendedores Activos</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{stats?.stats.totalUsers || 0}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-blue-400" />
+                <div className="h-16 w-16 rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                  <Users className="h-8 w-8 text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -353,12 +302,7 @@ export default function AdminDashboardPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground hidden md:table-cell">{sale.sellerName}</td>
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="text-foreground">{sale.planName}</p>
-                          <p className="text-sm text-primary font-medium">{formatCurrency(sale.planPrice)}</p>
-                        </div>
-                      </td>
+                      <td className="py-3 px-4 text-foreground">{sale.planName}</td>
                       <td className="py-3 px-4">
                         <StatusBadge status={sale.status} />
                       </td>

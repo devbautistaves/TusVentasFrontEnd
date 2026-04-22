@@ -81,6 +81,7 @@ export default function AdminChatPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     if (!newMessage.trim() || !selectedRoom) return
 
     const token = localStorage.getItem("token")
@@ -90,7 +91,7 @@ export default function AdminChatPage() {
     try {
       await chatAPI.sendMessage(token, selectedRoom._id, newMessage)
       setNewMessage("")
-      fetchMessages(selectedRoom._id)
+      await fetchMessages(selectedRoom._id)
     } catch (error) {
       console.log("[v0] Error sending message:", error)
     } finally {
@@ -323,16 +324,23 @@ export default function AdminChatPage() {
 
                 {/* Message Input */}
                 <div className="p-4 border-t border-border/50">
-                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <div className="flex gap-2">
                     <Input
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSendMessage(e)
+                        }
+                      }}
                       placeholder="Escribe un mensaje..."
                       className="flex-1 bg-secondary/50"
                       disabled={isSending}
                     />
                     <Button
-                      type="submit"
+                      type="button"
+                      onClick={handleSendMessage}
                       disabled={!newMessage.trim() || isSending}
                       className="bg-primary text-primary-foreground"
                     >
@@ -342,7 +350,7 @@ export default function AdminChatPage() {
                         <Send className="h-4 w-4" />
                       )}
                     </Button>
-                  </form>
+                  </div>
                 </div>
               </>
             ) : (
