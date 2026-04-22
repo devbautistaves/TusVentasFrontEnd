@@ -394,6 +394,15 @@ export default function AdminSalesPage() {
                         {selectedSale.customerInfo.phone}
                       </p>
                     </div>
+                    {selectedSale.customerInfo.birthDate && (
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Fecha de Nacimiento</p>
+                        <p className="font-medium text-foreground flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          {new Date(selectedSale.customerInfo.birthDate).toLocaleDateString("es-AR")}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

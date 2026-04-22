@@ -9,19 +9,18 @@ import { Spinner } from "@/components/ui/spinner"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, User } from "@/lib/api"
-import { User as UserIcon, Mail, Phone, MapPin, Lock } from "lucide-react"
+import { Lock, Eye, EyeOff } from "lucide-react"
 
 export default function SellerSettingsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    location: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -38,15 +37,6 @@ export default function SellerSettingsPage() {
     try {
       const response = await usersAPI.getProfile(token)
       setUser(response.user)
-      setFormData({
-        name: response.user.name,
-        email: response.user.email,
-        phone: response.user.phone,
-        location: response.user.location,
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      })
     } catch (error) {
       console.error("Error fetching profile:", error)
     } finally {
@@ -59,42 +49,73 @@ export default function SellerSettingsPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Todos los campos son requeridos",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (formData.newPassword !== formData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas nuevas no coinciden",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (formData.newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 6 caracteres",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
     const token = localStorage.getItem("token")
     if (!token) return
 
     try {
       await usersAPI.updateProfile(token, {
-        name: formData.name,
-        phone: formData.phone,
-        location: formData.location,
-      })
-
-      // Update local storage
-      const userData = localStorage.getItem("user")
-      if (userData) {
-        const parsed = JSON.parse(userData)
-        parsed.name = formData.name
-        parsed.phone = formData.phone
-        parsed.location = formData.location
-        localStorage.setItem("user", JSON.stringify(parsed))
-      }
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+      } as any)
 
       toast({
-        title: "Perfil actualizado",
-        description: "Tus datos se han actualizado correctamente",
+        title: "Contraseña actualizada",
+        description: "Tu contraseña se ha actualizado correctamente",
+      })
+
+      setFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Error al actualizar el perfil",
+        description: error instanceof Error ? error.message : "Error al actualizar la contraseña",
         variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 0,
+    }).format(value)
   }
 
   if (isLoading) {
@@ -112,81 +133,94 @@ export default function SellerSettingsPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Configuracion</h1>
+          <h1 className="text-3xl font-bold text-foreground">Cambiar Contraseña</h1>
           <p className="text-muted-foreground">
-            Administra tu perfil y preferencias
+            Actualiza tu contraseña de acceso
           </p>
         </div>
 
-        {/* Profile Card */}
+        {/* Password Card */}
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserIcon className="h-5 w-5" />
-              Informacion Personal
+              <Lock className="h-5 w-5" />
+              Nueva Contraseña
             </CardTitle>
             <CardDescription>
-              Actualiza tus datos de contacto
+              Ingresa tu contraseña actual y la nueva contraseña
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4">
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="name">Nombre Completo</FieldLabel>
+                  <FieldLabel htmlFor="currentPassword">Contraseña Actual</FieldLabel>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
+                      id="currentPassword"
+                      name="currentPassword"
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={formData.currentPassword}
                       onChange={handleInputChange}
-                      className="pl-9 bg-secondary/50"
+                      className="pl-9 pr-10 bg-secondary/50"
+                      placeholder="Ingresa tu contraseña actual"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <FieldLabel htmlFor="newPassword">Nueva Contraseña</FieldLabel>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      disabled
-                      className="pl-9 bg-secondary/50 opacity-60"
+                      id="newPassword"
+                      name="newPassword"
+                      type={showNewPassword ? "text" : "password"}
+                      value={formData.newPassword}
+                      onChange={handleInputChange}
+                      className="pl-9 pr-10 bg-secondary/50"
+                      placeholder="Ingresa tu nueva contraseña"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="confirmPassword">Confirmar Nueva Contraseña</FieldLabel>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="pl-9 pr-10 bg-secondary/50"
+                      placeholder="Confirma tu nueva contraseña"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    El email no se puede modificar
+                    La contraseña debe tener al menos 6 caracteres
                   </p>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="phone">Telefono</FieldLabel>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="pl-9 bg-secondary/50"
-                    />
-                  </div>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="location">Ubicacion</FieldLabel>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="pl-9 bg-secondary/50"
-                    />
-                  </div>
                 </Field>
               </FieldGroup>
               <div className="flex justify-end">
@@ -201,7 +235,7 @@ export default function SellerSettingsPage() {
                       Guardando...
                     </>
                   ) : (
-                    "Guardar Cambios"
+                    "Cambiar Contraseña"
                   )}
                 </Button>
               </div>
@@ -225,11 +259,7 @@ export default function SellerSettingsPage() {
               </div>
               <div className="p-4 rounded-lg bg-secondary/30 border border-border/50 text-center">
                 <p className="text-2xl font-bold text-green-400">
-                  {new Intl.NumberFormat("es-AR", {
-                    style: "currency",
-                    currency: "ARS",
-                    minimumFractionDigits: 0,
-                  }).format(user?.totalCommissions || 0)}
+                  {formatCurrency(user?.totalCommissions || 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Comisiones</p>
               </div>

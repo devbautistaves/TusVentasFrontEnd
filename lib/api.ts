@@ -132,7 +132,7 @@ export const salesAPI = {
     }),
 
   assignSeller: (token: string, id: string, sellerId: string) =>
-    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/assign`, {
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/sales/${id}/assign`, {
       method: "PUT",
       token,
       body: JSON.stringify({ sellerId }),

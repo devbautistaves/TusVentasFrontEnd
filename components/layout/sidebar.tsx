@@ -127,7 +127,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
           >
             <Settings className="h-5 w-5" />
-            Configuracion
+            {role === "seller" ? "Cambiar Contraseña" : "Configuracion"}
           </Link>
           <Button
             variant="ghost"

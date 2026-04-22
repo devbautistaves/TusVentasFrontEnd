@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { useToast } from "@/hooks/use-toast"
-import { salesAPI, Sale } from "@/lib/api"
-import { Search, Filter, Eye, Edit2, DollarSign, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Calendar } from "lucide-react"
+import { salesAPI, usersAPI, Sale, User } from "@/lib/api"
+import { Search, Filter, Eye, Edit2, DollarSign, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Calendar, Users } from "lucide-react"
 
 export default function SupervisorSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -36,9 +36,13 @@ export default function SupervisorSalesPage() {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isCostsDialogOpen, setIsCostsDialogOpen] = useState(false)
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [sellers, setSellers] = useState<User[]>([])
+  const [selectedSellerId, setSelectedSellerId] = useState("")
   const [costForm, setCostForm] = useState({
     installationCost: 0,
+    adminCost: 0,
     adCost: 0,
     sellerCommissionPaid: 0,
   })
@@ -46,6 +50,7 @@ export default function SupervisorSalesPage() {
 
   useEffect(() => {
     fetchSales()
+    fetchSellers()
   }, [])
 
   useEffect(() => {
@@ -66,6 +71,20 @@ export default function SupervisorSalesPage() {
     }
   }
 
+  const fetchSellers = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      const response = await usersAPI.getAll(token)
+      // Only get active sellers (not admins or supervisors)
+      const activeSellers = response.users.filter((u) => u.role === "seller" && u.isActive)
+      setSellers(activeSellers)
+    } catch (error) {
+      console.error("Error fetching sellers:", error)
+    }
+  }
+
   const filterSales = () => {
     let filtered = [...sales]
 
@@ -75,7 +94,8 @@ export default function SupervisorSalesPage() {
         (sale) =>
           sale.customerInfo.name.toLowerCase().includes(query) ||
           sale.customerInfo.dni.toLowerCase().includes(query) ||
-          sale.planName.toLowerCase().includes(query)
+          sale.planName.toLowerCase().includes(query) ||
+          sale.sellerName.toLowerCase().includes(query)
       )
     }
 
@@ -90,10 +110,17 @@ export default function SupervisorSalesPage() {
     setSelectedSale(sale)
     setCostForm({
       installationCost: sale.installationCost || 0,
+      adminCost: sale.adminCost || 0,
       adCost: sale.adCost || 0,
       sellerCommissionPaid: sale.sellerCommissionPaid || 0,
     })
     setIsCostsDialogOpen(true)
+  }
+
+  const handleOpenAssignDialog = (sale: Sale) => {
+    setSelectedSale(sale)
+    setSelectedSellerId(sale.sellerId || "")
+    setIsAssignDialogOpen(true)
   }
 
   const handleUpdateCosts = async () => {
@@ -104,7 +131,12 @@ export default function SupervisorSalesPage() {
     if (!token) return
 
     try {
-      await salesAPI.updateCosts(token, selectedSale._id, costForm)
+      await salesAPI.updateCosts(token, selectedSale._id, {
+        installationCost: costForm.installationCost || 0,
+        adminCost: costForm.adminCost || 0,
+        adCost: costForm.adCost || 0,
+        sellerCommissionPaid: costForm.sellerCommissionPaid || 0,
+      })
       toast({
         title: "Costos actualizados",
         description: "Los costos de la venta se han actualizado correctamente",
@@ -115,6 +147,32 @@ export default function SupervisorSalesPage() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Error al actualizar los costos",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleAssignSeller = async () => {
+    if (!selectedSale || !selectedSellerId) return
+
+    setIsUpdating(true)
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      await salesAPI.assignSeller(token, selectedSale._id, selectedSellerId)
+      toast({
+        title: "Vendedor asignado",
+        description: "La venta ha sido asignada al vendedor correctamente",
+      })
+      setIsAssignDialogOpen(false)
+      fetchSales()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al asignar vendedor",
         variant: "destructive",
       })
     } finally {
@@ -149,7 +207,7 @@ export default function SupervisorSalesPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Mis Ventas</h1>
           <p className="text-muted-foreground">
-            Gestiona tus ventas y actualiza costos
+            Gestiona tus ventas y asigna vendedores
           </p>
         </div>
 
@@ -160,7 +218,7 @@ export default function SupervisorSalesPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por cliente, DNI o plan..."
+                  placeholder="Buscar por cliente, DNI, plan o vendedor..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 bg-secondary/50"
@@ -197,6 +255,7 @@ export default function SupervisorSalesPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">DNI</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Costos</th>
@@ -218,6 +277,9 @@ export default function SupervisorSalesPage() {
                       </td>
                       <td className="py-3 px-4 text-foreground">{sale.customerInfo.dni}</td>
                       <td className="py-3 px-4">
+                        <span className="text-foreground">{sale.sellerName}</span>
+                      </td>
+                      <td className="py-3 px-4">
                         <div>
                           <p className="font-medium text-foreground">{sale.planName}</p>
                           <p className="text-sm text-primary">{formatCurrency(sale.planPrice)}</p>
@@ -231,13 +293,16 @@ export default function SupervisorSalesPage() {
                           {sale.installationCost ? (
                             <p className="text-muted-foreground">Inst: {formatCurrency(sale.installationCost)}</p>
                           ) : null}
+                          {sale.adminCost ? (
+                            <p className="text-muted-foreground">Admin: {formatCurrency(sale.adminCost)}</p>
+                          ) : null}
                           {sale.adCost ? (
                             <p className="text-muted-foreground">Anuncio: {formatCurrency(sale.adCost)}</p>
                           ) : null}
                           {sale.sellerCommissionPaid ? (
                             <p className="text-muted-foreground">Com. Vend: {formatCurrency(sale.sellerCommissionPaid)}</p>
                           ) : null}
-                          {!sale.installationCost && !sale.adCost && !sale.sellerCommissionPaid && (
+                          {!sale.installationCost && !sale.adminCost && !sale.adCost && !sale.sellerCommissionPaid && (
                             <p className="text-muted-foreground">Sin costos</p>
                           )}
                         </div>
@@ -254,6 +319,7 @@ export default function SupervisorSalesPage() {
                               setSelectedSale(sale)
                               setIsDetailOpen(true)
                             }}
+                            title="Ver detalle"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -265,13 +331,21 @@ export default function SupervisorSalesPage() {
                           >
                             <DollarSign className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenAssignDialog(sale)}
+                            title="Asignar vendedor"
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
                   ))}
                   {filteredSales.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No se encontraron ventas
                       </td>
                     </tr>
@@ -304,7 +378,7 @@ export default function SupervisorSalesPage() {
                 {/* Datos del Cliente */}
                 <div className="space-y-3">
                   <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
-                    <User className="h-4 w-4 text-primary" />
+                    <UserIcon className="h-4 w-4 text-primary" />
                     Datos del Cliente
                   </h4>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -330,6 +404,15 @@ export default function SupervisorSalesPage() {
                         {selectedSale.customerInfo.phone}
                       </p>
                     </div>
+                    {selectedSale.customerInfo.birthDate && (
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Fecha de Nacimiento</p>
+                        <p className="font-medium text-foreground flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          {new Date(selectedSale.customerInfo.birthDate).toLocaleDateString("es-AR")}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -354,16 +437,31 @@ export default function SupervisorSalesPage() {
                   </div>
                 </div>
 
+                {/* Vendedor Asignado */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    Vendedor Asignado
+                  </h4>
+                  <div className="bg-secondary/20 p-3 rounded-lg">
+                    <p className="font-medium text-foreground">{selectedSale.sellerName}</p>
+                  </div>
+                </div>
+
                 {/* Costos */}
                 <div className="space-y-3">
                   <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
                     <DollarSign className="h-4 w-4 text-primary" />
                     Costos Aplicados
                   </h4>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div className="bg-secondary/20 p-3 rounded-lg">
                       <p className="text-xs text-muted-foreground">Costo Instalacion</p>
                       <p className="font-medium text-foreground">{formatCurrency(selectedSale.installationCost || 0)}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Costo Admin</p>
+                      <p className="font-medium text-foreground">{formatCurrency(selectedSale.adminCost || 0)}</p>
                     </div>
                     <div className="bg-secondary/20 p-3 rounded-lg">
                       <p className="text-xs text-muted-foreground">Costo Anuncio</p>
@@ -399,6 +497,19 @@ export default function SupervisorSalesPage() {
                     type="number"
                     value={costForm.installationCost}
                     onChange={(e) => setCostForm(prev => ({ ...prev, installationCost: Number(e.target.value) }))}
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="adminCost">Costo de Administracion (JV)</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="adminCost"
+                    type="number"
+                    value={costForm.adminCost}
+                    onChange={(e) => setCostForm(prev => ({ ...prev, adminCost: Number(e.target.value) }))}
                     className="bg-secondary/50 pl-8"
                   />
                 </div>
@@ -449,6 +560,59 @@ export default function SupervisorSalesPage() {
                   </>
                 ) : (
                   "Guardar Costos"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Seller Dialog */}
+        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Asignar Vendedor</DialogTitle>
+              <DialogDescription>
+                Asigna esta venta a uno de tus vendedores. La venta aparecera en el panel del vendedor seleccionado.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Field>
+                <FieldLabel>Seleccionar Vendedor</FieldLabel>
+                <Select value={selectedSellerId} onValueChange={setSelectedSellerId}>
+                  <SelectTrigger className="bg-secondary/50">
+                    <SelectValue placeholder="Selecciona un vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sellers.map((seller) => (
+                      <SelectItem key={seller._id} value={seller._id}>
+                        {seller.name} - {seller.location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              {sellers.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  No hay vendedores activos disponibles
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAssignSeller}
+                disabled={isUpdating || !selectedSellerId}
+                className="bg-primary text-primary-foreground"
+              >
+                {isUpdating ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Asignando...
+                  </>
+                ) : (
+                  "Asignar Vendedor"
                 )}
               </Button>
             </DialogFooter>
