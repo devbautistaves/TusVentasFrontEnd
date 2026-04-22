@@ -38,7 +38,6 @@ const STATUS_COLORS: Record<string, string> = {
   pending_appointment: "#f97316",
   appointed: "#3b82f6",
   completed: "#22c55e",
-  installed: "#10b981",
   cancelled: "#ef4444",
 }
 
@@ -83,15 +82,17 @@ export default function AdminDashboardPage() {
   const totalSales = allSales.length
   const totalRevenue = allSales.reduce((acc, sale) => acc + (sale.planPrice || 0), 0)
   const totalCommissions = allSales.reduce((acc, sale) => acc + (sale.commission || 0), 0)
-  const activatedSales = allSales.filter(s => s.status === "completed" || s.status === "installed").length
+  const activatedSales = allSales.filter(s => s.status === "completed").length
   const pendingSales = allSales.filter(s => s.status === "pending" || s.status === "pending_appointment" || s.status === "appointed").length
 
   const pieChartData = stats
-    ? Object.entries(stats.stats.salesByStatus || {}).map(([name, value]) => ({
-        name: name === "pending" ? "Cargadas" : name === "completed" ? "Activadas" : name === "cancelled" ? "Canceladas" : name === "appointed" ? "Turnadas" : name === "pending_appointment" ? "Observadas" : name === "installed" ? "Instaladas" : name,
-        value,
-        color: STATUS_COLORS[name] || "#6b7280",
-      }))
+    ? Object.entries(stats.stats.salesByStatus || {})
+        .filter(([name]) => name !== "installed")
+        .map(([name, value]) => ({
+          name: name === "pending" ? "Cargadas" : name === "completed" ? "Activadas" : name === "cancelled" ? "Canceladas" : name === "appointed" ? "Turnadas" : name === "pending_appointment" ? "Observadas" : name,
+          value,
+          color: STATUS_COLORS[name] || "#6b7280",
+        }))
     : []
 
   const topSellersData = stats?.stats.topSellers?.map((seller) => ({
@@ -241,7 +242,7 @@ export default function AdminDashboardPage() {
           />
           <StatusCard
             title="Activadas"
-            count={(stats?.stats.salesByStatus?.completed || 0) + (stats?.stats.salesByStatus?.installed || 0)}
+            count={stats?.stats.salesByStatus?.completed || 0}
             icon={CheckCircle}
             color="text-green-400"
             bgColor="bg-green-500/10"

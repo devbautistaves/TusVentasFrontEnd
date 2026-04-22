@@ -38,6 +38,7 @@ export function getActivatedSalesThisMonth<T extends { status: string; createdAt
   sales: T[]
 ): T[] {
   return sales.filter(sale => {
+    // Solo cuenta ventas "completed" (activadas)
     if (sale.status !== "completed") return false
     const dateToCheck = sale.updatedAt || sale.createdAt
     if (!dateToCheck) return false

@@ -62,11 +62,13 @@ export default function SellerDashboardPage() {
     }).format(value)
   }
 
-  // Ventas activadas (completadas o instaladas)
-  const completedSales = mySales.filter(s => s.status === "completed" || s.status === "installed")
+  // Ventas activadas (completadas)
+  const completedSales = mySales.filter(s => s.status === "completed")
   
-  // Calcular comision total de todas las ventas (el backend calcula la comision al crear la venta)
-  const totalCommission = mySales.reduce((acc, sale) => acc + (sale.commission || 0), 0)
+  // Calcular comision total basada en la cantidad de ventas activadas
+  const activatedCount = completedSales.length
+  const commissionPerSale = getCommissionPerSale(activatedCount)
+  const totalCommission = calculateTotalCommission(activatedCount)
 
   // Mock chart data - in production this would come from the API
   const chartData = [
@@ -124,7 +126,7 @@ export default function SellerDashboardPage() {
             title="Mi Comision Total"
             value={formatCurrency(totalCommission)}
             icon={DollarSign}
-            description={`${mySales.length} ventas registradas`}
+            description={activatedCount > 0 ? `${activatedCount} x ${formatCurrency(commissionPerSale)}` : "Sin ventas activadas"}
           />
         </div>
 
@@ -178,7 +180,11 @@ export default function SellerDashboardPage() {
             <CardContent className="space-y-4">
               <div className="text-center py-6">
                 <p className="text-4xl font-bold text-primary">{formatCurrency(totalCommission)}</p>
-                <p className="text-sm text-muted-foreground mt-2">Comision total acumulada</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {activatedCount > 0 
+                    ? `${activatedCount} ventas x ${formatCurrency(commissionPerSale)}` 
+                    : "Sin ventas activadas"}
+                </p>
               </div>
               <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex justify-between items-center">

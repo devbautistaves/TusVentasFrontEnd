@@ -75,17 +75,24 @@ export default function AdminCommissionsPage() {
     return sales.filter(
       (s) =>
         s.sellerId === sellerId &&
-        (s.status === "completed" || s.status === "installed")
+        s.status === "completed"
     ).length
   }
 
-  const calculateCommission = (salesCount: number) => {
+  // Calcula el monto por venta según el rango
+  const getCommissionPerSale = (salesCount: number) => {
     for (const tier of tiers) {
       if (salesCount >= tier.minSales && salesCount <= tier.maxSales) {
         return tier.amount
       }
     }
     return 0
+  }
+
+  // Calcula la comisión total: cantidad de ventas * monto por venta
+  const calculateTotalCommission = (salesCount: number) => {
+    const perSale = getCommissionPerSale(salesCount)
+    return salesCount * perSale
   }
 
   const formatCurrency = (value: number) => {
@@ -133,7 +140,7 @@ export default function AdminCommissionsPage() {
 
   const totalCommissions = users.reduce((acc, user) => {
     const sellerSales = getSellerSales(user._id)
-    return acc + calculateCommission(sellerSales)
+    return acc + calculateTotalCommission(sellerSales)
   }, 0)
 
   if (isLoading) {
@@ -203,7 +210,7 @@ export default function AdminCommissionsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Ventas Activadas</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {sales.filter((s) => s.status === "completed" || s.status === "installed").length}
+                    {sales.filter((s) => s.status === "completed").length}
                   </p>
                 </div>
               </div>
@@ -258,7 +265,8 @@ export default function AdminCommissionsPage() {
                   {users.map((user) => {
                     const totalUserSales = sales.filter((s) => s.sellerId === user._id).length
                     const activatedSales = getSellerSales(user._id)
-                    const commission = calculateCommission(activatedSales)
+                    const commissionPerSale = getCommissionPerSale(activatedSales)
+                    const totalCommission = calculateTotalCommission(activatedSales)
                     const currentTier = tiers.find(
                       (t) => activatedSales >= t.minSales && activatedSales <= t.maxSales
                     )
@@ -298,9 +306,16 @@ export default function AdminCommissionsPage() {
                           )}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-lg font-bold text-primary">
-                            {formatCurrency(commission)}
-                          </span>
+                          <div>
+                            <span className="text-lg font-bold text-primary">
+                              {formatCurrency(totalCommission)}
+                            </span>
+                            {activatedSales > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                {activatedSales} x {formatCurrency(commissionPerSale)}
+                              </p>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )

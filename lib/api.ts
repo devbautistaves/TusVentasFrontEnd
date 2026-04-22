@@ -305,7 +305,7 @@ export interface Sale {
   commission: number
   commissionRate: number
   description: string
-  status: "pending" | "completed" | "cancelled" | "installed" | "pending_appointment" | "appointed"
+  status: "pending" | "completed" | "cancelled" | "pending_appointment" | "appointed"
   statusHistory: StatusHistoryItem[]
   customerInfo: CustomerInfo
   createdAt: string

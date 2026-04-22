@@ -17,10 +17,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     label: "Activada",
     className: "bg-green-500/20 text-green-400 border-green-500/30",
   },
-  installed: {
-    label: "Instalada",
-    className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  },
   cancelled: {
     label: "Cancelada",
     className: "bg-red-500/20 text-red-400 border-red-500/30",
