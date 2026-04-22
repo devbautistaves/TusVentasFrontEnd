@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { salesAPI, Sale } from "@/lib/api"
-import { Search, Filter, Eye, Edit2, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText } from "lucide-react"
+import { salesAPI, usersAPI, Sale, User } from "@/lib/api"
+import { Search, Filter, Eye, Edit2, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign } from "lucide-react"
 
 export default function AdminSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -39,11 +39,33 @@ export default function AdminSalesPage() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
+  // Nuevos estados para edicion de vendedor y costos
+  const [users, setUsers] = useState<User[]>([])
+  const [isCostsDialogOpen, setIsCostsDialogOpen] = useState(false)
+  const [costsData, setCostsData] = useState({
+    installationCost: "",
+    adCost: "",
+    sellerCommissionPaid: "",
+    newSellerId: "",
+  })
   const { toast } = useToast()
 
   useEffect(() => {
     fetchSales()
+    fetchUsers()
   }, [])
+
+  const fetchUsers = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      const response = await usersAPI.getAll(token)
+      setUsers(response.users.filter(u => (u.role === "seller" || u.role === "supervisor") && u.isActive))
+    } catch (error) {
+      console.error("Error fetching users:", error)
+    }
+  }
 
   useEffect(() => {
     filterSales()
@@ -82,6 +104,54 @@ export default function AdminSalesPage() {
     }
 
     setFilteredSales(filtered)
+  }
+
+  const handleOpenCostsDialog = (sale: Sale) => {
+    setSelectedSale(sale)
+    setCostsData({
+      installationCost: sale.installationCost?.toString() || "",
+      adCost: sale.adCost?.toString() || "",
+      sellerCommissionPaid: sale.sellerCommissionPaid?.toString() || "",
+      newSellerId: sale.sellerId,
+    })
+    setIsCostsDialogOpen(true)
+  }
+
+  const handleUpdateCosts = async () => {
+    if (!selectedSale) return
+
+    setIsUpdating(true)
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      await salesAPI.updateCosts(token, selectedSale._id, {
+        installationCost: costsData.installationCost ? Number(costsData.installationCost) : 0,
+        adCost: costsData.adCost ? Number(costsData.adCost) : 0,
+        sellerCommissionPaid: costsData.sellerCommissionPaid ? Number(costsData.sellerCommissionPaid) : 0,
+      })
+      
+      // Si cambio el vendedor, actualizar tambien
+      if (costsData.newSellerId && costsData.newSellerId !== selectedSale.sellerId) {
+        await salesAPI.updateStatus(token, selectedSale._id, selectedSale.status, `Venta reasignada a otro vendedor`)
+      }
+      
+      toast({
+        title: "Costos actualizados",
+        description: "Los costos de la venta se han actualizado correctamente",
+      })
+      setIsCostsDialogOpen(false)
+      fetchSales()
+    } catch (error) {
+      console.error("Error updating costs:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron actualizar los costos",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const handleUpdateStatus = async () => {
@@ -228,6 +298,7 @@ export default function AdminSalesPage() {
                               setSelectedSale(sale)
                               setIsDetailOpen(true)
                             }}
+                            title="Ver detalle"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -239,8 +310,17 @@ export default function AdminSalesPage() {
                               setNewStatus(sale.status)
                               setIsStatusDialogOpen(true)
                             }}
+                            title="Cambiar estado"
                           >
                             <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenCostsDialog(sale)}
+                            title="Editar costos y vendedor"
+                          >
+                            <DollarSign className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
@@ -444,6 +524,96 @@ export default function AdminSalesPage() {
                 )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Costs and Seller Dialog */}
+        <Dialog open={isCostsDialogOpen} onOpenChange={setIsCostsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Costos y Vendedor</DialogTitle>
+              <DialogDescription>
+                Modifica los costos y reasigna la venta si es necesario
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Asignar a Vendedor/Supervisor</label>
+                <Select value={costsData.newSellerId} onValueChange={(value) => setCostsData(prev => ({ ...prev, newSellerId: value }))}>
+                  <SelectTrigger className="bg-secondary/50">
+                    <SelectValue placeholder="Seleccionar vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name} ({user.role === "supervisor" ? "Supervisor" : "Vendedor"})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Costo de Instalacion (pago JV)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={costsData.installationCost}
+                    onChange={(e) => setCostsData(prev => ({ ...prev, installationCost: e.target.value }))}
+                    placeholder="0"
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Costo de Anuncio</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={costsData.adCost}
+                    onChange={(e) => setCostsData(prev => ({ ...prev, adCost: e.target.value }))}
+                    placeholder="0"
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Comision Pagada al Vendedor</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={costsData.sellerCommissionPaid}
+                    onChange={(e) => setCostsData(prev => ({ ...prev, sellerCommissionPaid: e.target.value }))}
+                    placeholder="0"
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Este monto se descontara de la comision del supervisor
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCostsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateCosts}
+                disabled={isUpdating}
+                className="bg-primary text-primary-foreground"
+              >
+                {isUpdating ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Cambios"
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

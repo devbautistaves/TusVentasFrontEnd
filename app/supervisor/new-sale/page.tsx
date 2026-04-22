@@ -44,6 +44,8 @@ export default function NewSalePage() {
     // Plan y pago
     planDetail: "",
     customPrice: "",
+    // Subvendedor (para supervisor)
+    subSellerName: "",
     // Medio de pago abono
     paymentMethodAbono: "credit_card", // credit_card | cbu
     cardBrand: "visa", // visa | mastercard
@@ -146,10 +148,11 @@ export default function NewSalePage() {
       return
     }
 
-    // Descripcion corta (max 200 chars segun backend)
-    const shortDescription = formData.description 
-      ? formData.description.substring(0, 200) 
-      : `${selectedPlan.name} - ${formData.customerName}`
+  // Descripcion corta (max 200 chars segun backend) - incluir subvendedor si existe
+  const subSellerInfo = formData.subSellerName ? ` | Subvendedor: ${formData.subSellerName}` : ""
+  const shortDescription = formData.description
+    ? `${formData.description}${subSellerInfo}`.substring(0, 200)
+    : `${selectedPlan.name} - ${formData.customerName}${subSellerInfo}`
 
     const saleData = {
       planId: selectedPlan._id,
@@ -320,6 +323,24 @@ export default function NewSalePage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Campo de Subvendedor */}
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="subSellerName">Nombre del Subvendedor</FieldLabel>
+                    <Input
+                      id="subSellerName"
+                      name="subSellerName"
+                      value={formData.subSellerName}
+                      onChange={handleInputChange}
+                      placeholder="Nombre del vendedor que realizo la venta..."
+                      className="bg-secondary/50"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Escribe el nombre del vendedor asociado a esta venta (opcional)
+                    </p>
+                  </Field>
+                </FieldGroup>
 
                 {selectedPlan && (
                   <FieldGroup>

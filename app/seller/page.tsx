@@ -229,7 +229,7 @@ export default function SellerDashboardPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Activadas:</span>
-                  <span className="font-semibold text-foreground">{completedSales.length}</span>
+                  <span className="font-semibold text-foreground">{installedSales.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Pendientes:</span>
