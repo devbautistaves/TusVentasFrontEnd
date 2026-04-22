@@ -144,7 +144,7 @@ export default function NewSalePage() {
         ? formData.description.substring(0, 200) 
         : `${selectedPlan.name} - ${formData.customerName}`
 
-      const result = await salesAPI.create(token, {
+      await salesAPI.create(token, {
         planId: selectedPlan._id,
         description: shortDescription,
         customerInfo: {
@@ -162,13 +162,11 @@ export default function NewSalePage() {
         },
       })
 
-      if (result.success) {
-        toast({
-          title: "Venta registrada",
-          description: "La venta se ha registrado correctamente",
-        })
-        router.push("/admin/sales")
-      }
+      toast({
+        title: "Venta registrada",
+        description: "La venta se ha registrado correctamente",
+      })
+      router.push("/admin/sales")
     } catch (error) {
       toast({
         title: "Error",
