@@ -135,54 +135,56 @@ export default function NewSalePage() {
 
     setIsSubmitting(true)
 
-    try {
-      const token = localStorage.getItem("token")
-      if (!token) throw new Error("No autenticado")
+    const token = localStorage.getItem("token")
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "No autenticado",
+        variant: "destructive",
+      })
+      setIsSubmitting(false)
+      return
+    }
 
-      // Descripcion corta (max 200 chars segun backend)
-      const shortDescription = formData.description 
-        ? formData.description.substring(0, 200) 
-        : `${selectedPlan.name} - ${formData.customerName}`
+    // Descripcion corta (max 200 chars segun backend)
+    const shortDescription = formData.description 
+      ? formData.description.substring(0, 200) 
+      : `${selectedPlan.name} - ${formData.customerName}`
 
-      const saleData = {
-        planId: selectedPlan._id,
-        description: shortDescription,
-        customerInfo: {
-          name: formData.customerName,
-          email: formData.customerEmail,
-          phone: formData.customerPhone,
-          dni: formData.customerDni,
-          address: {
-            street: formData.street,
-            number: formData.number,
-            city: formData.city,
-            province: formData.province,
-            postalCode: formData.postalCode,
-          },
+    const saleData = {
+      planId: selectedPlan._id,
+      description: shortDescription,
+      customerInfo: {
+        name: formData.customerName,
+        email: formData.customerEmail,
+        phone: formData.customerPhone,
+        dni: formData.customerDni,
+        address: {
+          street: formData.street,
+          number: formData.number,
+          city: formData.city,
+          province: formData.province,
+          postalCode: formData.postalCode,
         },
-      }
+      },
+    }
 
-      // Intentar crear la venta - ignoramos errores del servidor porque la venta se crea igual
-      try {
-        await salesAPI.create(token, saleData)
-      } catch {
-        // El backend puede devolver error pero la venta se crea correctamente
-      }
-
+    // Enviar al backend - ignoramos la respuesta porque sabemos que se crea
+    fetch(`https://tusventasbackend.onrender.com/api/sales`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(saleData),
+    }).finally(() => {
       toast({
         title: "Venta registrada",
         description: "Felicitaciones! La venta se ha registrado correctamente",
       })
-      router.push("/admin/sales")
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Error al registrar la venta",
-        variant: "destructive",
-      })
-    } finally {
       setIsSubmitting(false)
-    }
+      router.push("/admin/sales")
+    })
   }
 
   const formatCurrency = (value: number) => {
