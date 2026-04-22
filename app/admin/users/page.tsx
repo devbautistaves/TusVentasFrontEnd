@@ -55,6 +55,7 @@ export default function AdminUsersPage() {
     phone: "",
     location: "",
     role: "seller" as "seller" | "admin",
+    commissionRate: 0.30,
   })
 
   useEffect(() => {
@@ -114,6 +115,7 @@ export default function AdminUsersPage() {
         phone: user.phone,
         location: user.location,
         role: user.role,
+        commissionRate: user.commissionRate || 0.30,
       })
     } else {
       setSelectedUser(null)
@@ -124,6 +126,7 @@ export default function AdminUsersPage() {
         phone: "",
         location: "",
         role: "seller",
+        commissionRate: 0.30,
       })
     }
     setIsDialogOpen(true)
@@ -142,6 +145,7 @@ export default function AdminUsersPage() {
           phone: formData.phone,
           location: formData.location,
           role: formData.role,
+          commissionRate: formData.commissionRate,
         }
         if (formData.password) {
           updateData.password = formData.password
@@ -152,7 +156,7 @@ export default function AdminUsersPage() {
           description: "El usuario se ha actualizado correctamente",
         })
       } else {
-        await usersAPI.create(token, formData)
+        await usersAPI.create(token, { ...formData, commissionRate: formData.commissionRate })
         toast({
           title: "Usuario creado",
           description: "El usuario se ha creado correctamente",
@@ -513,6 +517,27 @@ export default function AdminUsersPage() {
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="commissionRate">Porcentaje de Comision (%)</FieldLabel>
+                <Input
+                  id="commissionRate"
+                  name="commissionRate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={Math.round(formData.commissionRate * 100)}
+                  onChange={(e) => setFormData((prev) => ({ 
+                    ...prev, 
+                    commissionRate: parseFloat(e.target.value) / 100 
+                  }))}
+                  placeholder="30"
+                  className="bg-secondary/50"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ejemplo: 30 = 30% de comision sobre cada venta
+                </p>
               </Field>
             </FieldGroup>
             <DialogFooter>

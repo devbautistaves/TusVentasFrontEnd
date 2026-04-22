@@ -12,11 +12,9 @@ import { dashboardAPI, salesAPI, DashboardStats, Sale } from "@/lib/api"
 import {
   ShoppingCart,
   DollarSign,
-  TrendingUp,
   Plus,
   Clock,
   CheckCircle,
-  XCircle,
 } from "lucide-react"
 import {
   AreaChart,
@@ -63,18 +61,9 @@ export default function SellerDashboardPage() {
     }).format(value)
   }
 
-  // Calculate commission based on sales count
-  const calculateCommission = (salesCount: number) => {
-    if (salesCount >= 26) return 400000
-    if (salesCount >= 20) return 375000
-    if (salesCount >= 10) return 350000
-    if (salesCount >= 5) return 300000
-    if (salesCount >= 1) return 200000
-    return 0
-  }
-
-  const completedSales = mySales.filter(s => s.status === "completed" || s.status === "installed").length
-  const monthlyCommission = calculateCommission(completedSales)
+  // Calcular comision total basada en las ventas completadas
+  const completedSales = mySales.filter(s => s.status === "completed" || s.status === "installed")
+  const totalCommission = completedSales.reduce((acc, sale) => acc + (sale.commission || 0), 0)
 
   // Mock chart data - in production this would come from the API
   const chartData = [
@@ -117,7 +106,7 @@ export default function SellerDashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Mis Ventas"
             value={stats?.stats.totalSales || mySales.length}
@@ -126,19 +115,14 @@ export default function SellerDashboardPage() {
           />
           <StatCard
             title="Ventas Activadas"
-            value={completedSales}
+            value={completedSales.length}
             icon={CheckCircle}
           />
           <StatCard
-            title="Ventas Pendientes"
-            value={stats?.stats.pendingSales || mySales.filter(s => s.status === "pending").length}
-            icon={Clock}
-          />
-          <StatCard
-            title="Comision del Mes"
-            value={formatCurrency(monthlyCommission)}
+            title="Mi Comision Total"
+            value={formatCurrency(totalCommission)}
             icon={DollarSign}
-            description={`${completedSales} ventas activadas`}
+            description={`${completedSales.length} ventas activadas`}
           />
         </div>
 
@@ -183,47 +167,25 @@ export default function SellerDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Commission Scale */}
+          {/* Commission Summary */}
           <Card className="border-border/50 bg-card/50">
             <CardHeader>
-              <CardTitle>Escala de Comisiones</CardTitle>
-              <CardDescription>Tu progreso este mes</CardDescription>
+              <CardTitle>Mi Comision</CardTitle>
+              <CardDescription>Resumen de tus ganancias</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <CommissionTier
-                range="1-4 ventas"
-                amount={200000}
-                isActive={completedSales >= 1 && completedSales < 5}
-                isCompleted={completedSales >= 5}
-              />
-              <CommissionTier
-                range="5-9 ventas"
-                amount={300000}
-                isActive={completedSales >= 5 && completedSales < 10}
-                isCompleted={completedSales >= 10}
-              />
-              <CommissionTier
-                range="10-19 ventas"
-                amount={350000}
-                isActive={completedSales >= 10 && completedSales < 20}
-                isCompleted={completedSales >= 20}
-              />
-              <CommissionTier
-                range="20-25 ventas"
-                amount={375000}
-                isActive={completedSales >= 20 && completedSales < 26}
-                isCompleted={completedSales >= 26}
-              />
-              <CommissionTier
-                range="26+ ventas"
-                amount={400000}
-                isActive={completedSales >= 26}
-                isCompleted={false}
-              />
-              <div className="pt-4 border-t border-border">
+              <div className="text-center py-6">
+                <p className="text-4xl font-bold text-primary">{formatCurrency(totalCommission)}</p>
+                <p className="text-sm text-muted-foreground mt-2">Comision total acumulada</p>
+              </div>
+              <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Tu comision actual:</span>
-                  <span className="text-xl font-bold text-primary">{formatCurrency(monthlyCommission)}</span>
+                  <span className="text-sm text-muted-foreground">Ventas activadas:</span>
+                  <span className="font-semibold text-foreground">{completedSales.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Ventas pendientes:</span>
+                  <span className="font-semibold text-foreground">{mySales.filter(s => s.status === "pending").length}</span>
                 </div>
               </div>
             </CardContent>
@@ -289,50 +251,4 @@ export default function SellerDashboardPage() {
   )
 }
 
-function CommissionTier({
-  range,
-  amount,
-  isActive,
-  isCompleted,
-}: {
-  range: string
-  amount: number
-  isActive: boolean
-  isCompleted: boolean
-}) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(value)
-  }
 
-  return (
-    <div
-      className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-        isActive
-          ? "border-primary bg-primary/10"
-          : isCompleted
-          ? "border-green-500/30 bg-green-500/10"
-          : "border-border/50 bg-secondary/30"
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        {isCompleted ? (
-          <CheckCircle className="h-5 w-5 text-green-400" />
-        ) : isActive ? (
-          <TrendingUp className="h-5 w-5 text-primary" />
-        ) : (
-          <Clock className="h-5 w-5 text-muted-foreground" />
-        )}
-        <span className={`text-sm ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-          {range}
-        </span>
-      </div>
-      <span className={`font-semibold ${isActive ? "text-primary" : isCompleted ? "text-green-400" : "text-muted-foreground"}`}>
-        {formatCurrency(amount)}
-      </span>
-    </div>
-  )
-}

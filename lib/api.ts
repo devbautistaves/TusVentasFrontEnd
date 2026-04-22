@@ -96,11 +96,11 @@ export const salesAPI = {
       body: JSON.stringify(data),
     }),
 
-  updateStatus: (token: string, id: string, status: string, notes?: string) =>
-    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
+  updateStatus: (token: string, id: string, status: string) =>
+    fetchAPI<Sale>(`/sales/${id}`, {
       method: "PUT",
       token,
-      body: JSON.stringify({ status, notes }),
+      body: JSON.stringify({ status }),
     }),
 
   getAdminSales: (token: string) =>

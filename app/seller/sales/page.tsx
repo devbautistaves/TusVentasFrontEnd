@@ -198,7 +198,7 @@ export default function SellerSalesPage() {
                       <td className="py-3 px-4">
                         <div>
                           <p className="font-medium text-foreground">{sale.planName}</p>
-                          <p className="text-sm text-primary">{formatCurrency(sale.planPrice)}</p>
+                          <p className="text-sm text-primary">Comision: {formatCurrency(sale.commission || 0)}</p>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -292,8 +292,8 @@ export default function SellerSalesPage() {
                       <p className="font-semibold text-foreground">{selectedSale.planName}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Precio</p>
-                      <p className="font-semibold text-primary">{formatCurrency(selectedSale.planPrice)}</p>
+                      <p className="text-sm text-muted-foreground">Mi Comision</p>
+                      <p className="font-semibold text-primary">{formatCurrency(selectedSale.commission || 0)}</p>
                     </div>
                   </div>
                 </div>

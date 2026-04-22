@@ -139,23 +139,14 @@ export default function NewSalePage() {
       const token = localStorage.getItem("token")
       if (!token) throw new Error("No autenticado")
 
-      // Construir descripcion completa con todos los datos adicionales
-      const fullDescription = [
-        formData.description,
-        `\n--- Datos Adicionales ---`,
-        `Fecha Nacimiento: ${formData.customerBirthDate || "No especificado"}`,
-        `Contacto Emergencia: ${formData.emergencyContactName} - ${formData.emergencyContactPhone}`,
-        `Detalle Plan: ${formData.planDetail || selectedPlan.name}`,
-        `Abono: ${formData.customPrice ? `$${formData.customPrice}` : formatCurrency(selectedPlan.price)}`,
-        `Pago Abono: ${formData.paymentMethodAbono === "credit_card" ? `Tarjeta ${formData.cardBrand.toUpperCase()}` : `CBU: ${formData.cbuNumber}`}`,
-        `Pago Instalacion: ${formData.paymentMethodInstallation === "transfer" ? "Transferencia" : "Mercado Pago"}`,
-        formData.floor ? `Piso: ${formData.floor}` : "",
-        formData.apartment ? `Depto: ${formData.apartment}` : "",
-      ].filter(Boolean).join("\n")
+      // Descripcion corta (max 200 chars segun backend)
+      const shortDescription = formData.description 
+        ? formData.description.substring(0, 200) 
+        : `${selectedPlan.name} - ${formData.customerName}`
 
       const result = await salesAPI.create(token, {
         planId: selectedPlan._id,
-        description: fullDescription,
+        description: shortDescription,
         customerInfo: {
           name: formData.customerName,
           email: formData.customerEmail,
