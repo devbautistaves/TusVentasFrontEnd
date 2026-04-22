@@ -61,9 +61,11 @@ export default function SellerDashboardPage() {
     }).format(value)
   }
 
-  // Calcular comision total basada en las ventas completadas
+  // Ventas activadas (completadas o instaladas)
   const completedSales = mySales.filter(s => s.status === "completed" || s.status === "installed")
-  const totalCommission = completedSales.reduce((acc, sale) => acc + (sale.commission || 0), 0)
+  
+  // Calcular comision total de todas las ventas (el backend calcula la comision al crear la venta)
+  const totalCommission = mySales.reduce((acc, sale) => acc + (sale.commission || 0), 0)
 
   // Mock chart data - in production this would come from the API
   const chartData = [
@@ -109,9 +111,8 @@ export default function SellerDashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Mis Ventas"
-            value={stats?.stats.totalSales || mySales.length}
+            value={mySales.length}
             icon={ShoppingCart}
-            trend={{ value: 15, isPositive: true }}
           />
           <StatCard
             title="Ventas Activadas"
@@ -122,7 +123,7 @@ export default function SellerDashboardPage() {
             title="Mi Comision Total"
             value={formatCurrency(totalCommission)}
             icon={DollarSign}
-            description={`${completedSales.length} ventas activadas`}
+            description={`${mySales.length} ventas registradas`}
           />
         </div>
 
@@ -180,12 +181,16 @@ export default function SellerDashboardPage() {
               </div>
               <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Ventas activadas:</span>
+                  <span className="text-sm text-muted-foreground">Total ventas:</span>
+                  <span className="font-semibold text-foreground">{mySales.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Activadas:</span>
                   <span className="font-semibold text-foreground">{completedSales.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Ventas pendientes:</span>
-                  <span className="font-semibold text-foreground">{mySales.filter(s => s.status === "pending").length}</span>
+                  <span className="text-sm text-muted-foreground">Pendientes:</span>
+                  <span className="font-semibold text-foreground">{mySales.filter(s => s.status === "pending" || s.status === "pending_appointment" || s.status === "appointed").length}</span>
                 </div>
               </div>
             </CardContent>
