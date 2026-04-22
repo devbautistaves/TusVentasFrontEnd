@@ -59,32 +59,32 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Desktop: fixed, Mobile: slide in */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 transform transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:z-auto ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:transform-none`}
+        }`}
       >
         <Sidebar role={user.role} userName={user.name} onLinkClick={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0">
         <Header
           userName={user.name}
           role={user.role}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   )

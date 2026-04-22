@@ -64,18 +64,18 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
     .slice(0, 2)
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 backdrop-blur px-6">
+    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 md:gap-4 border-b border-border bg-card/95 backdrop-blur px-3 md:px-6">
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="lg:hidden flex-shrink-0"
         onClick={onMenuClick}
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Search */}
-      <div className="flex-1 max-w-md">
+      {/* Search - hidden on small mobile */}
+      <div className="flex-1 max-w-md hidden sm:block">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -85,7 +85,10 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      {/* Spacer for mobile */}
+      <div className="flex-1 sm:hidden" />
+
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -136,9 +139,9 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+            <Button variant="ghost" className="flex items-center gap-2 px-2 md:px-3">
+              <Avatar className="h-7 w-7 md:h-8 md:w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs md:text-sm">
                   {initials}
                 </AvatarFallback>
               </Avatar>

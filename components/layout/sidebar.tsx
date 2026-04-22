@@ -16,6 +16,7 @@ import {
   DollarSign,
   MessageSquare,
   Megaphone,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -59,14 +60,24 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
   const links = role === "admin" ? adminLinks : sellerLinks
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card">
+    <aside className="h-screen w-64 border-r border-border bg-card flex-shrink-0">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-border px-6">
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
+        <div className="flex h-16 items-center justify-between border-b border-border px-4 md:px-6">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-bold text-foreground">TusVentas</span>
           </div>
-          <span className="text-xl font-bold text-foreground">TusVentas</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={onLinkClick}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* User info */}
