@@ -76,10 +76,8 @@ export default function SupervisorSalesPage() {
     if (!token) return
 
     try {
-      const response = await usersAPI.getAll(token)
-      // Only get active sellers (not admins or supervisors)
-      const activeSellers = response.users.filter((u) => u.role === "seller" && u.isActive)
-      setSellers(activeSellers)
+      const response = await usersAPI.getSellers(token)
+      setSellers(response.sellers || [])
     } catch (error) {
       console.error("Error fetching sellers:", error)
     }

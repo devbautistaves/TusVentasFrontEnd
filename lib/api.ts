@@ -94,6 +94,10 @@ export const usersAPI = {
       method: "DELETE",
       token,
     }),
+
+  // Para supervisores: obtener lista de vendedores
+  getSellers: (token: string) =>
+    fetchAPI<{ success: boolean; sellers: User[] }>("/api/sellers", { token }),
 }
 
 // Alias for convenience
