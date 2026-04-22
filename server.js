@@ -360,6 +360,54 @@ planPrice: {
           required: [true, "Postal code is required"],
           trim: true,
         },
+        floor: {
+          type: String,
+          trim: true,
+        },
+        apartment: {
+          type: String,
+          trim: true,
+        },
+      },
+      birthDate: {
+        type: String,
+        trim: true,
+      },
+      emergencyContact: {
+        name: {
+          type: String,
+          trim: true,
+        },
+        phone: {
+          type: String,
+          trim: true,
+        },
+      },
+    },
+    planDetail: {
+      type: String,
+      trim: true,
+    },
+    customPrice: {
+      type: Number,
+      min: [0, "Custom price must be 0 or greater"],
+    },
+    paymentInfo: {
+      paymentMethodAbono: {
+        type: String,
+        enum: ["credit_card", "cbu"],
+      },
+      cardBrand: {
+        type: String,
+        enum: ["visa", "mastercard"],
+      },
+      cbuNumber: {
+        type: String,
+        trim: true,
+      },
+      paymentMethodInstallation: {
+        type: String,
+        enum: ["transfer", "mercadopago"],
       },
     },
   },
@@ -936,6 +984,8 @@ console.log('CUSTOMER:', req.body.customer);
       },
     ]
 
+    const { planDetail, customPrice, paymentInfo } = req.body
+
     const sale = new Sale({
       sellerId: user._id,
       sellerName: user.name,
@@ -947,6 +997,9 @@ console.log('CUSTOMER:', req.body.customer);
       description,
       customerInfo,
       statusHistory,
+      planDetail: planDetail || undefined,
+      customPrice: customPrice || undefined,
+      paymentInfo: paymentInfo || undefined,
     })
 
     await sale.save()
@@ -1189,14 +1242,28 @@ app.get("/api/admin/stats", authenticateToken, requireAdmin, async (req, res) =>
     const userCount = await User.countDocuments({ role: "seller" })
     const planCount = await Plan.countDocuments({ isActive: true })
 
+    // Calcular ventas por estado
+    const salesByStatusAgg = await Sale.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ])
+
+    const salesByStatus = {}
+    salesByStatusAgg.forEach((item) => {
+      salesByStatus[item._id] = item.count
+    })
+
     const topSellers = await Sale.aggregate([
       {
         $group: {
           _id: "$sellerId",
-          sellerName: { $first: "$sellerName" },
-          totalSales: { $sum: "$planPrice" },
+          name: { $first: "$sellerName" },
+          totalSales: { $sum: 1 },
           totalCommissions: { $sum: "$commission" },
-          salesCount: { $sum: 1 },
         },
       },
       { $sort: { totalSales: -1 } },
@@ -1216,20 +1283,25 @@ app.get("/api/admin/stats", authenticateToken, requireAdmin, async (req, res) =>
       { $limit: 10 },
     ])
 
-    const stats = totalStats[0] || {
+    const aggregatedStats = totalStats[0] || {
       totalSales: 0,
       totalCommissions: 0,
       totalCount: 0,
     }
 
-    console.log("Admin stats:", { stats, userCount, planCount })
+    console.log("Admin stats:", { aggregatedStats, userCount, planCount, salesByStatus })
 
     res.json({
       success: true,
-      stats,
-      userCount,
+      stats: {
+        totalSales: aggregatedStats.totalCount,
+        totalRevenue: aggregatedStats.totalSales,
+        totalCommissions: aggregatedStats.totalCommissions,
+        totalUsers: userCount,
+        salesByStatus,
+        topSellers,
+      },
       planCount,
-      topSellers,
       topPlans,
     })
   } catch (error) {
