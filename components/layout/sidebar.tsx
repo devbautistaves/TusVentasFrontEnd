@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
-  role: "admin" | "seller"
+  role: "admin" | "seller" | "supervisor"
   userName: string
   onLinkClick?: () => void
 }
@@ -57,7 +57,16 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/seller/chat", label: "Chat", icon: MessageSquare },
   ]
 
-  const links = role === "admin" ? adminLinks : sellerLinks
+  const supervisorLinks = [
+    { href: "/supervisor", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/supervisor/sales", label: "Ventas", icon: ShoppingCart },
+    { href: "/supervisor/new-sale", label: "Nueva Venta", icon: TrendingUp },
+    { href: "/supervisor/commissions", label: "Comisiones", icon: DollarSign },
+    { href: "/supervisor/notifications", label: "Notificaciones", icon: Bell },
+    { href: "/supervisor/chat", label: "Chat", icon: MessageSquare },
+  ]
+
+  const links = role === "admin" ? adminLinks : role === "supervisor" ? supervisorLinks : sellerLinks
 
   return (
     <aside className="h-screen w-64 border-r border-border bg-card flex-shrink-0">
@@ -83,7 +92,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
         {/* User info */}
         <div className="border-b border-border px-6 py-4">
           <p className="text-sm font-medium text-foreground truncate">{userName}</p>
-          <p className="text-xs text-muted-foreground capitalize">{role === "admin" ? "Administrador" : "Vendedor"}</p>
+          <p className="text-xs text-muted-foreground capitalize">{role === "admin" ? "Administrador" : role === "supervisor" ? "Supervisor" : "Vendedor"}</p>
         </div>
 
         {/* Navigation */}
@@ -113,7 +122,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
         {/* Footer */}
         <div className="border-t border-border p-4 space-y-2">
           <Link
-            href={role === "admin" ? "/admin/settings" : "/seller/settings"}
+            href={role === "admin" ? "/admin/settings" : role === "supervisor" ? "/supervisor/settings" : "/seller/settings"}
             onClick={onLinkClick}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
           >

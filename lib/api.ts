@@ -120,6 +120,13 @@ export const salesAPI = {
 
   getAdminSales: (token: string) =>
     fetchAPI<{ success: boolean; sales: Sale[] }>("/api/admin/sales", { token }),
+
+  updateCosts: (token: string, id: string, costs: { installationCost?: number; adCost?: number; sellerCommissionPaid?: number }) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/costs`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(costs),
+    }),
 }
 
 // Plans
@@ -269,7 +276,7 @@ export interface User {
   email: string
   phone: string
   location: string
-  role: "seller" | "admin"
+  role: "seller" | "admin" | "supervisor"
   commissionRate: number
   isActive: boolean
   totalSales: number
@@ -292,7 +299,7 @@ export interface CreateUserData {
   password: string
   phone: string
   location: string
-  role: "seller" | "admin"
+  role: "seller" | "admin" | "supervisor"
 }
 
 export interface Sale {
@@ -311,6 +318,10 @@ export interface Sale {
   statusHistory: StatusHistoryItem[]
   customerInfo: CustomerInfo
   paymentInfo?: PaymentInfo
+  // Campos de costos para supervisor
+  installationCost?: number
+  adCost?: number
+  sellerCommissionPaid?: number
   createdAt: string
   updatedAt: string
 }
@@ -357,6 +368,7 @@ export interface CreateSaleData {
   customPrice?: number
   customerInfo: CustomerInfo
   paymentInfo?: PaymentInfo
+  sellerId?: string // Para que admin/supervisor asigne a un vendedor
 }
 
 export interface Plan {

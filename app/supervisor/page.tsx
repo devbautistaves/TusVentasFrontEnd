@@ -8,31 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Spinner } from "@/components/ui/spinner"
-import { dashboardAPI, salesAPI, DashboardStats, Sale } from "@/lib/api"
-import { getActivatedSalesThisMonth, calculateTotalCommission, getCommissionPerSale, getCommissionTier } from "@/lib/commissions"
+import { salesAPI, Sale } from "@/lib/api"
 import {
   ShoppingCart,
   DollarSign,
   Plus,
   CheckCircle,
-  TrendingUp,
   XCircle,
   Clock,
   Calendar,
   AlertTriangle,
 } from "lucide-react"
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts"
 
-export default function SellerDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+// Constantes de comision supervisor
+const SUPERVISOR_BASE_COMMISSION = 720000 // $720.000 por venta
+const ADMIN_COST = 35000 // $35.000 costo administrativo fijo
+const SUPERVISOR_PERCENTAGE = 0.40 // 40%
+
+export default function SupervisorDashboardPage() {
   const [mySales, setMySales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -42,11 +35,7 @@ export default function SellerDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes] = await Promise.all([
-          dashboardAPI.getStats(token),
-          salesAPI.getMySales(token),
-        ])
-        setStats(statsRes)
+        const salesRes = await salesAPI.getMySales(token)
         setMySales(salesRes.sales)
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
@@ -80,26 +69,40 @@ export default function SellerDashboardPage() {
   const appointedSales = salesThisMonth.filter(s => s.status === "appointed")
   const observedSales = salesThisMonth.filter(s => s.status === "pending_appointment")
   const loadedSales = salesThisMonth.filter(s => s.status === "pending")
-  
-  // Calcular comision total basada en la cantidad de ventas activadas
-  const activatedCount = installedSales.length
-  const commissionPerSale = getCommissionPerSale(activatedCount)
-  const totalCommission = calculateTotalCommission(activatedCount)
 
-  // Mock chart data - in production this would come from the API
-  const chartData = [
-    { name: "Lun", ventas: 2 },
-    { name: "Mar", ventas: 4 },
-    { name: "Mie", ventas: 3 },
-    { name: "Jue", ventas: 5 },
-    { name: "Vie", ventas: 6 },
-    { name: "Sab", ventas: 4 },
-    { name: "Dom", ventas: 2 },
-  ]
+  // Calcular comisiones del supervisor
+  const calculateSupervisorCommission = () => {
+    // Solo ventas instaladas (completed) del mes
+    const completedSalesThisMonth = installedSales
+
+    let totalBeforePercentage = 0
+
+    completedSalesThisMonth.forEach(sale => {
+      const baseCommission = SUPERVISOR_BASE_COMMISSION
+      const installationCost = sale.installationCost || 0
+      const adCost = sale.adCost || 0
+      const sellerCommission = sale.sellerCommissionPaid || 0
+      
+      const netCommission = baseCommission - installationCost - ADMIN_COST - adCost - sellerCommission
+      totalBeforePercentage += netCommission
+    })
+
+    // Descontar instalaciones pagadas de ventas canceladas
+    cancelledSales.forEach(sale => {
+      if (sale.installationCost && sale.installationCost > 0) {
+        totalBeforePercentage -= sale.installationCost
+      }
+    })
+
+    // Aplicar el 40%
+    return Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
+  }
+
+  const totalCommission = calculateSupervisorCommission()
 
   if (isLoading) {
     return (
-      <DashboardLayout requiredRole="seller">
+      <DashboardLayout requiredRole="supervisor">
         <div className="flex items-center justify-center h-[60vh]">
           <Spinner className="h-8 w-8 text-primary" />
         </div>
@@ -108,17 +111,17 @@ export default function SellerDashboardPage() {
   }
 
   return (
-    <DashboardLayout requiredRole="seller">
+    <DashboardLayout requiredRole="supervisor">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Mi Dashboard</h1>
             <p className="text-muted-foreground">
-              Resumen de tu actividad de ventas
+              Resumen de tu actividad como Supervisor
             </p>
           </div>
-          <Link href="/seller/new-sale">
+          <Link href="/supervisor/new-sale">
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
               Nueva Venta
@@ -127,113 +130,111 @@ export default function SellerDashboardPage() {
         </div>
 
         {/* Stats Grid - Estado de Ventas */}
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           <StatCard
-            title="Instaladas"
+            title="Ventas Instaladas"
             value={installedSales.length}
             icon={CheckCircle}
             className="border-green-500/30"
           />
           <StatCard
-            title="Canceladas"
+            title="Ventas Canceladas"
             value={cancelledSales.length}
             icon={XCircle}
             className="border-red-500/30"
           />
           <StatCard
-            title="Turnadas"
+            title="Ventas Turnadas"
             value={appointedSales.length}
             icon={Calendar}
             className="border-blue-500/30"
           />
           <StatCard
-            title="Observadas"
+            title="Ventas Observadas"
             value={observedSales.length}
             icon={AlertTriangle}
             className="border-yellow-500/30"
           />
           <StatCard
-            title="Cargadas"
+            title="Ventas Cargadas"
             value={loadedSales.length}
             icon={Clock}
             className="border-orange-500/30"
           />
-          <StatCard
-            title="Mi Comision"
-            value={formatCurrency(totalCommission)}
-            icon={DollarSign}
-            description={activatedCount > 0 ? `${activatedCount} x ${formatCurrency(commissionPerSale)}` : "Sin ventas"}
-          />
         </div>
 
-        {/* Charts and Commission Info */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Sales Chart */}
-          <Card className="lg:col-span-2 border-border/50 bg-card/50">
-            <CardHeader>
-              <CardTitle>Ventas de la Semana</CardTitle>
-              <CardDescription>Tu actividad de los ultimos 7 dias</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="ventas"
-                      stroke="hsl(var(--primary))"
-                      fillOpacity={1}
-                      fill="url(#colorVentas)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Commission Summary */}
+        {/* Commission Summary */}
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-border/50 bg-card/50">
             <CardHeader>
-              <CardTitle>Mi Comision</CardTitle>
-              <CardDescription>Resumen de tus ganancias</CardDescription>
+              <CardTitle>Mi Comision del Mes</CardTitle>
+              <CardDescription>Calculo basado en ventas instaladas</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center py-6">
                 <p className="text-4xl font-bold text-primary">{formatCurrency(totalCommission)}</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {activatedCount > 0 
-                    ? `${activatedCount} ventas x ${formatCurrency(commissionPerSale)}` 
-                    : "Sin ventas activadas"}
+                  40% sobre {installedSales.length} ventas instaladas
                 </p>
               </div>
               <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total ventas:</span>
-                  <span className="font-semibold text-foreground">{mySales.length}</span>
+                  <span className="text-sm text-muted-foreground">Comision base por venta:</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(SUPERVISOR_BASE_COMMISSION)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Activadas:</span>
-                  <span className="font-semibold text-foreground">{completedSales.length}</span>
+                  <span className="text-sm text-muted-foreground">Costo administrativo:</span>
+                  <span className="font-semibold text-red-400">-{formatCurrency(ADMIN_COST)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Pendientes:</span>
-                  <span className="font-semibold text-foreground">{mySales.filter(s => s.status === "pending" || s.status === "pending_appointment" || s.status === "appointed").length}</span>
+                  <span className="text-sm text-muted-foreground">Porcentaje aplicado:</span>
+                  <span className="font-semibold text-foreground">40%</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader>
+              <CardTitle>Resumen del Mes</CardTitle>
+              <CardDescription>Total de ventas y estados</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-400" />
+                    <span className="text-foreground">Instaladas</span>
+                  </div>
+                  <span className="font-bold text-green-400">{installedSales.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10">
+                  <div className="flex items-center gap-3">
+                    <XCircle className="h-5 w-5 text-red-400" />
+                    <span className="text-foreground">Canceladas</span>
+                  </div>
+                  <span className="font-bold text-red-400">{cancelledSales.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/10">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-blue-400" />
+                    <span className="text-foreground">Turnadas</span>
+                  </div>
+                  <span className="font-bold text-blue-400">{appointedSales.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                    <span className="text-foreground">Observadas</span>
+                  </div>
+                  <span className="font-bold text-yellow-400">{observedSales.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-orange-500/10">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5 text-orange-400" />
+                    <span className="text-foreground">Cargadas (Pendientes)</span>
+                  </div>
+                  <span className="font-bold text-orange-400">{loadedSales.length}</span>
                 </div>
               </div>
             </CardContent>
@@ -247,7 +248,7 @@ export default function SellerDashboardPage() {
               <CardTitle>Mis Ventas Recientes</CardTitle>
               <CardDescription>Tus ultimas ventas registradas</CardDescription>
             </div>
-            <Link href="/seller/sales">
+            <Link href="/supervisor/sales">
               <Button variant="outline" size="sm">
                 Ver todas
               </Button>
@@ -298,5 +299,3 @@ export default function SellerDashboardPage() {
     </DashboardLayout>
   )
 }
-
-

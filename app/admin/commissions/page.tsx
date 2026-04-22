@@ -6,7 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +25,12 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, salesAPI, User, Sale } from "@/lib/api"
-import { DollarSign, TrendingUp, Edit2, Users, Award } from "lucide-react"
+import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye } from "lucide-react"
+
+// Constantes
+const SUPERVISOR_BASE_COMMISSION = 720000
+const ADMIN_COST = 35000
+const SUPERVISOR_PERCENTAGE = 0.40
 
 interface CommissionTier {
   minSales: number
@@ -41,6 +54,19 @@ export default function AdminCommissionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTiers, setEditingTiers] = useState<CommissionTier[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [isCostsDialogOpen, setIsCostsDialogOpen] = useState(false)
+  const [costForm, setCostForm] = useState({
+    installationCost: 0,
+    adCost: 0,
+    sellerCommissionPaid: 0,
+  })
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  })
   const { toast } = useToast()
 
   useEffect(() => {
@@ -56,10 +82,9 @@ export default function AdminCommissionsPage() {
         usersAPI.getAll(token),
         salesAPI.getAdminSales(token),
       ])
-      setUsers(usersRes.users.filter((u) => u.role === "seller"))
+      setUsers(usersRes.users.filter((u) => u.role === "seller" || u.role === "supervisor"))
       setSales(salesRes.sales)
 
-      // Load saved tiers from localStorage
       const savedTiers = localStorage.getItem("commissionTiers")
       if (savedTiers) {
         setTiers(JSON.parse(savedTiers))
@@ -71,15 +96,27 @@ export default function AdminCommissionsPage() {
     }
   }
 
+  // Filtrar ventas del mes seleccionado
+  const getMonthSales = () => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt)
+      return saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year
+    })
+  }
+
+  const monthSales = getMonthSales()
+
   const getSellerSales = (sellerId: string) => {
-    return sales.filter(
-      (s) =>
-        s.sellerId === sellerId &&
-        s.status === "completed"
+    return monthSales.filter(
+      (s) => s.sellerId === sellerId && s.status === "completed"
     ).length
   }
 
-  // Calcula el monto por venta según el rango
+  const getSellerSalesByStatus = (sellerId: string, status: string) => {
+    return monthSales.filter(s => s.sellerId === sellerId && s.status === status).length
+  }
+
   const getCommissionPerSale = (salesCount: number) => {
     for (const tier of tiers) {
       if (salesCount >= tier.minSales && salesCount <= tier.maxSales) {
@@ -89,10 +126,38 @@ export default function AdminCommissionsPage() {
     return 0
   }
 
-  // Calcula la comisión total: cantidad de ventas * monto por venta
-  const calculateTotalCommission = (salesCount: number) => {
-    const perSale = getCommissionPerSale(salesCount)
-    return salesCount * perSale
+  const calculateSellerCommission = (sellerId: string) => {
+    const activatedSales = getSellerSales(sellerId)
+    const perSale = getCommissionPerSale(activatedSales)
+    return activatedSales * perSale
+  }
+
+  // Calcular comision del supervisor
+  const calculateSupervisorCommission = (sellerId: string) => {
+    const userSales = monthSales.filter(s => s.sellerId === sellerId)
+    const completedSales = userSales.filter(s => s.status === "completed")
+    const cancelledSales = userSales.filter(s => s.status === "cancelled")
+
+    let totalBeforePercentage = 0
+
+    completedSales.forEach(sale => {
+      const baseCommission = SUPERVISOR_BASE_COMMISSION
+      const installationCost = sale.installationCost || 0
+      const adCost = sale.adCost || 0
+      const sellerCommission = sale.sellerCommissionPaid || 0
+      
+      const netCommission = baseCommission - installationCost - ADMIN_COST - adCost - sellerCommission
+      totalBeforePercentage += netCommission
+    })
+
+    // Descontar instalaciones de canceladas
+    cancelledSales.forEach(sale => {
+      if (sale.installationCost && sale.installationCost > 0) {
+        totalBeforePercentage -= sale.installationCost
+      }
+    })
+
+    return Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
   }
 
   const formatCurrency = (value: number) => {
@@ -138,10 +203,151 @@ export default function AdminCommissionsPage() {
     }
   }
 
+  const handleOpenDetailDialog = (user: User) => {
+    setSelectedUser(user)
+    setIsDetailDialogOpen(true)
+  }
+
+  const handleOpenCostsDialog = (sale: Sale) => {
+    setSelectedSale(sale)
+    setCostForm({
+      installationCost: sale.installationCost || 0,
+      adCost: sale.adCost || 0,
+      sellerCommissionPaid: sale.sellerCommissionPaid || 0,
+    })
+    setIsCostsDialogOpen(true)
+  }
+
+  const handleUpdateCosts = async () => {
+    if (!selectedSale) return
+
+    setIsSubmitting(true)
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      await salesAPI.updateCosts(token, selectedSale._id, costForm)
+      toast({
+        title: "Costos actualizados",
+        description: "Los costos de la venta se han actualizado correctamente",
+      })
+      setIsCostsDialogOpen(false)
+      fetchData()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar los costos",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Exportar comisiones de un usuario
+  const handleExportUserCommissions = (user: User) => {
+    const userSales = monthSales.filter(s => s.sellerId === user._id && s.status === "completed")
+    
+    let csvContent = ""
+    
+    if (user.role === "supervisor") {
+      csvContent = [
+        "Cliente,DNI,Plan,Fecha,Base,Instalacion,Admin,Anuncio,Com.Vendedor,Neto",
+        ...userSales.map(sale => {
+          const base = SUPERVISOR_BASE_COMMISSION
+          const inst = sale.installationCost || 0
+          const ad = sale.adCost || 0
+          const seller = sale.sellerCommissionPaid || 0
+          const net = base - inst - ADMIN_COST - ad - seller
+          return `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${base},${inst},${ADMIN_COST},${ad},${seller},${net}`
+        }),
+        "",
+        `TOTAL COMISION (40%),${calculateSupervisorCommission(user._id)}`
+      ].join("\n")
+    } else {
+      const activatedCount = userSales.length
+      const perSale = getCommissionPerSale(activatedCount)
+      csvContent = [
+        "Cliente,DNI,Plan,Fecha,Estado",
+        ...userSales.map(sale => 
+          `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},Instalada`
+        ),
+        "",
+        `Ventas Instaladas,${activatedCount}`,
+        `Comision por Venta,${perSale}`,
+        `TOTAL COMISION,${calculateSellerCommission(user._id)}`
+      ].join("\n")
+    }
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = `comisiones-${user.name.replace(/\s+/g, "-")}-${selectedMonth}.csv`
+    link.click()
+
+    toast({
+      title: "Exportacion completada",
+      description: `Comisiones de ${user.name} exportadas correctamente`,
+    })
+  }
+
+  // Exportar todas las comisiones
+  const handleExportAll = () => {
+    const rows: string[] = []
+    rows.push("Vendedor/Supervisor,Rol,Ventas Instaladas,Comision Total")
+    
+    users.forEach(user => {
+      const activatedSales = getSellerSales(user._id)
+      const commission = user.role === "supervisor" 
+        ? calculateSupervisorCommission(user._id)
+        : calculateSellerCommission(user._id)
+      
+      rows.push(`${user.name},${user.role === "supervisor" ? "Supervisor" : "Vendedor"},${activatedSales},${commission}`)
+    })
+
+    const totalCommissions = users.reduce((acc, user) => {
+      return acc + (user.role === "supervisor" 
+        ? calculateSupervisorCommission(user._id)
+        : calculateSellerCommission(user._id))
+    }, 0)
+
+    rows.push("")
+    rows.push(`TOTAL,,${totalCommissions}`)
+
+    const csvContent = rows.join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = `liquidacion-comisiones-${selectedMonth}.csv`
+    link.click()
+
+    toast({
+      title: "Exportacion completada",
+      description: "Liquidacion de comisiones exportada correctamente",
+    })
+  }
+
+  // Generar meses disponibles
+  const getAvailableMonths = () => {
+    const months = []
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const label = date.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+      months.push({ value, label })
+    }
+    return months
+  }
+
   const totalCommissions = users.reduce((acc, user) => {
-    const sellerSales = getSellerSales(user._id)
-    return acc + calculateTotalCommission(sellerSales)
+    return acc + (user.role === "supervisor" 
+      ? calculateSupervisorCommission(user._id)
+      : calculateSellerCommission(user._id))
   }, 0)
+
+  const sellers = users.filter(u => u.role === "seller")
+  const supervisors = users.filter(u => u.role === "supervisor")
 
   if (isLoading) {
     return (
@@ -161,20 +367,43 @@ export default function AdminCommissionsPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Comisiones</h1>
             <p className="text-muted-foreground">
-              Gestiona las comisiones de los vendedores
+              Gestiona las comisiones de vendedores y supervisores
             </p>
           </div>
-          <Button
-            onClick={handleOpenEditDialog}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Edit2 className="mr-2 h-4 w-4" />
-            Editar Rangos
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] bg-secondary/50">
+                <Calendar className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Seleccionar mes" />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableMonths().map(month => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleExportAll}
+              variant="outline"
+              className="gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Exportar Todo
+            </Button>
+            <Button
+              onClick={handleOpenEditDialog}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Edit2 className="mr-2 h-4 w-4" />
+              Editar Rangos
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-border/50 bg-card/50">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -182,7 +411,7 @@ export default function AdminCommissionsPage() {
                   <DollarSign className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Comisiones del Mes</p>
+                  <p className="text-sm text-muted-foreground">Total Comisiones</p>
                   <p className="text-2xl font-bold text-primary">{formatCurrency(totalCommissions)}</p>
                 </div>
               </div>
@@ -195,8 +424,21 @@ export default function AdminCommissionsPage() {
                   <Users className="h-6 w-6 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Vendedores Activos</p>
-                  <p className="text-2xl font-bold text-foreground">{users.length}</p>
+                  <p className="text-sm text-muted-foreground">Vendedores</p>
+                  <p className="text-2xl font-bold text-foreground">{sellers.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-card/50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Award className="h-6 w-6 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Supervisores</p>
+                  <p className="text-2xl font-bold text-foreground">{supervisors.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -208,9 +450,9 @@ export default function AdminCommissionsPage() {
                   <TrendingUp className="h-6 w-6 text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Ventas Activadas</p>
+                  <p className="text-sm text-muted-foreground">Ventas Instaladas</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {sales.filter((s) => s.status === "completed").length}
+                    {monthSales.filter((s) => s.status === "completed").length}
                   </p>
                 </div>
               </div>
@@ -218,10 +460,10 @@ export default function AdminCommissionsPage() {
           </Card>
         </div>
 
-        {/* Commission Scale */}
+        {/* Commission Scale for Sellers */}
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
-            <CardTitle>Escala de Comisiones</CardTitle>
+            <CardTitle>Escala de Comisiones (Vendedores)</CardTitle>
             <CardDescription>Rangos de comision por cantidad de ventas</CardDescription>
           </CardHeader>
           <CardContent>
@@ -243,11 +485,129 @@ export default function AdminCommissionsPage() {
           </CardContent>
         </Card>
 
+        {/* Supervisor Commission Info */}
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="text-amber-400">Comision Supervisores</CardTitle>
+            <CardDescription>Formula de calculo para supervisores</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-secondary/30 text-center">
+                <p className="text-sm text-muted-foreground mb-2">Base por Venta</p>
+                <p className="text-2xl font-bold text-amber-400">{formatCurrency(SUPERVISOR_BASE_COMMISSION)}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/30 text-center">
+                <p className="text-sm text-muted-foreground mb-2">Costo Admin (fijo)</p>
+                <p className="text-2xl font-bold text-red-400">-{formatCurrency(ADMIN_COST)}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/30 text-center">
+                <p className="text-sm text-muted-foreground mb-2">+ Costos Variables</p>
+                <p className="text-sm text-muted-foreground">Instalacion, Anuncio, Com. Vendedor</p>
+              </div>
+              <div className="p-4 rounded-lg bg-amber-500/20 text-center">
+                <p className="text-sm text-muted-foreground mb-2">Porcentaje Final</p>
+                <p className="text-2xl font-bold text-amber-400">40%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Supervisors Table */}
+        {supervisors.length > 0 && (
+          <Card className="border-amber-500/30 bg-card/50">
+            <CardHeader>
+              <CardTitle className="text-amber-400">Comisiones Supervisores ({supervisors.length})</CardTitle>
+              <CardDescription>Resumen de comisiones del mes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Supervisor</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Instaladas</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Canceladas</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Turnadas</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pendientes</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Comision (40%)</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supervisors.map((user) => {
+                      const totalCommission = calculateSupervisorCommission(user._id)
+
+                      return (
+                        <tr
+                          key={user._id}
+                          className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                                <span className="text-sm font-semibold text-amber-400">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{user.name}</p>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-green-400 font-medium">
+                            {getSellerSalesByStatus(user._id, "completed")}
+                          </td>
+                          <td className="py-3 px-4 text-red-400">
+                            {getSellerSalesByStatus(user._id, "cancelled")}
+                          </td>
+                          <td className="py-3 px-4 text-blue-400">
+                            {getSellerSalesByStatus(user._id, "appointed")}
+                          </td>
+                          <td className="py-3 px-4 text-orange-400">
+                            {getSellerSalesByStatus(user._id, "pending") + getSellerSalesByStatus(user._id, "pending_appointment")}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-lg font-bold text-amber-400">
+                              {formatCurrency(totalCommission)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenDetailDialog(user)}
+                                title="Ver detalle"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleExportUserCommissions(user)}
+                                title="Exportar"
+                              >
+                                <FileSpreadsheet className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Sellers Table */}
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
-            <CardTitle>Comisiones por Vendedor</CardTitle>
-            <CardDescription>Resumen de comisiones del mes actual</CardDescription>
+            <CardTitle>Comisiones Vendedores ({sellers.length})</CardTitle>
+            <CardDescription>Resumen de comisiones del mes</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -255,18 +615,20 @@ export default function AdminCommissionsPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Ventas Totales</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Ventas Activadas</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Rango Actual</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Instaladas</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Canceladas</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Turnadas</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pendientes</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Rango</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Comision</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => {
-                    const totalUserSales = sales.filter((s) => s.sellerId === user._id).length
+                  {sellers.map((user) => {
                     const activatedSales = getSellerSales(user._id)
                     const commissionPerSale = getCommissionPerSale(activatedSales)
-                    const totalCommission = calculateTotalCommission(activatedSales)
+                    const totalCommission = calculateSellerCommission(user._id)
                     const currentTier = tiers.find(
                       (t) => activatedSales >= t.minSales && activatedSales <= t.maxSales
                     )
@@ -289,12 +651,17 @@ export default function AdminCommissionsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-foreground">{totalUserSales}</td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center gap-1 text-green-400 font-medium">
-                            <Award className="h-4 w-4" />
-                            {activatedSales}
-                          </span>
+                        <td className="py-3 px-4 text-green-400 font-medium">
+                          {activatedSales}
+                        </td>
+                        <td className="py-3 px-4 text-red-400">
+                          {getSellerSalesByStatus(user._id, "cancelled")}
+                        </td>
+                        <td className="py-3 px-4 text-blue-400">
+                          {getSellerSalesByStatus(user._id, "appointed")}
+                        </td>
+                        <td className="py-3 px-4 text-orange-400">
+                          {getSellerSalesByStatus(user._id, "pending") + getSellerSalesByStatus(user._id, "pending_appointment")}
                         </td>
                         <td className="py-3 px-4">
                           {currentTier ? (
@@ -317,12 +684,32 @@ export default function AdminCommissionsPage() {
                             )}
                           </div>
                         </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDetailDialog(user)}
+                              title="Ver detalle"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleExportUserCommissions(user)}
+                              title="Exportar"
+                            >
+                              <FileSpreadsheet className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     )
                   })}
-                  {users.length === 0 && (
+                  {sellers.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No hay vendedores registrados
                       </td>
                     </tr>
@@ -339,7 +726,7 @@ export default function AdminCommissionsPage() {
             <DialogHeader>
               <DialogTitle>Editar Rangos de Comision</DialogTitle>
               <DialogDescription>
-                Modifica los rangos y montos de comision
+                Modifica los rangos y montos de comision para vendedores
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -400,6 +787,170 @@ export default function AdminCommissionsPage() {
                   </>
                 ) : (
                   "Guardar Cambios"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Detalle de Comisiones - {selectedUser?.name}
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({selectedUser?.role === "supervisor" ? "Supervisor" : "Vendedor"})
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                Ventas instaladas del mes seleccionado
+              </DialogDescription>
+            </DialogHeader>
+            {selectedUser && (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">DNI</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
+                        {selectedUser.role === "supervisor" && (
+                          <>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Costos</th>
+                            <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Editar</th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthSales
+                        .filter(s => s.sellerId === selectedUser._id && s.status === "completed")
+                        .map((sale) => (
+                          <tr
+                            key={sale._id}
+                            className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                          >
+                            <td className="py-3 px-4 font-medium text-foreground">{sale.customerInfo.name}</td>
+                            <td className="py-3 px-4 text-foreground">{sale.customerInfo.dni}</td>
+                            <td className="py-3 px-4 text-foreground">{sale.planName}</td>
+                            <td className="py-3 px-4">
+                              <StatusBadge status={sale.status} />
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {new Date(sale.createdAt).toLocaleDateString("es-AR")}
+                            </td>
+                            {selectedUser.role === "supervisor" && (
+                              <>
+                                <td className="py-3 px-4 text-right text-xs">
+                                  <div className="space-y-1">
+                                    <p>Inst: {formatCurrency(sale.installationCost || 0)}</p>
+                                    <p>Anun: {formatCurrency(sale.adCost || 0)}</p>
+                                    <p>Vend: {formatCurrency(sale.sellerCommissionPaid || 0)}</p>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenCostsDialog(sale)}
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <p className="text-lg font-semibold text-foreground">
+                    Total Comision: {" "}
+                    <span className="text-primary">
+                      {formatCurrency(
+                        selectedUser.role === "supervisor"
+                          ? calculateSupervisorCommission(selectedUser._id)
+                          : calculateSellerCommission(selectedUser._id)
+                      )}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Costs Dialog */}
+        <Dialog open={isCostsDialogOpen} onOpenChange={setIsCostsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Costos de Venta</DialogTitle>
+              <DialogDescription>
+                Ingresa los costos aplicables a esta venta
+              </DialogDescription>
+            </DialogHeader>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="installationCost">Costo de Instalacion (pagado por JV)</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="installationCost"
+                    type="number"
+                    value={costForm.installationCost}
+                    onChange={(e) => setCostForm(prev => ({ ...prev, installationCost: Number(e.target.value) }))}
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="adCost">Costo de Anuncio</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="adCost"
+                    type="number"
+                    value={costForm.adCost}
+                    onChange={(e) => setCostForm(prev => ({ ...prev, adCost: Number(e.target.value) }))}
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="sellerCommissionPaid">Comision del Vendedor</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="sellerCommissionPaid"
+                    type="number"
+                    value={costForm.sellerCommissionPaid}
+                    onChange={(e) => setCostForm(prev => ({ ...prev, sellerCommissionPaid: Number(e.target.value) }))}
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCostsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateCosts}
+                disabled={isSubmitting}
+                className="bg-primary text-primary-foreground"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Costos"
                 )}
               </Button>
             </DialogFooter>

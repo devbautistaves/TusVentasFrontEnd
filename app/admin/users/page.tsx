@@ -54,7 +54,7 @@ export default function AdminUsersPage() {
     password: "",
     phone: "",
     location: "",
-    role: "seller" as "seller" | "admin",
+    role: "seller" as "seller" | "admin" | "supervisor",
     commissionRate: 0.30,
   })
 
@@ -114,7 +114,7 @@ export default function AdminUsersPage() {
         password: "",
         phone: user.phone,
         location: user.location,
-        role: user.role,
+        role: user.role as "seller" | "admin" | "supervisor",
         commissionRate: user.commissionRate || 0.30,
       })
     } else {
@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
           <Card className="border-border/50 bg-card/50">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -262,6 +262,21 @@ export default function AdminUsersPage() {
                     {users.filter((u) => u.role === "seller").length}
                   </p>
                   <p className="text-xs text-muted-foreground">Vendedores</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-card/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {users.filter((u) => u.role === "supervisor").length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Supervisores</p>
                 </div>
               </div>
             </CardContent>
@@ -318,6 +333,7 @@ export default function AdminUsersPage() {
                 <SelectContent>
                   <SelectItem value="all">Todos los roles</SelectItem>
                   <SelectItem value="seller">Vendedor</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -368,10 +384,12 @@ export default function AdminUsersPage() {
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                             user.role === "admin"
                               ? "bg-purple-500/20 text-purple-400"
+                              : user.role === "supervisor"
+                              ? "bg-amber-500/20 text-amber-400"
                               : "bg-blue-500/20 text-blue-400"
                           }`}
                         >
-                          {user.role === "admin" ? "Admin" : "Vendedor"}
+                          {user.role === "admin" ? "Admin" : user.role === "supervisor" ? "Supervisor" : "Vendedor"}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-foreground">{user.totalSales}</td>
@@ -505,7 +523,7 @@ export default function AdminUsersPage() {
                 <FieldLabel>Rol</FieldLabel>
                 <Select
                   value={formData.role}
-                  onValueChange={(value: "seller" | "admin") =>
+                  onValueChange={(value: "seller" | "admin" | "supervisor") =>
                     setFormData((prev) => ({ ...prev, role: value }))
                   }
                 >
@@ -514,6 +532,7 @@ export default function AdminUsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="seller">Vendedor</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>

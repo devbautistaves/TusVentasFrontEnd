@@ -10,22 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/hooks/use-toast"
-import { plansAPI, salesAPI, usersAPI, Plan, User } from "@/lib/api"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { plansAPI, salesAPI, Plan } from "@/lib/api"
 import { ArrowLeft, Check, CreditCard, Building2, UserPlus, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 export default function NewSalePage() {
   const [plans, setPlans] = useState<Plan[]>([])
-  const [users, setUsers] = useState<User[]>([])
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
-  const [selectedSellerId, setSelectedSellerId] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
@@ -64,26 +55,22 @@ export default function NewSalePage() {
   })
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchPlans = async () => {
       const token = localStorage.getItem("token")
       if (!token) return
 
       try {
-        const [plansRes, usersRes] = await Promise.all([
-          plansAPI.getAll(token),
-          usersAPI.getAll(token),
-        ])
-        setPlans(plansRes.plans)
-        // Filtrar solo vendedores y supervisores activos
-        setUsers(usersRes.users.filter(u => (u.role === "seller" || u.role === "supervisor") && u.isActive))
+        const response = await plansAPI.getAll(token)
+        // Mostrar todos los planes, no solo los activos
+        setPlans(response.plans)
       } catch (error) {
-        console.error("Error fetching data:", error)
+        console.error("Error fetching plans:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchData()
+    fetchPlans()
   }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -167,19 +154,33 @@ export default function NewSalePage() {
     const saleData = {
       planId: selectedPlan._id,
       description: shortDescription,
-      sellerId: selectedSellerId || undefined, // Asignar a vendedor seleccionado
+      planDetail: formData.planDetail,
+      customPrice: formData.customPrice ? Number(formData.customPrice) : undefined,
       customerInfo: {
         name: formData.customerName,
         email: formData.customerEmail,
         phone: formData.customerPhone,
         dni: formData.customerDni,
+        birthDate: formData.customerBirthDate,
         address: {
           street: formData.street,
           number: formData.number,
+          floor: formData.floor || undefined,
+          apartment: formData.apartment || undefined,
           city: formData.city,
           province: formData.province,
           postalCode: formData.postalCode,
         },
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone,
+        },
+      },
+      paymentInfo: {
+        paymentMethodAbono: formData.paymentMethodAbono as "credit_card" | "cbu",
+        cardBrand: formData.paymentMethodAbono === "credit_card" ? formData.cardBrand as "visa" | "mastercard" : undefined,
+        cbuNumber: formData.paymentMethodAbono === "cbu" ? formData.cbuNumber : undefined,
+        paymentMethodInstallation: formData.paymentMethodInstallation as "transfer" | "mercadopago",
       },
     }
 
@@ -194,10 +195,10 @@ export default function NewSalePage() {
     }).finally(() => {
       toast({
         title: "Venta registrada",
-        description: "Felicitaciones! La venta se ha registrado correctamente",
+        description: "Felicitaciones! Tu venta se ha registrado correctamente",
       })
       setIsSubmitting(false)
-      router.push("/admin/sales")
+      router.push("/supervisor/sales")
     })
   }
 
@@ -219,7 +220,7 @@ export default function NewSalePage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout requiredRole="admin">
+      <DashboardLayout requiredRole="supervisor">
         <div className="flex items-center justify-center h-[60vh]">
           <Spinner className="h-8 w-8 text-primary" />
         </div>
@@ -228,11 +229,11 @@ export default function NewSalePage() {
   }
 
   return (
-    <DashboardLayout requiredRole="admin">
+    <DashboardLayout requiredRole="supervisor">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Link href="/admin">
+          <Link href="/supervisor">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -320,28 +321,6 @@ export default function NewSalePage() {
                   ))}
                 </div>
 
-                {/* Selector de vendedor */}
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel>Asignar a Vendedor/Supervisor *</FieldLabel>
-                    <Select value={selectedSellerId} onValueChange={setSelectedSellerId}>
-                      <SelectTrigger className="bg-secondary/50">
-                        <SelectValue placeholder="Selecciona un vendedor o supervisor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user._id} value={user._id}>
-                            {user.name} ({user.role === "supervisor" ? "Supervisor" : "Vendedor"})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Selecciona a quien se le asignara esta venta
-                    </p>
-                  </Field>
-                </FieldGroup>
-
                 {selectedPlan && (
                   <FieldGroup>
                     <Field>
@@ -381,7 +360,7 @@ export default function NewSalePage() {
                   <Button
                     type="button"
                     onClick={() => setCurrentStep(2)}
-                    disabled={!selectedPlan || !selectedSellerId}
+                    disabled={!selectedPlan}
                     className="bg-primary text-primary-foreground"
                   >
                     Siguiente
