@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 
 // Constantes de comision supervisor
-const SUPERVISOR_BASE_COMMISSION = 720000 // $720.000 por venta
+const SUPERVISOR_BASE_COMMISSION = 750000 // $720.000 por venta
 const ADMIN_COST = 35000 // $35.000 costo administrativo fijo
 const SUPERVISOR_PERCENTAGE = 0.40 // 40%
 
