@@ -38,6 +38,8 @@ export default function NewSalePage() {
     city: "",
     province: "",
     postalCode: "",
+    googleMapsLink: "",
+    entreCalles: "",
     // Contacto de emergencia
     emergencyContactName: "",
     emergencyContactPhone: "",
@@ -170,6 +172,8 @@ export default function NewSalePage() {
           city: formData.city,
           province: formData.province,
           postalCode: formData.postalCode,
+          entreCalles: formData.entreCalles || undefined,
+          googleMapsLink: formData.googleMapsLink || undefined,
         },
         emergencyContact: {
           name: formData.emergencyContactName,
@@ -551,6 +555,31 @@ export default function NewSalePage() {
                         required
                         className="bg-secondary/50"
                       />
+                    </Field>
+                    <Field className="md:col-span-2">
+                      <FieldLabel htmlFor="entreCalles">Entre Calles</FieldLabel>
+                      <Input
+                        id="entreCalles"
+                        name="entreCalles"
+                        value={formData.entreCalles}
+                        onChange={handleInputChange}
+                        placeholder="Entre Av. Corrientes y Av. Cordoba"
+                        className="bg-secondary/50"
+                      />
+                    </Field>
+                    <Field className="md:col-span-2">
+                      <FieldLabel htmlFor="googleMapsLink">Link de Google Maps</FieldLabel>
+                      <Input
+                        id="googleMapsLink"
+                        name="googleMapsLink"
+                        value={formData.googleMapsLink}
+                        onChange={handleInputChange}
+                        placeholder="https://maps.google.com/..."
+                        className="bg-secondary/50"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pega el link de ubicacion de Google Maps para facilitar la instalacion
+                      </p>
                     </Field>
                   </div>
                 </FieldGroup>
