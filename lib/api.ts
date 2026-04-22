@@ -16,6 +16,8 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers["Authorization"] = `Bearer ${token}`
   }
 
+  console.log("[v0] API Request:", endpoint, fetchOptions.method || "GET")
+  
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...fetchOptions,
     headers,
@@ -23,8 +25,10 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
 
   const data = await response.json().catch(() => ({ success: false, message: "Error de conexion" }))
 
+  console.log("[v0] API Response:", response.status, data)
+
   if (!response.ok) {
-    throw new Error(data.message || data.error || "Error en la solicitud")
+    throw new Error(data.message || data.error || `Error ${response.status}`)
   }
 
   return data as T

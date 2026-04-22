@@ -144,7 +144,7 @@ export default function NewSalePage() {
         ? formData.description.substring(0, 200) 
         : `${selectedPlan.name} - ${formData.customerName}`
 
-      await salesAPI.create(token, {
+      const saleData = {
         planId: selectedPlan._id,
         description: shortDescription,
         customerInfo: {
@@ -160,7 +160,11 @@ export default function NewSalePage() {
             postalCode: formData.postalCode,
           },
         },
-      })
+      }
+
+      console.log("[v0] Enviando venta:", JSON.stringify(saleData, null, 2))
+      
+      await salesAPI.create(token, saleData)
 
       toast({
         title: "Venta registrada",
