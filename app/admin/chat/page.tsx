@@ -9,11 +9,17 @@ import { Spinner } from "@/components/ui/spinner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { chatAPI, usersAPI, ChatRoom, ChatMessage, User } from "@/lib/api"
-import { Send, Users, MessageSquare, Shield, UserCheck, UserCircle } from "lucide-react"
+import { Send, Users, MessageSquare, Shield, UserCheck, UserCircle, MessageCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+type ChatType = "group" | "private"
 
 export default function AdminChatPage() {
   const [groupRoom, setGroupRoom] = useState<ChatRoom | null>(null)
+  const [privateRooms, setPrivateRooms] = useState<Map<string, ChatRoom>>(new Map())
+  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
+  const [selectedChatType, setSelectedChatType] = useState<ChatType>("group")
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -27,12 +33,12 @@ export default function AdminChatPage() {
   }, [])
 
   useEffect(() => {
-    if (groupRoom) {
-      fetchMessages(groupRoom._id)
-      const interval = setInterval(() => fetchMessages(groupRoom._id), 5000)
+    if (selectedRoom) {
+      fetchMessages(selectedRoom._id)
+      const interval = setInterval(() => fetchMessages(selectedRoom._id), 5000)
       return () => clearInterval(interval)
     }
-  }, [groupRoom])
+  }, [selectedRoom])
 
   useEffect(() => {
     scrollToBottom()
@@ -55,6 +61,7 @@ export default function AdminChatPage() {
 
       if (groupRes.chatRoom) {
         setGroupRoom(groupRes.chatRoom)
+        setSelectedRoom(groupRes.chatRoom)
       }
       setUsers(usersRes.users || [])
       setCurrentUser(profileRes.user || null)
@@ -77,19 +84,52 @@ export default function AdminChatPage() {
     }
   }
 
+  const handleSelectGroupChat = () => {
+    if (groupRoom) {
+      setSelectedRoom(groupRoom)
+      setSelectedChatType("group")
+      setSelectedUser(null)
+    }
+  }
+
+  const handleSelectPrivateChat = async (user: User) => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    // Verificar si ya tenemos la sala en cache
+    if (privateRooms.has(user._id)) {
+      setSelectedRoom(privateRooms.get(user._id)!)
+      setSelectedChatType("private")
+      setSelectedUser(user)
+      return
+    }
+
+    try {
+      const response = await chatAPI.getPrivateChat(token, user._id)
+      if (response.room) {
+        setPrivateRooms(prev => new Map(prev).set(user._id, response.room))
+        setSelectedRoom(response.room)
+        setSelectedChatType("private")
+        setSelectedUser(user)
+      }
+    } catch (error) {
+      console.error("Error getting private chat:", error)
+    }
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!newMessage.trim() || !groupRoom) return
+    if (!newMessage.trim() || !selectedRoom) return
 
     const token = localStorage.getItem("token")
     if (!token) return
 
     setIsSending(true)
     try {
-      await chatAPI.sendMessage(token, groupRoom._id, newMessage)
+      await chatAPI.sendMessage(token, selectedRoom._id, newMessage)
       setNewMessage("")
-      await fetchMessages(groupRoom._id)
+      await fetchMessages(selectedRoom._id)
     } catch (error) {
       console.error("Error sending message:", error)
     } finally {
@@ -122,16 +162,12 @@ export default function AdminChatPage() {
 
   // Obtener nombre real del usuario que envio el mensaje
   const getSenderName = (msg: ChatMessage) => {
-    // Primero intentar obtener de sender.name
     if (msg.sender?.name) return msg.sender.name
-    // Luego de senderName
     if (msg.senderName) return msg.senderName
-    // Buscar en la lista de usuarios por senderId
     if (msg.senderId) {
       const user = users.find(u => u._id === msg.senderId)
       if (user) return user.name
     }
-    // Buscar por sender._id
     if (msg.sender?._id) {
       const user = users.find(u => u._id === msg.sender?._id)
       if (user) return user.name
@@ -173,8 +209,8 @@ export default function AdminChatPage() {
     }
   }
 
-  // Agrupar usuarios por rol
-  const admins = users.filter(u => u.role === "admin" && u.isActive)
+  // Agrupar usuarios por rol (excluyendo al usuario actual)
+  const otherAdmins = users.filter(u => u.role === "admin" && u.isActive && u._id !== currentUser?._id)
   const supervisors = users.filter(u => u.role === "supervisor" && u.isActive)
   const sellers = users.filter(u => u.role === "seller" && u.isActive)
 
@@ -192,9 +228,9 @@ export default function AdminChatPage() {
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Chat Grupal</h1>
+          <h1 className="text-3xl font-bold text-foreground">Chat</h1>
           <p className="text-muted-foreground">
-            Comunicate con todo el equipo
+            Comunicate con el equipo de forma grupal o privada
           </p>
         </div>
 
@@ -204,21 +240,51 @@ export default function AdminChatPage() {
             <CardHeader className="py-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Participantes ({users.filter(u => u.isActive).length})
+                Conversaciones
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-y-auto max-h-[calc(100vh-350px)]">
               <div className="divide-y divide-border/50">
-                {/* Admins */}
-                {admins.length > 0 && (
+                {/* Chat Grupal */}
+                <div className="p-3">
+                  <button
+                    onClick={handleSelectGroupChat}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left",
+                      selectedChatType === "group" 
+                        ? "bg-primary/20 border border-primary/30" 
+                        : "hover:bg-secondary/50"
+                    )}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">Chat Grupal</p>
+                      <p className="text-xs text-muted-foreground">Todo el equipo</p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Otros Admins */}
+                {otherAdmins.length > 0 && (
                   <div className="p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Shield className="h-4 w-4 text-purple-400" />
-                      <span className="text-xs font-medium text-purple-400">Administradores ({admins.length})</span>
+                      <span className="text-xs font-medium text-purple-400">Administradores ({otherAdmins.length})</span>
                     </div>
                     <div className="space-y-2">
-                      {admins.map((user) => (
-                        <div key={user._id} className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/5">
+                      {otherAdmins.map((user) => (
+                        <button
+                          key={user._id}
+                          onClick={() => handleSelectPrivateChat(user)}
+                          className={cn(
+                            "w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left",
+                            selectedUser?._id === user._id 
+                              ? "bg-purple-500/20 border border-purple-500/30" 
+                              : "bg-purple-500/5 hover:bg-purple-500/10"
+                          )}
+                        >
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="bg-purple-500/20 text-purple-400 text-xs">
                               {getInitials(user.name)}
@@ -228,7 +294,8 @@ export default function AdminChatPage() {
                             <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
-                        </div>
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -243,7 +310,16 @@ export default function AdminChatPage() {
                     </div>
                     <div className="space-y-2">
                       {supervisors.map((user) => (
-                        <div key={user._id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/5">
+                        <button
+                          key={user._id}
+                          onClick={() => handleSelectPrivateChat(user)}
+                          className={cn(
+                            "w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left",
+                            selectedUser?._id === user._id 
+                              ? "bg-amber-500/20 border border-amber-500/30" 
+                              : "bg-amber-500/5 hover:bg-amber-500/10"
+                          )}
+                        >
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="bg-amber-500/20 text-amber-400 text-xs">
                               {getInitials(user.name)}
@@ -253,7 +329,8 @@ export default function AdminChatPage() {
                             <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
-                        </div>
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -268,7 +345,16 @@ export default function AdminChatPage() {
                     </div>
                     <div className="space-y-2">
                       {sellers.map((user) => (
-                        <div key={user._id} className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5">
+                        <button
+                          key={user._id}
+                          onClick={() => handleSelectPrivateChat(user)}
+                          className={cn(
+                            "w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left",
+                            selectedUser?._id === user._id 
+                              ? "bg-blue-500/20 border border-blue-500/30" 
+                              : "bg-blue-500/5 hover:bg-blue-500/10"
+                          )}
+                        >
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="bg-blue-500/20 text-blue-400 text-xs">
                               {getInitials(user.name)}
@@ -278,7 +364,8 @@ export default function AdminChatPage() {
                             <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{user.location}</p>
                           </div>
-                        </div>
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -289,20 +376,45 @@ export default function AdminChatPage() {
 
           {/* Chat Area */}
           <Card className="border-border/50 bg-card/50 lg:col-span-3 flex flex-col overflow-hidden">
-            {groupRoom ? (
+            {selectedRoom ? (
               <>
                 {/* Chat Header */}
                 <CardHeader className="py-4 border-b border-border/50">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Chat Grupal del Equipo</CardTitle>
-                      <p className="text-xs text-muted-foreground">
-                        {users.filter(u => u.isActive).length} participantes activos
-                      </p>
-                    </div>
+                    {selectedChatType === "group" ? (
+                      <>
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">Chat Grupal del Equipo</CardTitle>
+                          <p className="text-xs text-muted-foreground">
+                            {users.filter(u => u.isActive).length} participantes activos
+                          </p>
+                        </div>
+                      </>
+                    ) : selectedUser && (
+                      <>
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className={cn(
+                            selectedUser.role === "admin" && "bg-purple-500/20 text-purple-400",
+                            selectedUser.role === "supervisor" && "bg-amber-500/20 text-amber-400",
+                            selectedUser.role === "seller" && "bg-blue-500/20 text-blue-400"
+                          )}>
+                            {getInitials(selectedUser.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-lg">{selectedUser.name}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={cn("text-xs", getRoleBadge(selectedUser.role).color)}>
+                              {getRoleBadge(selectedUser.role).label}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{selectedUser.email}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardHeader>
 
@@ -360,7 +472,7 @@ export default function AdminChatPage() {
                                   : "bg-secondary/50 text-foreground rounded-tl-sm"
                               )}
                             >
-                              {!ownMessage && (
+                              {!ownMessage && selectedChatType === "group" && (
                                 <div className="flex items-center gap-2 mb-1">
                                   <p className="text-xs font-medium opacity-90">
                                     {senderName}
@@ -424,8 +536,8 @@ export default function AdminChatPage() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 opacity-50" />
-                <p className="text-lg font-medium">Chat no disponible</p>
-                <p className="text-sm">No se pudo cargar el chat grupal</p>
+                <p className="text-lg font-medium">Selecciona una conversacion</p>
+                <p className="text-sm">Elige un chat grupal o un usuario para comenzar</p>
               </div>
             )}
           </Card>

@@ -7,21 +7,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { chatAPI, usersAPI, ChatRoom, ChatMessage, User } from "@/lib/api"
-import { Send, Users, MessageSquare, Shield, UserCheck } from "lucide-react"
+import { Send, Users, MessageSquare, Shield, MessageCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+type ChatType = "group" | "private"
 
 export default function SellerChatPage() {
   const [groupRoom, setGroupRoom] = useState<ChatRoom | null>(null)
-  const [privateRooms, setPrivateRooms] = useState<{ room: ChatRoom; user: User }[]>([])
+  const [privateRooms, setPrivateRooms] = useState<Map<string, ChatRoom>>(new Map())
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
-  const [selectedRoomUser, setSelectedRoomUser] = useState<User | null>(null)
+  const [selectedChatType, setSelectedChatType] = useState<ChatType>("group")
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ name: string; _id: string } | null>(null)
-  const [adminsAndSupervisors, setAdminsAndSupervisors] = useState<User[]>([])
+  const [admins, setAdmins] = useState<User[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -60,37 +64,27 @@ export default function SellerChatPage() {
         setSelectedRoom(groupRes.chatRoom)
       }
 
-      // Get all users to find admins and supervisors
+      // Try to get all users to find admins
       try {
         const usersRes = await usersAPI.getAll(token)
-        const adminsSups = usersRes.users.filter(
-          (u) => (u.role === "admin" || u.role === "supervisor") && u.isActive
+        const adminUsers = usersRes.users.filter(
+          (u) => u.role === "admin" && u.isActive
         )
-        setAdminsAndSupervisors(adminsSups)
-
-        // For each admin/supervisor, get or create private chat
-        const rooms: { room: ChatRoom; user: User }[] = []
-        for (const user of adminsSups) {
-          try {
-            const res = await chatAPI.getPrivateChat(token, user._id)
-            if (res.room) {
-              rooms.push({ room: res.room, user })
-            }
-          } catch (err) {
-            console.log("[v0] Could not get private chat with:", user.name)
+        setAdmins(adminUsers)
+      } catch {
+        // If seller can't get all users, try the old private-admin endpoint to at least get one admin
+        try {
+          const privateRes = await chatAPI.getPrivateAdminChat(token)
+          if (privateRes.chatRoom) {
+            // Create a dummy admin entry
+            setAdmins([{ _id: "admin", name: "Administrador", role: "admin", email: "", phone: "", location: "", commissionRate: 0, isActive: true, totalSales: 0, totalCommissions: 0, createdAt: "", updatedAt: "" }])
           }
-        }
-        setPrivateRooms(rooms)
-      } catch (err) {
-        // If can't get all users, try the old private-admin endpoint
-        const privateRes = await chatAPI.getPrivateAdminChat(token)
-        if (privateRes.chatRoom) {
-          // We don't have user info, but we can still show the chat
-          setPrivateRooms([{ room: privateRes.chatRoom, user: { _id: "", name: "Admin", role: "admin" } as User }])
+        } catch {
+          // No admins available
         }
       }
     } catch (error) {
-      console.log("[v0] Error fetching chat data:", error)
+      console.error("Error fetching chat data:", error)
     } finally {
       setIsLoading(false)
     }
@@ -104,7 +98,51 @@ export default function SellerChatPage() {
       const response = await chatAPI.getMessages(token, roomId)
       setMessages(response.messages || [])
     } catch (error) {
-      console.log("[v0] Error fetching messages:", error)
+      console.error("Error fetching messages:", error)
+    }
+  }
+
+  const handleSelectGroupChat = () => {
+    if (groupRoom) {
+      setSelectedRoom(groupRoom)
+      setSelectedChatType("group")
+      setSelectedUser(null)
+    }
+  }
+
+  const handleSelectPrivateChat = async (user: User) => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    // Check if we already have the room cached
+    if (privateRooms.has(user._id)) {
+      setSelectedRoom(privateRooms.get(user._id)!)
+      setSelectedChatType("private")
+      setSelectedUser(user)
+      return
+    }
+
+    try {
+      // If user._id is "admin" (dummy), use the old endpoint
+      if (user._id === "admin") {
+        const response = await chatAPI.getPrivateAdminChat(token)
+        if (response.chatRoom) {
+          setPrivateRooms(prev => new Map(prev).set(user._id, response.chatRoom))
+          setSelectedRoom(response.chatRoom)
+          setSelectedChatType("private")
+          setSelectedUser(user)
+        }
+      } else {
+        const response = await chatAPI.getPrivateChat(token, user._id)
+        if (response.room) {
+          setPrivateRooms(prev => new Map(prev).set(user._id, response.room))
+          setSelectedRoom(response.room)
+          setSelectedChatType("private")
+          setSelectedUser(user)
+        }
+      }
+    } catch (error) {
+      console.error("Error getting private chat:", error)
     }
   }
 
@@ -122,21 +160,9 @@ export default function SellerChatPage() {
       setNewMessage("")
       await fetchMessages(selectedRoom._id)
     } catch (error) {
-      console.log("[v0] Error sending message:", error)
+      console.error("Error sending message:", error)
     } finally {
       setIsSending(false)
-    }
-  }
-
-  const handleSelectPrivateRoom = (room: ChatRoom, user: User) => {
-    setSelectedRoom(room)
-    setSelectedRoomUser(user)
-  }
-
-  const handleSelectGroupRoom = () => {
-    if (groupRoom) {
-      setSelectedRoom(groupRoom)
-      setSelectedRoomUser(null)
     }
   }
 
@@ -163,25 +189,36 @@ export default function SellerChatPage() {
     })
   }
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "Administrador"
-      case "supervisor":
-        return "Supervisor"
-      default:
-        return role
-    }
+  // Obtener nombre real del usuario que envio el mensaje
+  const getSenderName = (msg: ChatMessage) => {
+    if (msg.sender?.name) return msg.sender.name
+    if (msg.senderName) return msg.senderName
+    return "Usuario"
   }
 
-  const getRoleIcon = (role: string) => {
+  // Obtener rol del usuario
+  const getSenderRole = (msg: ChatMessage) => {
+    if (msg.sender?.role) return msg.sender.role
+    return "seller"
+  }
+
+  // Verificar si es mensaje propio
+  const isOwnMessage = (msg: ChatMessage) => {
+    if (!currentUser) return false
+    const senderId = msg.senderId || msg.sender?._id
+    const senderName = msg.senderName || msg.sender?.name
+    return senderId === currentUser._id || senderName === currentUser.name
+  }
+
+  // Obtener color del badge segun rol
+  const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
-        return <Shield className="h-5 w-5 text-purple-400" />
+        return { label: "Admin", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" }
       case "supervisor":
-        return <UserCheck className="h-5 w-5 text-blue-400" />
+        return { label: "Supervisor", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" }
       default:
-        return <Users className="h-5 w-5 text-primary" />
+        return { label: "Vendedor", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" }
     }
   }
 
@@ -214,12 +251,14 @@ export default function SellerChatPage() {
             <CardContent className="p-0">
               <div className="divide-y divide-border/50 max-h-[calc(100vh-350px)] overflow-y-auto">
                 {/* Group Chat */}
-                {groupRoom && (
+                <div className="p-3">
                   <button
-                    onClick={handleSelectGroupRoom}
+                    onClick={handleSelectGroupChat}
                     className={cn(
-                      "w-full flex items-center gap-3 p-4 hover:bg-secondary/50 transition-colors text-left",
-                      selectedRoom?._id === groupRoom._id && !selectedRoomUser && "bg-secondary/50"
+                      "w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left",
+                      selectedChatType === "group"
+                        ? "bg-primary/20 border border-primary/30"
+                        : "hover:bg-secondary/50"
                     )}
                   >
                     <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -230,40 +269,48 @@ export default function SellerChatPage() {
                         Chat Grupal
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Todos los vendedores
+                        Todo el equipo
                       </p>
                     </div>
                   </button>
+                </div>
+
+                {/* Private Chats with Admins */}
+                {admins.length > 0 && (
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="h-4 w-4 text-purple-400" />
+                      <span className="text-xs font-medium text-purple-400">Chat Privado con Admins</span>
+                    </div>
+                    <div className="space-y-2">
+                      {admins.map((admin) => (
+                        <button
+                          key={admin._id}
+                          onClick={() => handleSelectPrivateChat(admin)}
+                          className={cn(
+                            "w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left",
+                            selectedUser?._id === admin._id
+                              ? "bg-purple-500/20 border border-purple-500/30"
+                              : "bg-purple-500/5 hover:bg-purple-500/10"
+                          )}
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-purple-500/20 text-purple-400 text-xs">
+                              {getInitials(admin.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{admin.name}</p>
+                            <p className="text-xs text-muted-foreground">Administrador</p>
+                          </div>
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
-                {/* Private Chats with Admins and Supervisors */}
-                {privateRooms.map(({ room, user }) => (
-                  <button
-                    key={room._id}
-                    onClick={() => handleSelectPrivateRoom(room, user)}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-4 hover:bg-secondary/50 transition-colors text-left",
-                      selectedRoom?._id === room._id && "bg-secondary/50"
-                    )}
-                  >
-                    <div className={cn(
-                      "h-10 w-10 rounded-full flex items-center justify-center",
-                      user.role === "admin" ? "bg-purple-500/20" : "bg-blue-500/20"
-                    )}>
-                      {getRoleIcon(user.role)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {getRoleLabel(user.role)}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-
-                {!groupRoom && privateRooms.length === 0 && (
+                {!groupRoom && admins.length === 0 && (
                   <div className="p-4 text-center text-muted-foreground text-sm">
                     No hay conversaciones disponibles
                   </div>
@@ -279,28 +326,33 @@ export default function SellerChatPage() {
                 {/* Chat Header */}
                 <CardHeader className="py-4 border-b border-border/50">
                   <div className="flex items-center gap-3">
-                    {selectedRoomUser ? (
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center",
-                        selectedRoomUser.role === "admin" ? "bg-purple-500/20" : "bg-blue-500/20"
-                      )}>
-                        {getRoleIcon(selectedRoomUser.role)}
-                      </div>
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
+                    {selectedChatType === "group" ? (
+                      <>
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">Chat Grupal</CardTitle>
+                          <p className="text-xs text-muted-foreground">
+                            Todo el equipo
+                          </p>
+                        </div>
+                      </>
+                    ) : selectedUser && (
+                      <>
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-purple-500/20 text-purple-400">
+                            {getInitials(selectedUser.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-lg">{selectedUser.name}</CardTitle>
+                          <Badge variant="outline" className="text-xs bg-purple-500/20 text-purple-400 border-purple-500/30">
+                            Administrador
+                          </Badge>
+                        </div>
+                      </>
                     )}
-                    <div>
-                      <CardTitle className="text-lg">
-                        {selectedRoomUser ? selectedRoomUser.name : "Chat Grupal"}
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedRoomUser
-                          ? getRoleLabel(selectedRoomUser.role)
-                          : "Todos los vendedores"}
-                      </p>
-                    </div>
                   </div>
                 </CardHeader>
 
@@ -314,9 +366,10 @@ export default function SellerChatPage() {
                     </div>
                   ) : (
                     messages.map((msg, index) => {
-                      const messageSenderName = msg.senderName || msg.sender?.name || "Usuario"
-                      const messageSenderId = msg.senderId || msg.sender?._id
-                      const isOwnMessage = messageSenderId === currentUser?._id || messageSenderName === currentUser?.name
+                      const senderName = getSenderName(msg)
+                      const senderRole = getSenderRole(msg)
+                      const ownMessage = isOwnMessage(msg)
+                      const roleBadge = getRoleBadge(senderRole)
                       const showDate =
                         index === 0 ||
                         formatDate(msg.createdAt) !==
@@ -334,39 +387,44 @@ export default function SellerChatPage() {
                           <div
                             className={cn(
                               "flex gap-3",
-                              isOwnMessage && "flex-row-reverse"
+                              ownMessage && "flex-row-reverse"
                             )}
                           >
                             <Avatar className="h-8 w-8 flex-shrink-0">
                               <AvatarFallback
                                 className={cn(
                                   "text-xs",
-                                  isOwnMessage
-                                    ? "bg-primary/20 text-primary"
-                                    : "bg-blue-500/20 text-blue-400"
+                                  senderRole === "admin" && "bg-purple-500/20 text-purple-400",
+                                  senderRole === "supervisor" && "bg-amber-500/20 text-amber-400",
+                                  senderRole === "seller" && "bg-blue-500/20 text-blue-400"
                                 )}
                               >
-                                {getInitials(messageSenderName)}
+                                {getInitials(senderName)}
                               </AvatarFallback>
                             </Avatar>
                             <div
                               className={cn(
                                 "max-w-[70%] rounded-2xl px-4 py-2",
-                                isOwnMessage
+                                ownMessage
                                   ? "bg-primary text-primary-foreground rounded-tr-sm"
                                   : "bg-secondary/50 text-foreground rounded-tl-sm"
                               )}
                             >
-                              {!isOwnMessage && (
-                                <p className="text-xs font-medium mb-1 opacity-70">
-                                  {messageSenderName}
-                                </p>
+                              {!ownMessage && selectedChatType === "group" && (
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="text-xs font-medium opacity-90">
+                                    {senderName}
+                                  </p>
+                                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", roleBadge.color)}>
+                                    {roleBadge.label}
+                                  </Badge>
+                                </div>
                               )}
                               <p className="text-sm">{msg.content}</p>
                               <p
                                 className={cn(
                                   "text-xs mt-1",
-                                  isOwnMessage
+                                  ownMessage
                                     ? "text-primary-foreground/70"
                                     : "text-muted-foreground"
                                 )}
