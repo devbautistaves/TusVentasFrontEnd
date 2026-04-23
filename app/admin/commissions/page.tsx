@@ -28,7 +28,7 @@ import { usersAPI, salesAPI, User, Sale } from "@/lib/api"
 import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye } from "lucide-react"
 
 // Constantes
-const SUPERVISOR_BASE_COMMISSION = 720000
+const SUPERVISOR_BASE_COMMISSION = 750000
 const ADMIN_COST = 35000
 const SUPERVISOR_PERCENTAGE = 0.40
 

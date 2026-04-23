@@ -403,13 +403,21 @@ export default function SellerSalesPage() {
                     <h4 className="font-semibold text-foreground border-b border-border pb-2">
                       Historial de Estados
                     </h4>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {selectedSale.statusHistory.map((history, index) => (
-                        <div key={index} className="flex items-center justify-between text-sm p-2 rounded bg-secondary/20">
-                          <StatusBadge status={history.status} />
-                          <span className="text-muted-foreground">
-                            {new Date(history.changedAt).toLocaleString("es-AR")}
-                          </span>
+                        <div key={index} className="p-3 rounded-lg bg-secondary/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <StatusBadge status={history.status} />
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(history.changedAt).toLocaleString("es-AR")}
+                            </span>
+                          </div>
+                          {history.notes && (
+                            <div className="text-sm text-foreground bg-secondary/30 p-2 rounded border-l-2 border-primary/50">
+                              <span className="text-xs text-muted-foreground block mb-1">Comentario:</span>
+                              {history.notes}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

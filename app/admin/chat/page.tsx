@@ -7,20 +7,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { chatAPI, usersAPI, ChatRoom, ChatMessage, User } from "@/lib/api"
-import { Send, Users, MessageSquare, User as UserIcon } from "lucide-react"
+import { Send, Users, MessageSquare, Shield, UserCheck, UserCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function AdminChatPage() {
-  const [rooms, setRooms] = useState<ChatRoom[]>([])
-  const [privateChats, setPrivateChats] = useState<ChatRoom[]>([])
   const [groupRoom, setGroupRoom] = useState<ChatRoom | null>(null)
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [users, setUsers] = useState<User[]>([])
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -28,12 +27,12 @@ export default function AdminChatPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedRoom) {
-      fetchMessages(selectedRoom._id)
-      const interval = setInterval(() => fetchMessages(selectedRoom._id), 5000)
+    if (groupRoom) {
+      fetchMessages(groupRoom._id)
+      const interval = setInterval(() => fetchMessages(groupRoom._id), 5000)
       return () => clearInterval(interval)
     }
-  }, [selectedRoom])
+  }, [groupRoom])
 
   useEffect(() => {
     scrollToBottom()
@@ -48,20 +47,19 @@ export default function AdminChatPage() {
     if (!token) return
 
     try {
-      const [groupRes, privateRes, usersRes] = await Promise.all([
+      const [groupRes, usersRes, profileRes] = await Promise.all([
         chatAPI.getGroupChat(token),
-        chatAPI.getPrivateChats(token),
         usersAPI.getAll(token),
+        usersAPI.getProfile(token),
       ])
 
       if (groupRes.chatRoom) {
         setGroupRoom(groupRes.chatRoom)
-        setSelectedRoom(groupRes.chatRoom)
       }
-      setPrivateChats(privateRes.chatRooms || [])
       setUsers(usersRes.users || [])
+      setCurrentUser(profileRes.user || null)
     } catch (error) {
-      console.log("[v0] Error fetching chat data:", error)
+      console.error("Error fetching chat data:", error)
     } finally {
       setIsLoading(false)
     }
@@ -75,25 +73,25 @@ export default function AdminChatPage() {
       const response = await chatAPI.getMessages(token, roomId)
       setMessages(response.messages || [])
     } catch (error) {
-      console.log("[v0] Error fetching messages:", error)
+      console.error("Error fetching messages:", error)
     }
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!newMessage.trim() || !selectedRoom) return
+    if (!newMessage.trim() || !groupRoom) return
 
     const token = localStorage.getItem("token")
     if (!token) return
 
     setIsSending(true)
     try {
-      await chatAPI.sendMessage(token, selectedRoom._id, newMessage)
+      await chatAPI.sendMessage(token, groupRoom._id, newMessage)
       setNewMessage("")
-      await fetchMessages(selectedRoom._id)
+      await fetchMessages(groupRoom._id)
     } catch (error) {
-      console.log("[v0] Error sending message:", error)
+      console.error("Error sending message:", error)
     } finally {
       setIsSending(false)
     }
@@ -122,6 +120,64 @@ export default function AdminChatPage() {
     })
   }
 
+  // Obtener nombre real del usuario que envio el mensaje
+  const getSenderName = (msg: ChatMessage) => {
+    // Primero intentar obtener de sender.name
+    if (msg.sender?.name) return msg.sender.name
+    // Luego de senderName
+    if (msg.senderName) return msg.senderName
+    // Buscar en la lista de usuarios por senderId
+    if (msg.senderId) {
+      const user = users.find(u => u._id === msg.senderId)
+      if (user) return user.name
+    }
+    // Buscar por sender._id
+    if (msg.sender?._id) {
+      const user = users.find(u => u._id === msg.sender?._id)
+      if (user) return user.name
+    }
+    return "Usuario"
+  }
+
+  // Obtener rol del usuario
+  const getSenderRole = (msg: ChatMessage) => {
+    if (msg.sender?.role) return msg.sender.role
+    if (msg.senderId) {
+      const user = users.find(u => u._id === msg.senderId)
+      if (user) return user.role
+    }
+    if (msg.sender?._id) {
+      const user = users.find(u => u._id === msg.sender?._id)
+      if (user) return user.role
+    }
+    return "seller"
+  }
+
+  // Verificar si es mensaje propio
+  const isOwnMessage = (msg: ChatMessage) => {
+    if (!currentUser) return false
+    if (msg.senderId === currentUser._id) return true
+    if (msg.sender?._id === currentUser._id) return true
+    return false
+  }
+
+  // Obtener color del badge segun rol
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return { label: "Admin", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" }
+      case "supervisor":
+        return { label: "Supervisor", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" }
+      default:
+        return { label: "Vendedor", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" }
+    }
+  }
+
+  // Agrupar usuarios por rol
+  const admins = users.filter(u => u.role === "admin" && u.isActive)
+  const supervisors = users.filter(u => u.role === "supervisor" && u.isActive)
+  const sellers = users.filter(u => u.role === "seller" && u.isActive)
+
   if (isLoading) {
     return (
       <DashboardLayout requiredRole="admin">
@@ -136,77 +192,95 @@ export default function AdminChatPage() {
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Chat</h1>
+          <h1 className="text-3xl font-bold text-foreground">Chat Grupal</h1>
           <p className="text-muted-foreground">
-            Comunicate con los vendedores
+            Comunicate con todo el equipo
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-240px)]">
-          {/* Sidebar - Chat List */}
+          {/* Sidebar - User List */}
           <Card className="border-border/50 bg-card/50 lg:col-span-1 overflow-hidden">
             <CardHeader className="py-4">
-              <CardTitle className="text-lg">Conversaciones</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Participantes ({users.filter(u => u.isActive).length})
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-y-auto max-h-[calc(100vh-350px)]">
               <div className="divide-y divide-border/50">
-                {/* Group Chat */}
-                {groupRoom && (
-                  <button
-                    onClick={() => setSelectedRoom(groupRoom)}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-4 hover:bg-secondary/50 transition-colors text-left",
-                      selectedRoom?._id === groupRoom._id && "bg-secondary/50"
-                    )}
-                  >
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
+                {/* Admins */}
+                {admins.length > 0 && (
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="h-4 w-4 text-purple-400" />
+                      <span className="text-xs font-medium text-purple-400">Administradores ({admins.length})</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">
-                        Chat Grupal
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Todos los vendedores
-                      </p>
+                    <div className="space-y-2">
+                      {admins.map((user) => (
+                        <div key={user._id} className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/5">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-purple-500/20 text-purple-400 text-xs">
+                              {getInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </button>
+                  </div>
                 )}
 
-                {/* Private Chats */}
-                {privateChats.map((chat) => {
-                  const otherUser = users.find(
-                    (u) => chat.participants.includes(u._id) && u.role === "seller"
-                  )
-                  return (
-                    <button
-                      key={chat._id}
-                      onClick={() => setSelectedRoom(chat)}
-                      className={cn(
-                        "w-full flex items-center gap-3 p-4 hover:bg-secondary/50 transition-colors text-left",
-                        selectedRoom?._id === chat._id && "bg-secondary/50"
-                      )}
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-blue-500/20 text-blue-400">
-                          {otherUser ? getInitials(otherUser.name) : "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {otherUser?.name || "Usuario"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Chat privado
-                        </p>
-                      </div>
-                    </button>
-                  )
-                })}
+                {/* Supervisors */}
+                {supervisors.length > 0 && (
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <UserCheck className="h-4 w-4 text-amber-400" />
+                      <span className="text-xs font-medium text-amber-400">Supervisores ({supervisors.length})</span>
+                    </div>
+                    <div className="space-y-2">
+                      {supervisors.map((user) => (
+                        <div key={user._id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/5">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-amber-500/20 text-amber-400 text-xs">
+                              {getInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                {privateChats.length === 0 && !groupRoom && (
-                  <div className="p-4 text-center text-muted-foreground text-sm">
-                    No hay conversaciones
+                {/* Sellers */}
+                {sellers.length > 0 && (
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <UserCircle className="h-4 w-4 text-blue-400" />
+                      <span className="text-xs font-medium text-blue-400">Vendedores ({sellers.length})</span>
+                    </div>
+                    <div className="space-y-2">
+                      {sellers.map((user) => (
+                        <div key={user._id} className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-blue-500/20 text-blue-400 text-xs">
+                              {getInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.location}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -215,32 +289,18 @@ export default function AdminChatPage() {
 
           {/* Chat Area */}
           <Card className="border-border/50 bg-card/50 lg:col-span-3 flex flex-col overflow-hidden">
-            {selectedRoom ? (
+            {groupRoom ? (
               <>
                 {/* Chat Header */}
                 <CardHeader className="py-4 border-b border-border/50">
                   <div className="flex items-center gap-3">
-                    {selectedRoom.type === "group" ? (
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                    ) : (
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-blue-500/20 text-blue-400">
-                          <UserIcon className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
+                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
                     <div>
-                      <CardTitle className="text-lg">
-                        {selectedRoom.type === "group"
-                          ? "Chat Grupal"
-                          : selectedRoom.name || "Chat Privado"}
-                      </CardTitle>
+                      <CardTitle className="text-lg">Chat Grupal del Equipo</CardTitle>
                       <p className="text-xs text-muted-foreground">
-                        {selectedRoom.type === "group"
-                          ? `${selectedRoom.participants?.length || 0} participantes`
-                          : "Conversacion privada"}
+                        {users.filter(u => u.isActive).length} participantes activos
                       </p>
                     </div>
                   </div>
@@ -256,8 +316,10 @@ export default function AdminChatPage() {
                     </div>
                   ) : (
                     messages.map((msg, index) => {
-                      const messageSenderName = msg.senderName || msg.sender?.name || "Usuario"
-                      const isOwnMessage = msg.sender?.role === "admin" || messageSenderName === "Admin"
+                      const senderName = getSenderName(msg)
+                      const senderRole = getSenderRole(msg)
+                      const ownMessage = isOwnMessage(msg)
+                      const roleBadge = getRoleBadge(senderRole)
                       const showDate =
                         index === 0 ||
                         formatDate(msg.createdAt) !==
@@ -275,39 +337,44 @@ export default function AdminChatPage() {
                           <div
                             className={cn(
                               "flex gap-3",
-                              isOwnMessage && "flex-row-reverse"
+                              ownMessage && "flex-row-reverse"
                             )}
                           >
                             <Avatar className="h-8 w-8 flex-shrink-0">
                               <AvatarFallback
                                 className={cn(
                                   "text-xs",
-                                  isOwnMessage
-                                    ? "bg-primary/20 text-primary"
-                                    : "bg-blue-500/20 text-blue-400"
+                                  senderRole === "admin" && "bg-purple-500/20 text-purple-400",
+                                  senderRole === "supervisor" && "bg-amber-500/20 text-amber-400",
+                                  senderRole === "seller" && "bg-blue-500/20 text-blue-400"
                                 )}
                               >
-                                {getInitials(messageSenderName)}
+                                {getInitials(senderName)}
                               </AvatarFallback>
                             </Avatar>
                             <div
                               className={cn(
                                 "max-w-[70%] rounded-2xl px-4 py-2",
-                                isOwnMessage
+                                ownMessage
                                   ? "bg-primary text-primary-foreground rounded-tr-sm"
                                   : "bg-secondary/50 text-foreground rounded-tl-sm"
                               )}
                             >
-                              {!isOwnMessage && (
-                                <p className="text-xs font-medium mb-1 opacity-70">
-                                  {messageSenderName}
-                                </p>
+                              {!ownMessage && (
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="text-xs font-medium opacity-90">
+                                    {senderName}
+                                  </p>
+                                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", roleBadge.color)}>
+                                    {roleBadge.label}
+                                  </Badge>
+                                </div>
                               )}
                               <p className="text-sm">{msg.content}</p>
                               <p
                                 className={cn(
                                   "text-xs mt-1",
-                                  isOwnMessage
+                                  ownMessage
                                     ? "text-primary-foreground/70"
                                     : "text-muted-foreground"
                                 )}
@@ -357,8 +424,8 @@ export default function AdminChatPage() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 opacity-50" />
-                <p className="text-lg font-medium">Selecciona una conversacion</p>
-                <p className="text-sm">Elige un chat de la lista para comenzar</p>
+                <p className="text-lg font-medium">Chat no disponible</p>
+                <p className="text-sm">No se pudo cargar el chat grupal</p>
               </div>
             )}
           </Card>
