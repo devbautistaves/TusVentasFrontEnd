@@ -325,7 +325,8 @@ export interface CreateUserData {
 
 export interface Sale {
   _id: string
-  sellerId: string
+  sellerId: string | { _id: string; name?: string; email?: string }
+  supervisorId?: string | { _id: string; name?: string; email?: string }
   sellerName: string
   planId: string
   planName: string

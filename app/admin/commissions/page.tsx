@@ -108,16 +108,26 @@ export default function AdminCommissionsPage() {
 
   const monthSales = getMonthSales()
 
+  // Helper para extraer el ID de sellerId o supervisorId (puede ser string u objeto)
+  const extractId = (field: string | { _id: string } | undefined): string => {
+    if (!field) return ""
+    if (typeof field === "string") return field
+    return field._id || ""
+  }
+
   // Obtener ventas de un usuario (vendedor o supervisor)
   // Para supervisores, las ventas pueden estar en sellerId o supervisorId
   const getUserSales = (userId: string, userRole: string) => {
     return monthSales.filter((s) => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      
       if (userRole === "supervisor") {
         // Supervisor: ventas donde es vendedor O donde es supervisor asignado
-        return s.sellerId === userId || s.supervisorId === userId
+        return saleSellerIdStr === userId || saleSupervisorIdStr === userId
       }
       // Vendedor: solo sus propias ventas
-      return s.sellerId === userId
+      return saleSellerIdStr === userId
     })
   }
 
@@ -151,7 +161,11 @@ export default function AdminCommissionsPage() {
   // Calcular comision del supervisor
   const calculateSupervisorCommission = (supervisorId: string) => {
     // Supervisor: ventas donde es vendedor O donde es supervisor asignado
-    const userSales = monthSales.filter(s => s.sellerId === supervisorId || s.supervisorId === supervisorId)
+    const userSales = monthSales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
     const completedSales = userSales.filter(s => s.status === "completed")
     const cancelledSales = userSales.filter(s => s.status === "cancelled")
 
@@ -264,7 +278,7 @@ export default function AdminCommissionsPage() {
 
   // Exportar comisiones de un usuario
   const handleExportUserCommissions = (user: User) => {
-    const userSales = monthSales.filter(s => s.sellerId === user._id && s.status === "completed")
+    const userSales = getUserSales(user._id, user.role).filter(s => s.status === "completed")
     
     let csvContent = ""
     
@@ -847,8 +861,10 @@ export default function AdminCommissionsPage() {
                     <tbody>
                       {monthSales
                         .filter(s => {
-                          const matchesSeller = s.sellerId === selectedUser._id
-                          const matchesSupervisor = s.supervisorId === selectedUser._id
+                          const saleSellerIdStr = extractId(s.sellerId)
+                          const saleSupervisorIdStr = extractId(s.supervisorId)
+                          const matchesSeller = saleSellerIdStr === selectedUser._id
+                          const matchesSupervisor = saleSupervisorIdStr === selectedUser._id
                           const isCompleted = s.status === "completed"
                           // Para supervisores, mostrar ventas donde es vendedor o supervisor
                           if (selectedUser.role === "supervisor") {
