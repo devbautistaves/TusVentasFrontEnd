@@ -108,14 +108,29 @@ export default function AdminCommissionsPage() {
 
   const monthSales = getMonthSales()
 
+  // Obtener ventas de un usuario (vendedor o supervisor)
+  // Para supervisores, las ventas pueden estar en sellerId o supervisorId
+  const getUserSales = (userId: string, userRole: string) => {
+    return monthSales.filter((s) => {
+      if (userRole === "supervisor") {
+        // Supervisor: ventas donde es vendedor O donde es supervisor asignado
+        return s.sellerId === userId || s.supervisorId === userId
+      }
+      // Vendedor: solo sus propias ventas
+      return s.sellerId === userId
+    })
+  }
+
   const getSellerSales = (sellerId: string) => {
-    return monthSales.filter(
-      (s) => s.sellerId === sellerId && s.status === "completed"
-    ).length
+    const user = users.find(u => u._id === sellerId)
+    const userSales = getUserSales(sellerId, user?.role || "seller")
+    return userSales.filter((s) => s.status === "completed").length
   }
 
   const getSellerSalesByStatus = (sellerId: string, status: string) => {
-    return monthSales.filter(s => s.sellerId === sellerId && s.status === status).length
+    const user = users.find(u => u._id === sellerId)
+    const userSales = getUserSales(sellerId, user?.role || "seller")
+    return userSales.filter(s => s.status === status).length
   }
 
   const getCommissionPerSale = (salesCount: number) => {
@@ -134,8 +149,9 @@ export default function AdminCommissionsPage() {
   }
 
   // Calcular comision del supervisor
-  const calculateSupervisorCommission = (sellerId: string) => {
-    const userSales = monthSales.filter(s => s.sellerId === sellerId)
+  const calculateSupervisorCommission = (supervisorId: string) => {
+    // Supervisor: ventas donde es vendedor O donde es supervisor asignado
+    const userSales = monthSales.filter(s => s.sellerId === supervisorId || s.supervisorId === supervisorId)
     const completedSales = userSales.filter(s => s.status === "completed")
     const cancelledSales = userSales.filter(s => s.status === "cancelled")
 
@@ -830,7 +846,16 @@ export default function AdminCommissionsPage() {
                     </thead>
                     <tbody>
                       {monthSales
-                        .filter(s => s.sellerId === selectedUser._id && s.status === "completed")
+                        .filter(s => {
+                          const matchesSeller = s.sellerId === selectedUser._id
+                          const matchesSupervisor = s.supervisorId === selectedUser._id
+                          const isCompleted = s.status === "completed"
+                          // Para supervisores, mostrar ventas donde es vendedor o supervisor
+                          if (selectedUser.role === "supervisor") {
+                            return (matchesSeller || matchesSupervisor) && isCompleted
+                          }
+                          return matchesSeller && isCompleted
+                        })
                         .map((sale) => (
                           <tr
                             key={sale._id}
