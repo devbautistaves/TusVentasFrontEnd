@@ -56,7 +56,6 @@ export default function SupportSalesPage() {
     newSellerId: "",
   })
   const { toast } = useToast()
-  const router = useRouter()
 
   useEffect(() => {
     fetchSales()
