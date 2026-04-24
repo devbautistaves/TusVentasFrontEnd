@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
+import { salesAPI, usersAPI, supportAPI, Sale, User as UserType } from "@/lib/api"
 import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, Plus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -67,7 +67,8 @@ export default function SupportSalesPage() {
     if (!token) return
 
     try {
-      const response = await usersAPI.getAll(token)
+      // Usar la API de support que maneja fallbacks internamente
+      const response = await supportAPI.getUsers(token)
       setUsers(response.users.filter(u => (u.role === "seller" || u.role === "supervisor") && u.isActive))
     } catch (error) {
       console.error("Error fetching users:", error)
@@ -83,21 +84,20 @@ export default function SupportSalesPage() {
     if (!token) return
 
     try {
-      // Usar el endpoint de admin para tener acceso completo
-      const response = await salesAPI.getAdminSales(token)
-      setSales(response.sales)
+      // Usar la API de support que maneja fallbacks internamente
+      const response = await supportAPI.getSales(token)
+      setSales(response.sales || [])
     } catch (error) {
       console.error("Error fetching sales:", error)
-      // Fallback al endpoint de support
+      // Fallback: intentar endpoint general de sales
       try {
-        const supportResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/support/sales`,
+        const generalResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"}/api/sales`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        if (supportResponse.ok) {
-          const data = await supportResponse.json()
+        if (generalResponse.ok) {
+          const data = await generalResponse.json()
           setSales(data.sales || [])
-        }
       } catch (fallbackError) {
         console.error("Error fetching support sales:", fallbackError)
       }
@@ -186,8 +186,8 @@ export default function SupportSalesPage() {
     if (!token) return
 
     try {
-      // Actualizar costos
-      const costsResult = await salesAPI.updateCosts(token, selectedSale._id, {
+      // Actualizar costos usando supportAPI
+      await supportAPI.updateSaleCosts(token, selectedSale._id, {
         installationCost: costsData.installationCost ? Number(costsData.installationCost) : 0,
         adCost: costsData.adCost ? Number(costsData.adCost) : 0,
         sellerCommissionPaid: costsData.sellerCommissionPaid ? Number(costsData.sellerCommissionPaid) : 0,
@@ -196,14 +196,9 @@ export default function SupportSalesPage() {
       // Si cambio el vendedor, asignar al nuevo vendedor
       if (costsData.newSellerId && costsData.newSellerId !== selectedSale.sellerId) {
         try {
-          await salesAPI.assignSeller(token, selectedSale._id, costsData.newSellerId)
+          await supportAPI.assignSeller(token, selectedSale._id, costsData.newSellerId)
         } catch (assignError) {
           console.error("Error assigning seller:", assignError)
-          try {
-            await salesAPI.update(token, selectedSale._id, { sellerId: costsData.newSellerId } as any)
-          } catch {
-            // Ignorar error secundario
-          }
         }
       }
       
@@ -244,7 +239,7 @@ export default function SupportSalesPage() {
     if (!token) return
 
     try {
-      const result = await salesAPI.updateStatus(
+      const result = await supportAPI.updateSaleStatus(
         token, 
         selectedSale._id, 
         newStatus, 

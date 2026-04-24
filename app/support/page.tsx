@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Plus,
 } from "lucide-react"
+import { supportAPI } from "@/lib/api"
 
 interface SupportStats {
   totalSales: number
@@ -57,14 +58,33 @@ export default function SupportDashboard() {
 
   const fetchStats = async (token: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/support/stats`, {
+      // Intentar endpoint de support primero, con fallback a admin
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
+      const response = await fetch(`${API_URL}/api/support/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       
-      if (!response.ok) throw new Error("Failed to fetch stats")
-      
-      const data = await response.json()
-      setStats(data.stats)
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data.stats)
+      } else {
+        // Fallback: calcular stats desde las ventas
+        const salesRes = await supportAPI.getSales(token)
+        const sales = salesRes.sales || []
+        const usersRes = await supportAPI.getUsers(token)
+        const users = usersRes.users || []
+        
+        setStats({
+          totalSales: sales.length,
+          pendingSales: sales.filter(s => s.status === "pending").length,
+          pendingAppointment: sales.filter(s => s.status === "pending_appointment").length,
+          appointedSales: sales.filter(s => s.status === "appointed").length,
+          completedSales: sales.filter(s => s.status === "completed").length,
+          cancelledSales: sales.filter(s => s.status === "cancelled").length,
+          totalSellers: users.filter(u => u.role === "seller" && u.isActive).length,
+          totalSupervisors: users.filter(u => u.role === "supervisor" && u.isActive).length,
+        })
+      }
     } catch (error) {
       console.error("Error fetching stats:", error)
     } finally {

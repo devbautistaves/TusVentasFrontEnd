@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useToast } from "@/hooks/use-toast"
-import { plansAPI, Plan, User } from "@/lib/api"
+import { plansAPI, supportAPI, Plan, User } from "@/lib/api"
 import {
   Select,
   SelectContent,
@@ -93,19 +93,17 @@ export default function SupportNewSalePage() {
 
   const fetchData = async (token: string) => {
     try {
-      const [plansRes, sellersRes] = await Promise.all([
+      const [plansRes, usersRes] = await Promise.all([
         plansAPI.getAll(token),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/support/sellers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then(res => res.json()),
+        supportAPI.getUsers(token),
       ])
       
       setPlans(plansRes.plans)
       
-      // Separar vendedores y supervisores
-      const allUsers = sellersRes.sellers || []
-      setSellers(allUsers.filter((u: User) => u.role === "seller"))
-      setSupervisors(allUsers.filter((u: User) => u.role === "supervisor"))
+      // Separar vendedores y supervisores activos
+      const allUsers = usersRes.users || []
+      setSellers(allUsers.filter((u: User) => u.role === "seller" && u.isActive))
+      setSupervisors(allUsers.filter((u: User) => u.role === "supervisor" && u.isActive))
     } catch (error) {
       console.error("Error fetching data:", error)
       toast({
@@ -226,18 +224,8 @@ export default function SupportNewSalePage() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/support/sales`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(saleData),
-      })
-
-      if (!response.ok) {
-        throw new Error("Error al crear la venta")
-      }
+      // Usar supportAPI que maneja fallbacks internamente
+      await supportAPI.createSale(token, saleData as any)
 
       toast({
         title: "Venta registrada",

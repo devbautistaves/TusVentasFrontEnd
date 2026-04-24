@@ -185,6 +185,111 @@ export const dashboardAPI = {
     fetchAPI<AdminStats>("/api/admin/stats", { token }),
 }
 
+// Support - endpoints que permiten acceso tipo admin para rol support
+export const supportAPI = {
+  // Obtener todas las ventas (usa el mismo endpoint que admin pero con fallback)
+  getSales: async (token: string): Promise<{ success: boolean; sales: Sale[] }> => {
+    try {
+      // Primero intentar endpoint de support
+      const response = await fetch(`${API_URL}/api/support/sales`, {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        return response.json()
+      }
+      // Si no existe, intentar endpoint de admin
+      return fetchAPI<{ success: boolean; sales: Sale[] }>("/api/admin/sales", { token })
+    } catch {
+      // Fallback final
+      return fetchAPI<{ success: boolean; sales: Sale[] }>("/api/admin/sales", { token })
+    }
+  },
+
+  // Obtener usuarios (usa el mismo endpoint que admin)
+  getUsers: async (token: string): Promise<{ success: boolean; users: User[] }> => {
+    try {
+      const response = await fetch(`${API_URL}/api/support/users`, {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        return response.json()
+      }
+      return fetchAPI<{ success: boolean; users: User[] }>("/api/admin/users", { token })
+    } catch {
+      return fetchAPI<{ success: boolean; users: User[] }>("/api/admin/users", { token })
+    }
+  },
+
+  // Actualizar estado de venta
+  updateSaleStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/support/sales/${id}/status`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ status, notes, statusDate }),
+    }).catch(() => 
+      // Fallback a endpoint de admin
+      fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ status, notes, statusDate }),
+      })
+    ),
+
+  // Actualizar costos de venta
+  updateSaleCosts: (token: string, id: string, costs: { installationCost?: number; adminCost?: number; adCost?: number; sellerCommissionPaid?: number }) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/support/sales/${id}/costs`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(costs),
+    }).catch(() =>
+      fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/costs`, {
+        method: "PUT",
+        token,
+        body: JSON.stringify(costs),
+      })
+    ),
+
+  // Asignar vendedor
+  assignSeller: (token: string, id: string, sellerId: string) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/support/sales/${id}/assign`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ sellerId }),
+    }).catch(() =>
+      fetchAPI<{ success: boolean; sale: Sale }>(`/api/sales/${id}/assign`, {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ sellerId }),
+      })
+    ),
+
+  // Crear venta
+  createSale: (token: string, data: CreateSaleData) =>
+    fetchAPI<{ success: boolean; sale: Sale }>("/api/support/sales", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }).catch(() =>
+      fetchAPI<{ success: boolean; sale: Sale }>("/api/sales", {
+        method: "POST",
+        token,
+        body: JSON.stringify(data),
+      })
+    ),
+
+  // Dashboard stats para support
+  getStats: (token: string) =>
+    fetchAPI<AdminStats>("/api/support/stats", { token }).catch(() =>
+      fetchAPI<AdminStats>("/api/admin/stats", { token })
+    ),
+}
+
 // Notifications
 export const notificationsAPI = {
   getAll: (token: string) =>
