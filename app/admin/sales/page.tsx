@@ -38,7 +38,6 @@ export default function AdminSalesPage() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
-  const [statusDate, setStatusDate] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
   // Nuevos estados para edicion de vendedor y costos
   const [users, setUsers] = useState<UserType[]>([])
@@ -179,29 +178,13 @@ export default function AdminSalesPage() {
 
   const handleUpdateStatus = async () => {
     if (!selectedSale || !newStatus) return
-    
-    // Validar que se seleccione fecha para estados que lo requieren
-    if ((newStatus === "appointed" || newStatus === "completed") && !statusDate) {
-      toast({
-        title: "Fecha requerida",
-        description: "Debes seleccionar una fecha para este estado",
-        variant: "destructive",
-      })
-      return
-    }
 
     setIsUpdating(true)
     const token = localStorage.getItem("token")
     if (!token) return
 
     try {
-      const result = await salesAPI.updateStatus(
-        token, 
-        selectedSale._id, 
-        newStatus, 
-        statusNotes,
-        statusDate || undefined
-      )
+      const result = await salesAPI.updateStatus(token, selectedSale._id, newStatus, statusNotes)
       // Verificar si el resultado indica exito
       if (result && result.success !== false) {
         toast({
@@ -216,7 +199,6 @@ export default function AdminSalesPage() {
       }
       setIsStatusDialogOpen(false)
       setStatusNotes("")
-      setStatusDate("")
       fetchSales()
     } catch (error) {
       console.error("Error updating status:", error)
@@ -229,7 +211,6 @@ export default function AdminSalesPage() {
       })
       setIsStatusDialogOpen(false)
       setStatusNotes("")
-      setStatusDate("")
     } finally {
       setIsUpdating(false)
     }
@@ -341,15 +322,7 @@ export default function AdminSalesPage() {
                         <StatusBadge status={sale.status} />
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
-                        <div className="text-sm">
-                          <p>{new Date(sale.createdAt).toLocaleDateString("es-AR")}</p>
-                          {sale.appointedDate && sale.status === "appointed" && (
-                            <p className="text-xs text-blue-400">Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}</p>
-                          )}
-                          {sale.completedDate && sale.status === "completed" && (
-                            <p className="text-xs text-green-400">Activ: {new Date(sale.completedDate).toLocaleDateString("es-AR")}</p>
-                          )}
-                        </div>
+                        {new Date(sale.createdAt).toLocaleDateString("es-AR")}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
@@ -370,13 +343,6 @@ export default function AdminSalesPage() {
                             onClick={() => {
                               setSelectedSale(sale)
                               setNewStatus(sale.status)
-                              // Inicializar fecha con hoy si el estado lo requiere
-                              if (sale.status === "appointed" || sale.status === "completed") {
-                                const today = new Date().toISOString().split("T")[0]
-                                setStatusDate(today)
-                              } else {
-                                setStatusDate("")
-                              }
                               setIsStatusDialogOpen(true)
                             }}
                             title="Cambiar estado"
@@ -419,29 +385,12 @@ export default function AdminSalesPage() {
             </DialogHeader>
             {selectedSale && (
               <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-                {/* Header con estado y fechas */}
-                <div className="p-3 bg-secondary/30 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <StatusBadge status={selectedSale.status} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Carga: </span>
-                      <span className="text-foreground">{new Date(selectedSale.createdAt).toLocaleDateString("es-AR")}</span>
-                    </div>
-                    {selectedSale.appointedDate && (
-                      <div>
-                        <span className="text-muted-foreground">Turno: </span>
-                        <span className="text-blue-400">{new Date(selectedSale.appointedDate).toLocaleDateString("es-AR")}</span>
-                      </div>
-                    )}
-                    {selectedSale.completedDate && (
-                      <div>
-                        <span className="text-muted-foreground">Activacion: </span>
-                        <span className="text-green-400">{new Date(selectedSale.completedDate).toLocaleDateString("es-AR")}</span>
-                      </div>
-                    )}
-                  </div>
+                {/* Header con estado y fecha */}
+                <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                  <StatusBadge status={selectedSale.status} />
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(selectedSale.createdAt).toLocaleString("es-AR")}
+                  </span>
                 </div>
 
                 {/* Datos del Cliente */}
@@ -732,13 +681,7 @@ export default function AdminSalesPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Nuevo Estado</label>
-                <Select value={newStatus} onValueChange={(value) => {
-                  setNewStatus(value)
-                  // Resetear fecha cuando cambia el estado
-                  if (value !== "appointed" && value !== "completed") {
-                    setStatusDate("")
-                  }
-                }}>
+                <Select value={newStatus} onValueChange={setNewStatus}>
                   <SelectTrigger className="bg-secondary/50">
                     <SelectValue placeholder="Seleccionar estado" />
                   </SelectTrigger>
@@ -751,27 +694,6 @@ export default function AdminSalesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              {/* Selector de fecha para TURNADA y ACTIVADA */}
-              {(newStatus === "appointed" || newStatus === "completed") && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Fecha del {newStatus === "appointed" ? "Turno" : "Activacion"} *
-                  </label>
-                  <Input
-                    type="date"
-                    value={statusDate}
-                    onChange={(e) => setStatusDate(e.target.value)}
-                    className="bg-secondary/50"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {newStatus === "appointed" 
-                      ? "La venta se mostrara en el mes de esta fecha para el computo de comisiones."
-                      : "La comision se imputara en el mes de esta fecha de activacion."}
-                  </p>
-                </div>
-              )}
-              
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Notas (opcional)</label>
                 <Textarea
