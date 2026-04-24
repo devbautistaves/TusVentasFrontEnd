@@ -390,10 +390,10 @@ export default function AdminCommissionsPage() {
       }
     })
     
-    // Calcular 40% primero
-    const commissionBeforeAdCost = Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
+    // Aplicar 40% sobre el neto
+    const commissionBeforeAdCost = totalBeforePercentage * SUPERVISOR_PERCENTAGE
     
-    // Descontar costo de anuncio mensual DESPUES de aplicar el 40%
+    // Descontar costo de anuncio mensual del 100% (sobre la comision, no sobre el neto)
     const monthlyAdCost = getSupervisorAdCostForMonth(supervisorId)
     
     return Math.max(0, commissionBeforeAdCost - monthlyAdCost)
@@ -430,7 +430,42 @@ export default function AdminCommissionsPage() {
       }
     })
     
+    // Esta funcion devuelve la comision SIN descontar el costo de anuncio
     return Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
+  }
+
+  // Calcular el total neto antes del 40% (para mostrar el desglose)
+  const calculateSupervisorNetBeforePercentage = (supervisorId: string) => {
+    const userSales = monthSales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
+    const completedSales = userSales.filter(s => s.status === "completed")
+    
+    let totalBeforePercentage = 0
+    
+    completedSales.forEach(sale => {
+      const baseCommission = SUPERVISOR_BASE_COMMISSION
+      const sellerCommission = sale.sellerCommissionPaid || 0
+      const netCommission = baseCommission - ADMIN_COST - sellerCommission
+      totalBeforePercentage += netCommission
+    })
+    
+    const allSupervisorSales = sales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
+    
+    allSupervisorSales.forEach(sale => {
+      const installationCost = getInstallationCostForMonth(sale)
+      if (installationCost > 0) {
+        totalBeforePercentage -= installationCost
+      }
+    })
+    
+    return totalBeforePercentage
   }
 
   const formatCurrency = (value: number) => {
@@ -582,7 +617,7 @@ export default function AdminCommissionsPage() {
       // SECCION: VENTAS CANCELADAS CON DESCUENTO
       const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
       csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`────────────────────���──────────────────────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
       
       let totalCancelledDiscount = 0
@@ -614,7 +649,8 @@ export default function AdminCommissionsPage() {
       
       // RESUMEN FINAL
       const supervisorAdCost = getSupervisorAdCostForMonth(user._id)
-      const commissionBefore = calculateSupervisorCommissionBeforeAdCost(user._id)
+      const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
+      const commissionBeforeAdCost = calculateSupervisorCommissionBeforeAdCost(user._id)
       const commissionFinal = calculateSupervisorCommission(user._id)
       
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
@@ -627,9 +663,11 @@ export default function AdminCommissionsPage() {
       csvRows.push(``)
       csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(totalNetCompleted)}`)
       csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(totalCancelledDiscount)}`)
-      csvRows.push(`Comision (40%):,${formatCurrency(commissionBefore)}`)
+      csvRows.push(`Neto (100%):,${formatCurrency(netBeforePercentage)}`)
+      csvRows.push(``)
+      csvRows.push(`COMISION (40% del Neto):,${formatCurrency(commissionBeforeAdCost)}`)
       if (supervisorAdCost > 0) {
-        csvRows.push(`Costo de Anuncio Mensual:,-${formatCurrency(supervisorAdCost)}`)
+        csvRows.push(`Costo de Anuncio Mensual (sobre 100%):,-${formatCurrency(supervisorAdCost)}`)
       }
       csvRows.push(``)
       csvRows.push(`COMISION FINAL:,${formatCurrency(commissionFinal)}`)
@@ -837,7 +875,7 @@ export default function AdminCommissionsPage() {
     rows.push(``)
     rows.push(`═══════════════════════════════════════════════════════════════════════════`)
     rows.push(`TOTAL A LIQUIDAR:,${formatCurrency(grandTotalCommissions)}`)
-    rows.push(`═══════════════════════════════════════════════════════════════════════════`)
+    rows.push(`══════════════════════════════════════════════════════════════���════════════`)
 
     // Agregar BOM para que Excel/Sheets detecte UTF-8
     const BOM = "\uFEFF"
@@ -1057,20 +1095,20 @@ export default function AdminCommissionsPage() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Canceladas</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Turnadas</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pendientes</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. (40%)</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Neto (100%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Megaphone className="h-3 w-3" />
                           Costo Anuncio
                         </div>
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Final</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. (40%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {supervisors.map((user) => {
-                      const commissionBeforeAdCost = calculateSupervisorCommissionBeforeAdCost(user._id)
+                      const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
                       const adCost = getSupervisorAdCostForMonth(user._id)
                       const totalCommission = calculateSupervisorCommission(user._id)
 
@@ -1106,7 +1144,7 @@ export default function AdminCommissionsPage() {
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-foreground">
-                              {formatCurrency(commissionBeforeAdCost)}
+                              {formatCurrency(netBeforePercentage)}
                             </span>
                           </td>
                           <td className="py-3 px-4">
@@ -1599,7 +1637,7 @@ export default function AdminCommissionsPage() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Este monto se restara de la comision final (40%) del supervisor para este mes.
+                  Este monto se restara de la comision final del supervisor (40% del neto).
                 </p>
               </Field>
             </FieldGroup>

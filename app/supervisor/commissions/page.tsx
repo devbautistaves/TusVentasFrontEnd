@@ -144,18 +144,17 @@ export default function SupervisorCommissionsPage() {
 
     totalBeforePercentage -= cancelledInstallationCost
 
-    const commissionBeforeAdCost = Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
-
     return {
       details,
       totalBeforePercentage,
       cancelledInstallationCost,
-      commissionBeforeAdCost,
     }
   }
 
   const commission = calculateDetailedCommission()
-  const finalCommission = Math.max(0, commission.commissionBeforeAdCost - monthlyAdCost)
+  // Primero aplicar 40% sobre el neto, luego descontar costo de anuncio del 100%
+  const commissionBeforeAdCost = commission.totalBeforePercentage * SUPERVISOR_PERCENTAGE
+  const finalCommission = Math.max(0, commissionBeforeAdCost - monthlyAdCost)
 
   const handleOpenCostsDialog = (sale: Sale) => {
     setSelectedSale(sale)
@@ -295,9 +294,11 @@ export default function SupervisorCommissionsPage() {
     csvRows.push(``)
     csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost)}`)
     csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(commission.cancelledInstallationCost)}`)
-    csvRows.push(`Comision (40%):,${formatCurrency(commission.commissionBeforeAdCost)}`)
+    csvRows.push(`Neto (100%):,${formatCurrency(commission.totalBeforePercentage)}`)
+    csvRows.push(``)
+    csvRows.push(`COMISION (40% del Neto):,${formatCurrency(commissionBeforeAdCost)}`)
     if (monthlyAdCost > 0) {
-      csvRows.push(`Costo de Anuncio Mensual:,-${formatCurrency(monthlyAdCost)}`)
+      csvRows.push(`Costo de Anuncio Mensual (sobre 100%):,-${formatCurrency(monthlyAdCost)}`)
     }
     csvRows.push(``)
     csvRows.push(`COMISION FINAL:,${formatCurrency(finalCommission)}`)
@@ -400,8 +401,8 @@ export default function SupervisorCommissionsPage() {
                   <DollarSign className="h-6 w-6 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Com. (40%)</p>
-                  <p className="text-2xl font-bold text-foreground">{formatCurrency(commission.commissionBeforeAdCost)}</p>
+                  <p className="text-sm text-muted-foreground">Neto (100%)</p>
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(commission.totalBeforePercentage)}</p>
                 </div>
               </div>
             </CardContent>
@@ -427,7 +428,7 @@ export default function SupervisorCommissionsPage() {
                     <Megaphone className="h-6 w-6 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Costo Anuncio</p>
+                    <p className="text-sm text-muted-foreground">Costo Anuncio (100%)</p>
                     <p className="text-2xl font-bold text-amber-400">-{formatCurrency(monthlyAdCost)}</p>
                   </div>
                 </div>
@@ -532,7 +533,7 @@ export default function SupervisorCommissionsPage() {
                     {monthlyAdCost > 0 && (
                       <tr className="bg-amber-500/10">
                         <td colSpan={6} className="py-3 px-4 text-right font-semibold text-amber-400">
-                          Costo de Anuncio Mensual:
+                          Costo de Anuncio Mensual (sobre 100%):
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-amber-400">
                           -{formatCurrency(monthlyAdCost)}
@@ -542,7 +543,7 @@ export default function SupervisorCommissionsPage() {
                     )}
                     <tr className="bg-primary/10">
                       <td colSpan={6} className="py-3 px-4 text-right font-semibold text-primary">
-                        COMISION FINAL:
+                        COMISION FINAL (40%):
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-primary text-lg">
                         {formatCurrency(finalCommission)}

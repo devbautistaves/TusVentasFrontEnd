@@ -190,8 +190,9 @@ export default function SupervisorDashboardPage() {
   }
 
   const totalBeforePercentage = calculateSupervisorCommission()
-  const commissionBeforeAdCost = totalBeforePercentage * SUPERVISOR_PERCENTAGE
-  const totalCommission = Math.max(0, commissionBeforeAdCost - monthlyAdCost)
+  // Descontar costo de anuncio del 100% (neto), luego aplicar 40%
+  const netAfterAdCost = totalBeforePercentage - monthlyAdCost
+  const totalCommission = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
 
   // Generar meses disponibles
   const getAvailableMonths = () => {
@@ -351,7 +352,7 @@ export default function SupervisorDashboardPage() {
                 <div className="flex justify-between items-center p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
                   <span className="text-sm text-amber-400 flex items-center gap-2">
                     <Megaphone className="h-4 w-4" />
-                    Costo de Anuncio Mensual:
+                    Costo de Anuncio Mensual (sobre 100%):
                   </span>
                   <span className="font-semibold text-amber-400">-{formatCurrency(monthlyAdCost)}</span>
                 </div>
