@@ -25,11 +25,21 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, Sale } from "@/lib/api"
-import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2 } from "lucide-react"
+import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2, Megaphone } from "lucide-react"
 
 // Constantes de comision supervisor
 const SUPERVISOR_BASE_COMMISSION = 750000 // Importe base de comision
 const SUPERVISOR_PERCENTAGE = 0.40
+
+// Interface para costos de anuncio mensuales
+interface SupervisorAdCost {
+  supervisorId: string
+  supervisorName: string
+  amount: number
+  month: string
+  createdAt: string
+  updatedAt: string
+}
 
 export default function SupervisorCommissionsPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -134,17 +144,35 @@ export default function SupervisorCommissionsPage() {
 
     totalBeforePercentage -= cancelledInstallationCost
 
-    const finalCommission = Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
+    const commissionBeforeAdCost = Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
 
     return {
       details,
       totalBeforePercentage,
       cancelledInstallationCost,
-      finalCommission,
+      commissionBeforeAdCost,
     }
   }
 
+  // Obtener costo de anuncio mensual del supervisor
+  const getMyAdCostForMonth = (): number => {
+    const userStr = localStorage.getItem("user")
+    if (!userStr) return 0
+
+    const currentUser = JSON.parse(userStr)
+    const savedAdCosts = localStorage.getItem("supervisorAdCosts")
+    if (!savedAdCosts) return 0
+
+    const adCosts: SupervisorAdCost[] = JSON.parse(savedAdCosts)
+    const adCost = adCosts.find(
+      (cost) => cost.supervisorId === currentUser._id && cost.month === selectedMonth
+    )
+    return adCost?.amount || 0
+  }
+
   const commission = calculateDetailedCommission()
+  const monthlyAdCost = getMyAdCostForMonth()
+  const finalCommission = Math.max(0, commission.commissionBeforeAdCost - monthlyAdCost)
 
   const handleOpenCostsDialog = (sale: Sale) => {
     setSelectedSale(sale)
@@ -284,9 +312,12 @@ export default function SupervisorCommissionsPage() {
     csvRows.push(``)
     csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost)}`)
     csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(commission.cancelledInstallationCost)}`)
-    csvRows.push(`Total Antes del 40%:,${formatCurrency(commission.totalBeforePercentage)}`)
+    csvRows.push(`Comision (40%):,${formatCurrency(commission.commissionBeforeAdCost)}`)
+    if (monthlyAdCost > 0) {
+      csvRows.push(`Costo de Anuncio Mensual:,-${formatCurrency(monthlyAdCost)}`)
+    }
     csvRows.push(``)
-    csvRows.push(`COMISION FINAL (40%):,${formatCurrency(commission.finalCommission)}`)
+    csvRows.push(`COMISION FINAL:,${formatCurrency(finalCommission)}`)
     csvRows.push(``)
     csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
 
@@ -365,7 +396,7 @@ export default function SupervisorCommissionsPage() {
         </div>
 
         {/* Commission Summary */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <Card className="border-border/50 bg-card/50">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -386,8 +417,8 @@ export default function SupervisorCommissionsPage() {
                   <DollarSign className="h-6 w-6 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Antes de %</p>
-                  <p className="text-2xl font-bold text-foreground">{formatCurrency(commission.totalBeforePercentage)}</p>
+                  <p className="text-sm text-muted-foreground">Com. (40%)</p>
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(commission.commissionBeforeAdCost)}</p>
                 </div>
               </div>
             </CardContent>
@@ -399,12 +430,27 @@ export default function SupervisorCommissionsPage() {
                   <Download className="h-6 w-6 text-red-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Descuentos Canceladas</p>
+                  <p className="text-sm text-muted-foreground">Desc. Canceladas</p>
                   <p className="text-2xl font-bold text-red-400">-{formatCurrency(commission.cancelledInstallationCost)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
+          {monthlyAdCost > 0 && (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Megaphone className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Costo Anuncio</p>
+                    <p className="text-2xl font-bold text-amber-400">-{formatCurrency(monthlyAdCost)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="border-primary/50 bg-primary/5">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -412,8 +458,8 @@ export default function SupervisorCommissionsPage() {
                   <DollarSign className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Comision Final (40%)</p>
-                  <p className="text-2xl font-bold text-primary">{formatCurrency(commission.finalCommission)}</p>
+                  <p className="text-sm text-muted-foreground">Comision Final</p>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(finalCommission)}</p>
                 </div>
               </div>
             </CardContent>
@@ -482,10 +528,10 @@ export default function SupervisorCommissionsPage() {
                   <tfoot>
                     <tr className="border-t-2 border-border bg-secondary/20">
                       <td colSpan={6} className="py-3 px-4 text-right font-semibold text-foreground">
-                        Total antes del 40%:
+                        Comision (40%):
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-foreground">
-                        {formatCurrency(commission.totalBeforePercentage)}
+                        {formatCurrency(commission.commissionBeforeAdCost)}
                       </td>
                       <td></td>
                     </tr>
@@ -500,12 +546,23 @@ export default function SupervisorCommissionsPage() {
                         <td></td>
                       </tr>
                     )}
+                    {monthlyAdCost > 0 && (
+                      <tr className="bg-amber-500/10">
+                        <td colSpan={6} className="py-3 px-4 text-right font-semibold text-amber-400">
+                          Costo de Anuncio Mensual:
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-amber-400">
+                          -{formatCurrency(monthlyAdCost)}
+                        </td>
+                        <td></td>
+                      </tr>
+                    )}
                     <tr className="bg-primary/10">
                       <td colSpan={6} className="py-3 px-4 text-right font-semibold text-primary">
-                        COMISION FINAL (40%):
+                        COMISION FINAL:
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-primary text-lg">
-                        {formatCurrency(commission.finalCommission)}
+                        {formatCurrency(finalCommission)}
                       </td>
                       <td></td>
                     </tr>

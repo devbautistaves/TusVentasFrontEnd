@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, salesAPI, User, Sale } from "@/lib/api"
-import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye } from "lucide-react"
+import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History } from "lucide-react"
 
 // Constantes
 const SUPERVISOR_BASE_COMMISSION = 750000
@@ -36,6 +36,16 @@ interface CommissionTier {
   minSales: number
   maxSales: number
   amount: number
+}
+
+// Interface para costos de anuncio mensuales por supervisor
+interface SupervisorAdCost {
+  supervisorId: string
+  supervisorName: string
+  amount: number
+  month: string // formato "YYYY-MM"
+  createdAt: string
+  updatedAt: string
 }
 
 const DEFAULT_TIERS: CommissionTier[] = [
@@ -68,6 +78,12 @@ export default function AdminCommissionsPage() {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
+  // Estado para costos de anuncio de supervisores
+  const [supervisorAdCosts, setSupervisorAdCosts] = useState<SupervisorAdCost[]>([])
+  const [isAdCostDialogOpen, setIsAdCostDialogOpen] = useState(false)
+  const [selectedSupervisorForAdCost, setSelectedSupervisorForAdCost] = useState<User | null>(null)
+  const [adCostAmount, setAdCostAmount] = useState(0)
+  const [isAdCostHistoryDialogOpen, setIsAdCostHistoryDialogOpen] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -90,11 +106,84 @@ export default function AdminCommissionsPage() {
       if (savedTiers) {
         setTiers(JSON.parse(savedTiers))
       }
+
+      // Cargar costos de anuncio de supervisores
+      const savedAdCosts = localStorage.getItem("supervisorAdCosts")
+      if (savedAdCosts) {
+        setSupervisorAdCosts(JSON.parse(savedAdCosts))
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Obtener costo de anuncio de un supervisor para el mes seleccionado
+  const getSupervisorAdCostForMonth = (supervisorId: string): number => {
+    const adCost = supervisorAdCosts.find(
+      (cost) => cost.supervisorId === supervisorId && cost.month === selectedMonth
+    )
+    return adCost?.amount || 0
+  }
+
+  // Guardar o actualizar costo de anuncio de un supervisor
+  const handleSaveAdCost = () => {
+    if (!selectedSupervisorForAdCost) return
+
+    const now = new Date().toISOString()
+    const existingIndex = supervisorAdCosts.findIndex(
+      (cost) => cost.supervisorId === selectedSupervisorForAdCost._id && cost.month === selectedMonth
+    )
+
+    let updatedCosts: SupervisorAdCost[]
+
+    if (existingIndex >= 0) {
+      // Actualizar existente
+      updatedCosts = [...supervisorAdCosts]
+      updatedCosts[existingIndex] = {
+        ...updatedCosts[existingIndex],
+        amount: adCostAmount,
+        updatedAt: now,
+      }
+    } else {
+      // Crear nuevo
+      const newCost: SupervisorAdCost = {
+        supervisorId: selectedSupervisorForAdCost._id,
+        supervisorName: selectedSupervisorForAdCost.name,
+        amount: adCostAmount,
+        month: selectedMonth,
+        createdAt: now,
+        updatedAt: now,
+      }
+      updatedCosts = [...supervisorAdCosts, newCost]
+    }
+
+    setSupervisorAdCosts(updatedCosts)
+    localStorage.setItem("supervisorAdCosts", JSON.stringify(updatedCosts))
+
+    toast({
+      title: "Costo de anuncio actualizado",
+      description: `Se ha ${existingIndex >= 0 ? "actualizado" : "registrado"} el costo de anuncio para ${selectedSupervisorForAdCost.name}`,
+    })
+
+    setIsAdCostDialogOpen(false)
+    setSelectedSupervisorForAdCost(null)
+    setAdCostAmount(0)
+  }
+
+  // Abrir dialog para editar costo de anuncio
+  const handleOpenAdCostDialog = (supervisor: User) => {
+    setSelectedSupervisorForAdCost(supervisor)
+    setAdCostAmount(getSupervisorAdCostForMonth(supervisor._id))
+    setIsAdCostDialogOpen(true)
+  }
+
+  // Obtener historial de costos de anuncio de un supervisor
+  const getSupervisorAdCostHistory = (supervisorId: string): SupervisorAdCost[] => {
+    return supervisorAdCosts
+      .filter((cost) => cost.supervisorId === supervisorId)
+      .sort((a, b) => b.month.localeCompare(a.month))
   }
 
   // Filtrar ventas del mes seleccionado segun reglas de negocio:
@@ -257,6 +346,7 @@ export default function AdminCommissionsPage() {
   // Calcular comision del supervisor
   // La comision se imputa en el mes que se activa (completedDate)
   // El costo de instalacion se descuenta en el mes que se coloco (installationCostDate)
+  // El costo de anuncio mensual se descuenta del total
   const calculateSupervisorCommission = (supervisorId: string) => {
     // Supervisor: ventas donde es vendedor O donde es supervisor asignado
     const userSales = monthSales.filter(s => {
@@ -269,20 +359,58 @@ export default function AdminCommissionsPage() {
     let totalBeforePercentage = 0
     
     // Comisiones de ventas completadas en este mes
-    // NOTA: El costo de anuncio (adCost) ya NO se resta automaticamente
     // Solo se restan: Base - Admin - Comision del vendedor
     completedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION
       const sellerCommission = sale.sellerCommissionPaid || 0
       
       // La instalacion se descuenta por separado segun su fecha
-      // adCost ya no se descuenta automaticamente - debe aplicarse manualmente
       const netCommission = baseCommission - ADMIN_COST - sellerCommission
       totalBeforePercentage += netCommission
     })
     
     // Descontar costos de instalacion que correspondan a este mes
     // Revisar TODAS las ventas del supervisor para costos de instalacion
+    const allSupervisorSales = sales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
+    
+    allSupervisorSales.forEach(sale => {
+      const installationCost = getInstallationCostForMonth(sale)
+      if (installationCost > 0) {
+        totalBeforePercentage -= installationCost
+      }
+    })
+    
+    // Calcular 40% primero
+    const commissionBeforeAdCost = Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
+    
+    // Descontar costo de anuncio mensual DESPUES de aplicar el 40%
+    const monthlyAdCost = getSupervisorAdCostForMonth(supervisorId)
+    
+    return Math.max(0, commissionBeforeAdCost - monthlyAdCost)
+  }
+
+  // Calcular comision ANTES de descontar costo de anuncio (para mostrar desglose)
+  const calculateSupervisorCommissionBeforeAdCost = (supervisorId: string) => {
+    const userSales = monthSales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
+    const completedSales = userSales.filter(s => s.status === "completed")
+    
+    let totalBeforePercentage = 0
+    
+    completedSales.forEach(sale => {
+      const baseCommission = SUPERVISOR_BASE_COMMISSION
+      const sellerCommission = sale.sellerCommissionPaid || 0
+      const netCommission = baseCommission - ADMIN_COST - sellerCommission
+      totalBeforePercentage += netCommission
+    })
+    
     const allSupervisorSales = sales.filter(s => {
       const saleSellerIdStr = extractId(s.sellerId)
       const saleSupervisorIdStr = extractId(s.supervisorId)
@@ -479,6 +607,10 @@ export default function AdminCommissionsPage() {
       }
       
       // RESUMEN FINAL
+      const supervisorAdCost = getSupervisorAdCostForMonth(user._id)
+      const commissionBefore = calculateSupervisorCommissionBeforeAdCost(user._id)
+      const commissionFinal = calculateSupervisorCommission(user._id)
+      
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
       csvRows.push(`RESUMEN DE LIQUIDACION`)
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
@@ -489,9 +621,12 @@ export default function AdminCommissionsPage() {
       csvRows.push(``)
       csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(totalNetCompleted)}`)
       csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(totalCancelledDiscount)}`)
-      csvRows.push(`Total Antes del 40%:,${formatCurrency(totalNetCompleted - totalCancelledDiscount)}`)
+      csvRows.push(`Comision (40%):,${formatCurrency(commissionBefore)}`)
+      if (supervisorAdCost > 0) {
+        csvRows.push(`Costo de Anuncio Mensual:,-${formatCurrency(supervisorAdCost)}`)
+      }
       csvRows.push(``)
-      csvRows.push(`COMISION FINAL (40%):,${formatCurrency(calculateSupervisorCommission(user._id))}`)
+      csvRows.push(`COMISION FINAL:,${formatCurrency(commissionFinal)}`)
       csvRows.push(``)
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
       
@@ -916,12 +1051,21 @@ export default function AdminCommissionsPage() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Canceladas</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Turnadas</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pendientes</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Comision (40%)</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. (40%)</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Megaphone className="h-3 w-3" />
+                          Costo Anuncio
+                        </div>
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Final</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {supervisors.map((user) => {
+                      const commissionBeforeAdCost = calculateSupervisorCommissionBeforeAdCost(user._id)
+                      const adCost = getSupervisorAdCostForMonth(user._id)
                       const totalCommission = calculateSupervisorCommission(user._id)
 
                       return (
@@ -955,6 +1099,29 @@ export default function AdminCommissionsPage() {
                             {getSellerSalesByStatus(user._id, "pending") + getSellerSalesByStatus(user._id, "pending_appointment")}
                           </td>
                           <td className="py-3 px-4">
+                            <span className="text-foreground">
+                              {formatCurrency(commissionBeforeAdCost)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {adCost > 0 ? (
+                                <span className="text-red-400 font-medium">-{formatCurrency(adCost)}</span>
+                              ) : (
+                                <span className="text-muted-foreground">$0</span>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenAdCostDialog(user)}
+                                title="Editar costo de anuncio"
+                                className="h-7 w-7"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
                             <span className="text-lg font-bold text-amber-400">
                               {formatCurrency(totalCommission)}
                             </span>
@@ -968,6 +1135,17 @@ export default function AdminCommissionsPage() {
                                 title="Ver detalle"
                               >
                                 <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedSupervisorForAdCost(user)
+                                  setIsAdCostHistoryDialogOpen(true)
+                                }}
+                                title="Ver historial de anuncios"
+                              >
+                                <History className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1380,6 +1558,114 @@ export default function AdminCommissionsPage() {
                 ) : (
                   "Guardar Costos"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Ad Cost Dialog for Supervisors */}
+        <Dialog open={isAdCostDialogOpen} onOpenChange={setIsAdCostDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-amber-400" />
+                Costo de Anuncio Mensual
+              </DialogTitle>
+              <DialogDescription>
+                Establece el costo de anuncio para <span className="font-semibold text-foreground">{selectedSupervisorForAdCost?.name}</span> en el mes de{" "}
+                <span className="font-semibold text-foreground">
+                  {new Date(selectedMonth + "-01").toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="adCostAmount">Costo de Anuncio del Mes</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="adCostAmount"
+                    type="number"
+                    value={adCostAmount}
+                    onChange={(e) => setAdCostAmount(Number(e.target.value))}
+                    className="bg-secondary/50 pl-8"
+                    placeholder="0"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Este monto se restara de la comision final (40%) del supervisor para este mes.
+                </p>
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsAdCostDialogOpen(false)
+                setSelectedSupervisorForAdCost(null)
+                setAdCostAmount(0)
+              }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveAdCost}
+                className="bg-amber-500 text-white hover:bg-amber-600"
+              >
+                Guardar Costo
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Ad Cost History Dialog */}
+        <Dialog open={isAdCostHistoryDialogOpen} onOpenChange={setIsAdCostHistoryDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <History className="h-5 w-5 text-amber-400" />
+                Historial de Costos de Anuncio
+              </DialogTitle>
+              <DialogDescription>
+                Historial de costos de anuncio para <span className="font-semibold text-foreground">{selectedSupervisorForAdCost?.name}</span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {selectedSupervisorForAdCost && getSupervisorAdCostHistory(selectedSupervisorForAdCost._id).length > 0 ? (
+                getSupervisorAdCostHistory(selectedSupervisorForAdCost._id).map((cost) => (
+                  <div
+                    key={`${cost.supervisorId}-${cost.month}`}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      cost.month === selectedMonth 
+                        ? "bg-amber-500/10 border-amber-500/30" 
+                        : "bg-secondary/30 border-border/50"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {new Date(cost.month + "-01").toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Actualizado: {new Date(cost.updatedAt).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-red-400">-{formatCurrency(cost.amount)}</p>
+                      {cost.month === selectedMonth && (
+                        <span className="text-xs text-amber-400">Mes actual</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay historial de costos de anuncio para este supervisor.
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsAdCostHistoryDialogOpen(false)
+                setSelectedSupervisorForAdCost(null)
+              }}>
+                Cerrar
               </Button>
             </DialogFooter>
           </DialogContent>

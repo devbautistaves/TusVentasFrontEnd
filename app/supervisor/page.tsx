@@ -24,12 +24,23 @@ import {
   Clock,
   Calendar,
   AlertTriangle,
+  Megaphone,
 } from "lucide-react"
 
 // Constantes de comision supervisor
 const SUPERVISOR_BASE_COMMISSION = 750000
 const ADMIN_COST = 35000
 const SUPERVISOR_PERCENTAGE = 0.40
+
+// Interface para costos de anuncio mensuales
+interface SupervisorAdCost {
+  supervisorId: string
+  supervisorName: string
+  amount: number
+  month: string
+  createdAt: string
+  updatedAt: string
+}
 
 export default function SupervisorDashboardPage() {
   const [mySales, setMySales] = useState<Sale[]>([])
@@ -38,15 +49,29 @@ export default function SupervisorDashboardPage() {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
+  const [myAdCost, setMyAdCost] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("token")
-      if (!token) return
+      const userStr = localStorage.getItem("user")
+      if (!token || !userStr) return
 
       try {
         const salesRes = await salesAPI.getMySales(token)
         setMySales(salesRes.sales)
+
+        // Cargar costo de anuncio del mes actual para este supervisor
+        const currentUser = JSON.parse(userStr)
+        const savedAdCosts = localStorage.getItem("supervisorAdCosts")
+        if (savedAdCosts) {
+          const adCosts: SupervisorAdCost[] = JSON.parse(savedAdCosts)
+          const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+          const myCurrentAdCost = adCosts.find(
+            (cost) => cost.supervisorId === currentUser._id && cost.month === currentMonth
+          )
+          setMyAdCost(myCurrentAdCost?.amount || 0)
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -56,6 +81,22 @@ export default function SupervisorDashboardPage() {
 
     fetchData()
   }, [])
+
+  // Obtener costo de anuncio del mes seleccionado
+  const getMyAdCostForMonth = (): number => {
+    const userStr = localStorage.getItem("user")
+    if (!userStr) return 0
+
+    const currentUser = JSON.parse(userStr)
+    const savedAdCosts = localStorage.getItem("supervisorAdCosts")
+    if (!savedAdCosts) return 0
+
+    const adCosts: SupervisorAdCost[] = JSON.parse(savedAdCosts)
+    const adCost = adCosts.find(
+      (cost) => cost.supervisorId === currentUser._id && cost.month === selectedMonth
+    )
+    return adCost?.amount || 0
+  }
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -179,7 +220,9 @@ export default function SupervisorDashboardPage() {
   }
 
   const totalBeforePercentage = calculateSupervisorCommission()
-  const totalCommission = totalBeforePercentage * SUPERVISOR_PERCENTAGE
+  const commissionBeforeAdCost = totalBeforePercentage * SUPERVISOR_PERCENTAGE
+  const monthlyAdCost = getMyAdCostForMonth()
+  const totalCommission = Math.max(0, commissionBeforeAdCost - monthlyAdCost)
 
   // Generar meses disponibles
   const getAvailableMonths = () => {
@@ -243,13 +286,19 @@ export default function SupervisorDashboardPage() {
           <CardContent className="p-8">
             <div className="flex items-center justify-between">
               <div className="space-y-3">
-                <p className="text-lg font-semibold text-foreground">MI COMISION FINAL (40%)</p>
+                <p className="text-lg font-semibold text-foreground">MI COMISION FINAL</p>
                 <p className="text-5xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.5)]">
                   {formatCurrency(totalCommission)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Basado en {installedSales.length} ventas instaladas
-                </p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>Basado en {installedSales.length} ventas instaladas</p>
+                  {monthlyAdCost > 0 && (
+                    <p className="flex items-center gap-1 text-amber-400">
+                      <Megaphone className="h-3 w-3" />
+                      Costo de anuncio descontado: -{formatCurrency(monthlyAdCost)}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="h-16 w-16 rounded-2xl bg-[#39FF14]/20 flex items-center justify-center">
                 <DollarSign className="h-8 w-8 text-[#39FF14]" />
@@ -322,18 +371,27 @@ export default function SupervisorDashboardPage() {
                 <span className="font-semibold text-red-400">-{formatCurrency(installedSales.length * ADMIN_COST)}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
-                <span className="text-sm text-muted-foreground">Costos de Anuncios:</span>
+                <span className="text-sm text-muted-foreground">Costos de Anuncios (ventas):</span>
                 <span className="font-semibold text-red-400">-{formatCurrency(totalAdCosts)}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
                 <span className="text-sm text-muted-foreground">Comisiones Vendedores:</span>
                 <span className="font-semibold text-red-400">-{formatCurrency(totalSellerCommissions)}</span>
               </div>
+              {monthlyAdCost > 0 && (
+                <div className="flex justify-between items-center p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <span className="text-sm text-amber-400 flex items-center gap-2">
+                    <Megaphone className="h-4 w-4" />
+                    Costo de Anuncio Mensual:
+                  </span>
+                  <span className="font-semibold text-amber-400">-{formatCurrency(monthlyAdCost)}</span>
+                </div>
+              )}
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
                   <span className="text-sm font-medium text-foreground">TOTAL DESCUENTOS:</span>
                   <span className="font-bold text-lg text-red-400">
-                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions)}
+                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions + monthlyAdCost)}
                   </span>
                 </div>
               </div>
