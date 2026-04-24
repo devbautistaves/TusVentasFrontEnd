@@ -118,11 +118,11 @@ export const salesAPI = {
       body: JSON.stringify(data),
     }),
 
-  updateStatus: (token: string, id: string, status: string, notes?: string) =>
+  updateStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string) =>
     fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
       method: "PUT",
       token,
-      body: JSON.stringify({ status, notes }),
+      body: JSON.stringify({ status, notes, statusDate }),
     }),
 
   getAdminSales: (token: string) =>
@@ -345,6 +345,10 @@ export interface Sale {
   adminCost?: number
   adCost?: number
   sellerCommissionPaid?: number
+  // Fechas de estados para corte mensual
+  appointedDate?: string
+  completedDate?: string
+  installationCostDate?: string
   createdAt: string
   updatedAt: string
 }

@@ -97,16 +97,65 @@ export default function AdminCommissionsPage() {
     }
   }
 
-  // Filtrar ventas del mes seleccionado
+  // Filtrar ventas del mes seleccionado segun reglas de negocio:
+  // - ACTIVADAS (completed): Se muestran en el mes de completedDate (fecha de activacion)
+  // - TURNADAS (appointed): Se muestran en el mes de appointedDate (fecha del turno)
+  // - OBSERVADAS (pending_appointment): Aparecen en TODOS los meses hasta que se resuelvan
+  // - CANCELADAS: Quedan en el mes donde fueron canceladas (createdAt)
+  // - PENDIENTES: Se muestran en el mes de createdAt
   const getMonthSales = () => {
     const [year, month] = selectedMonth.split("-").map(Number)
+    
     return sales.filter(sale => {
+      // OBSERVADAS: aparecen en todos los meses
+      if (sale.status === "pending_appointment") {
+        return true
+      }
+      
+      // ACTIVADAS: usar fecha de activacion
+      if (sale.status === "completed" && sale.completedDate) {
+        const completedDate = new Date(sale.completedDate)
+        return completedDate.getMonth() + 1 === month && completedDate.getFullYear() === year
+      }
+      
+      // TURNADAS: usar fecha del turno
+      if (sale.status === "appointed" && sale.appointedDate) {
+        const appointedDate = new Date(sale.appointedDate)
+        return appointedDate.getMonth() + 1 === month && appointedDate.getFullYear() === year
+      }
+      
+      // CANCELADAS y otras: usar fecha de creacion
       const saleDate = new Date(sale.createdAt)
       return saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year
     })
   }
 
   const monthSales = getMonthSales()
+  
+  // Obtener ventas con costo de instalacion en el mes seleccionado
+  // El costo de instalacion se descuenta en el mes que se coloco
+  const getInstallationCostForMonth = (sale: Sale): number => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    
+    if (!sale.installationCost || sale.installationCost <= 0) return 0
+    
+    // Si tiene fecha de costo de instalacion, usar esa fecha
+    if (sale.installationCostDate) {
+      const costDate = new Date(sale.installationCostDate)
+      if (costDate.getMonth() + 1 === month && costDate.getFullYear() === year) {
+        return sale.installationCost
+      }
+      return 0
+    }
+    
+    // Si no tiene fecha especifica, usar la fecha de creacion
+    const saleDate = new Date(sale.createdAt)
+    if (saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year) {
+      return sale.installationCost
+    }
+    
+    return 0
+  }
 
   // Helper para extraer el ID de sellerId o supervisorId (puede ser string u objeto)
   const extractId = (field: string | { _id: string } | undefined): string => {
@@ -152,13 +201,62 @@ export default function AdminCommissionsPage() {
     return 0
   }
 
+  // Calcular comision del vendedor con descuentos de instalacion
+  // La comision se imputa en el mes que se activa (completedDate)
+  // El costo de instalacion se descuenta en el mes que se coloco (installationCostDate)
   const calculateSellerCommission = (sellerId: string) => {
+    const user = users.find(u => u._id === sellerId)
+    const userSales = getUserSales(sellerId, user?.role || "seller")
+    const completedSales = userSales.filter(s => s.status === "completed")
+    
+    // Comision base por cantidad de ventas instaladas en este mes
+    const activatedCount = completedSales.length
+    const perSale = getCommissionPerSale(activatedCount)
+    let totalCommission = activatedCount * perSale
+    
+    // Descontar costos de instalacion que correspondan a este mes
+    // Revisar TODAS las ventas del usuario (no solo las del mes) para costos de instalacion
+    const allUserSales = sales.filter((s) => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      return saleSellerIdStr === sellerId
+    })
+    
+    allUserSales.forEach(sale => {
+      const installationCost = getInstallationCostForMonth(sale)
+      if (installationCost > 0) {
+        totalCommission -= installationCost
+      }
+    })
+    
+    return Math.max(0, totalCommission)
+  }
+  
+  // Obtener solo la comision bruta (sin descuentos) para mostrar en tabla
+  const getSellerGrossCommission = (sellerId: string) => {
     const activatedSales = getSellerSales(sellerId)
     const perSale = getCommissionPerSale(activatedSales)
     return activatedSales * perSale
   }
+  
+  // Obtener total de descuentos de instalacion del vendedor para este mes
+  const getSellerInstallationDiscounts = (sellerId: string) => {
+    // Revisar TODAS las ventas del usuario para costos de instalacion del mes
+    const allUserSales = sales.filter((s) => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      return saleSellerIdStr === sellerId
+    })
+    
+    let totalDiscounts = 0
+    allUserSales.forEach(sale => {
+      totalDiscounts += getInstallationCostForMonth(sale)
+    })
+    
+    return totalDiscounts
+  }
 
   // Calcular comision del supervisor
+  // La comision se imputa en el mes que se activa (completedDate)
+  // El costo de instalacion se descuenta en el mes que se coloco (installationCostDate)
   const calculateSupervisorCommission = (supervisorId: string) => {
     // Supervisor: ventas donde es vendedor O donde es supervisor asignado
     const userSales = monthSales.filter(s => {
@@ -167,27 +265,35 @@ export default function AdminCommissionsPage() {
       return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
     })
     const completedSales = userSales.filter(s => s.status === "completed")
-    const cancelledSales = userSales.filter(s => s.status === "cancelled")
-
+    
     let totalBeforePercentage = 0
-
+    
+    // Comisiones de ventas completadas en este mes
     completedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION
-      const installationCost = sale.installationCost || 0
       const adCost = sale.adCost || 0
       const sellerCommission = sale.sellerCommissionPaid || 0
       
-      const netCommission = baseCommission - installationCost - ADMIN_COST - adCost - sellerCommission
+      // La instalacion se descuenta por separado segun su fecha
+      const netCommission = baseCommission - ADMIN_COST - adCost - sellerCommission
       totalBeforePercentage += netCommission
     })
-
-    // Descontar instalaciones de canceladas
-    cancelledSales.forEach(sale => {
-      if (sale.installationCost && sale.installationCost > 0) {
-        totalBeforePercentage -= sale.installationCost
+    
+    // Descontar costos de instalacion que correspondan a este mes
+    // Revisar TODAS las ventas del supervisor para costos de instalacion
+    const allSupervisorSales = sales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
+    
+    allSupervisorSales.forEach(sale => {
+      const installationCost = getInstallationCostForMonth(sale)
+      if (installationCost > 0) {
+        totalBeforePercentage -= installationCost
       }
     })
-
+    
     return Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
   }
 
@@ -297,17 +403,24 @@ export default function AdminCommissionsPage() {
         `TOTAL COMISION (40%),${calculateSupervisorCommission(user._id)}`
       ].join("\n")
     } else {
+      const allUserSales = getUserSales(user._id, user.role)
       const activatedCount = userSales.length
       const perSale = getCommissionPerSale(activatedCount)
+      const grossCommission = getSellerGrossCommission(user._id)
+      const installationDiscounts = getSellerInstallationDiscounts(user._id)
+      const netCommission = calculateSellerCommission(user._id)
+      
       csvContent = [
-        "Cliente,DNI,Plan,Fecha,Estado",
-        ...userSales.map(sale => 
-          `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},Instalada`
+        "Cliente,DNI,Plan,Fecha,Estado,Costo Instalacion",
+        ...allUserSales.map(sale => 
+          `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${sale.status === "completed" ? "Instalada" : sale.status === "cancelled" ? "Cancelada" : "Pendiente"},${sale.installationCost || 0}`
         ),
         "",
         `Ventas Instaladas,${activatedCount}`,
         `Comision por Venta,${perSale}`,
-        `TOTAL COMISION,${calculateSellerCommission(user._id)}`
+        `Comision Bruta,${grossCommission}`,
+        `Descuentos Instalacion,${installationDiscounts}`,
+        `COMISION NETA,${netCommission}`
       ].join("\n")
     }
 
@@ -652,7 +765,9 @@ export default function AdminCommissionsPage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Turnadas</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pendientes</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Rango</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Comision</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Bruta</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Desc. Inst.</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Neta</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
@@ -660,7 +775,9 @@ export default function AdminCommissionsPage() {
                   {sellers.map((user) => {
                     const activatedSales = getSellerSales(user._id)
                     const commissionPerSale = getCommissionPerSale(activatedSales)
-                    const totalCommission = calculateSellerCommission(user._id)
+                    const grossCommission = getSellerGrossCommission(user._id)
+                    const installationDiscounts = getSellerInstallationDiscounts(user._id)
+                    const netCommission = calculateSellerCommission(user._id)
                     const currentTier = tiers.find(
                       (t) => activatedSales >= t.minSales && activatedSales <= t.maxSales
                     )
@@ -706,8 +823,8 @@ export default function AdminCommissionsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div>
-                            <span className="text-lg font-bold text-primary">
-                              {formatCurrency(totalCommission)}
+                            <span className="text-foreground">
+                              {formatCurrency(grossCommission)}
                             </span>
                             {activatedSales > 0 && (
                               <p className="text-xs text-muted-foreground">
@@ -715,6 +832,20 @@ export default function AdminCommissionsPage() {
                               </p>
                             )}
                           </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          {installationDiscounts > 0 ? (
+                            <span className="text-red-400">
+                              -{formatCurrency(installationDiscounts)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">$0</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-lg font-bold text-primary">
+                            {formatCurrency(netCommission)}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
@@ -741,7 +872,7 @@ export default function AdminCommissionsPage() {
                   })}
                   {sellers.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={10} className="py-8 text-center text-muted-foreground">
                         No hay vendedores registrados
                       </td>
                     </tr>
