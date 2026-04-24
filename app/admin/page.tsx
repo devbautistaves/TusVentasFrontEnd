@@ -131,12 +131,12 @@ export default function AdminDashboardPage() {
     return acc + (sale.sellerCommissionPaid || sale.commission || 0)
   }, 0)
 
-  // COMISIONES SUPERVISORES: (Ingreso - Admin - Instalacion - Anuncios - ComisionVendedor) * 40%
+  // COMISIONES SUPERVISORES: (Ingreso - Admin - Instalacion - ComisionVendedor) * 40%
+  // NOTA: adCost ya no se resta automaticamente
   const totalSupervisorCommissions = activatedSales.reduce((acc, sale) => {
     const installationCost = sale.installationCost || 0
-    const adCost = sale.adCost || 0
     const sellerCommission = sale.sellerCommissionPaid || sale.commission || 0
-    const netBeforePercentage = REVENUE_PER_SALE - ADMIN_COST_PER_SALE - installationCost - adCost - sellerCommission
+    const netBeforePercentage = REVENUE_PER_SALE - ADMIN_COST_PER_SALE - installationCost - sellerCommission
     return acc + Math.max(0, netBeforePercentage * 0.4)
   }, 0)
 

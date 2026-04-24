@@ -113,12 +113,12 @@ export default function HistoryPage() {
   const fetchData = async (token: string) => {
     try {
       setLoading(true)
-      const [salesData, usersData] = await Promise.all([
+      const [salesResponse, usersResponse] = await Promise.all([
         salesAPI.getAll(token),
         usersAPI.getAll(token)
       ])
-      setSales(salesData)
-      setUsers(usersData)
+      setSales(salesResponse.sales || [])
+      setUsers(usersResponse.users || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {

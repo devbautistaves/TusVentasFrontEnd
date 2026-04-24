@@ -100,6 +100,7 @@ export default function SupervisorDashboardPage() {
   }, 0)
 
   // Calcular comisiones del supervisor
+  // NOTA: adCost ya no se resta automaticamente
   const calculateSupervisorCommission = () => {
     let totalBeforePercentage = 0
 
@@ -107,10 +108,9 @@ export default function SupervisorDashboardPage() {
     installedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION
       const installationCost = sale.installationCost || 0
-      const adCost = sale.adCost || 0
       const sellerCommission = sale.sellerCommissionPaid || 0
       
-      const netCommission = baseCommission - installationCost - ADMIN_COST - adCost - sellerCommission
+      const netCommission = baseCommission - installationCost - ADMIN_COST - sellerCommission
       totalBeforePercentage += netCommission
     })
 

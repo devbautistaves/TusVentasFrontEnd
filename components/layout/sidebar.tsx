@@ -68,7 +68,18 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/supervisor/chat", label: "Chat", icon: MessageSquare },
   ]
 
-  const links = role === "admin" ? adminLinks : role === "supervisor" ? supervisorLinks : sellerLinks
+  const supportLinks = [
+    { href: "/support", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/support/sales", label: "Ventas", icon: ShoppingCart },
+  ]
+
+  const links = role === "admin" 
+    ? adminLinks 
+    : role === "supervisor" 
+      ? supervisorLinks 
+      : role === "support"
+        ? supportLinks
+        : sellerLinks
 
   return (
     <aside className="h-screen w-64 border-r border-border bg-card flex-shrink-0">
@@ -94,7 +105,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
         {/* User info */}
         <div className="border-b border-border px-6 py-4">
           <p className="text-sm font-medium text-foreground truncate">{userName}</p>
-          <p className="text-xs text-muted-foreground capitalize">{role === "admin" ? "Administrador" : role === "supervisor" ? "Supervisor" : "Vendedor"}</p>
+          <p className="text-xs text-muted-foreground capitalize">{role === "admin" ? "Administrador" : role === "supervisor" ? "Supervisor" : role === "support" ? "Soporte" : "Vendedor"}</p>
         </div>
 
         {/* Navigation */}
@@ -123,14 +134,16 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-border p-4 space-y-2">
-          <Link
-            href={role === "admin" ? "/admin/settings" : role === "supervisor" ? "/supervisor/settings" : "/seller/settings"}
-            onClick={onLinkClick}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-          >
-            <Settings className="h-5 w-5" />
-            {role === "seller" ? "Cambiar Contraseña" : "Configuracion"}
-          </Link>
+          {role !== "support" && (
+            <Link
+              href={role === "admin" ? "/admin/settings" : role === "supervisor" ? "/supervisor/settings" : "/seller/settings"}
+              onClick={onLinkClick}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            >
+              <Settings className="h-5 w-5" />
+              {role === "seller" ? "Cambiar Contraseña" : "Configuracion"}
+            </Link>
+          )}
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"

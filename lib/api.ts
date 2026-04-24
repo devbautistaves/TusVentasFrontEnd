@@ -297,7 +297,7 @@ export interface User {
   email: string
   phone: string
   location: string
-  role: "seller" | "admin" | "supervisor"
+  role: "seller" | "admin" | "supervisor" | "support"
   commissionRate: number
   isActive: boolean
   totalSales: number
@@ -320,7 +320,7 @@ export interface CreateUserData {
   password: string
   phone: string
   location: string
-  role: "seller" | "admin" | "supervisor"
+  role: "seller" | "admin" | "supervisor" | "support"
 }
 
 export interface Sale {

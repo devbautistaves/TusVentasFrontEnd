@@ -19,7 +19,7 @@ import Link from "next/link"
 
 interface HeaderProps {
   userName: string
-  role: "admin" | "seller"
+  role: "admin" | "seller" | "supervisor" | "support"
   onMenuClick?: () => void
 }
 
@@ -127,12 +127,16 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
                 </DropdownMenuItem>
               ))
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={`/${role}/notifications`} className="w-full text-center text-sm text-primary">
-                Ver todas
-              </Link>
-            </DropdownMenuItem>
+            {role !== "support" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={`/${role}/notifications`} className="w-full text-center text-sm text-primary">
+                    Ver todas
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -151,13 +155,17 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={`/${role}/settings`}>Perfil</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/${role}/settings`}>Configuracion</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {role !== "support" && (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href={`/${role}/settings`}>Perfil</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/${role}/settings`}>Configuracion</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem 
               onClick={handleLogout}
               className="text-destructive focus:text-destructive cursor-pointer"

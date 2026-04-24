@@ -9,7 +9,7 @@ import { User, usersAPI } from "@/lib/api"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  requiredRole?: "admin" | "seller" | "supervisor"
+  requiredRole?: "admin" | "seller" | "supervisor" | "support"
 }
 
 export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps) {
@@ -41,7 +41,13 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       localStorage.setItem("user", JSON.stringify(response.user))
       
       if (requiredRole && response.user.role !== requiredRole) {
-        const redirectPath = response.user.role === "admin" ? "/admin" : response.user.role === "supervisor" ? "/supervisor" : "/seller"
+        const redirectPath = response.user.role === "admin" 
+          ? "/admin" 
+          : response.user.role === "supervisor" 
+            ? "/supervisor" 
+            : response.user.role === "support"
+              ? "/support"
+              : "/seller"
         router.push(redirectPath)
         return
       }

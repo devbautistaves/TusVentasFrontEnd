@@ -269,13 +269,15 @@ export default function AdminCommissionsPage() {
     let totalBeforePercentage = 0
     
     // Comisiones de ventas completadas en este mes
+    // NOTA: El costo de anuncio (adCost) ya NO se resta automaticamente
+    // Solo se restan: Base - Admin - Comision del vendedor
     completedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION
-      const adCost = sale.adCost || 0
       const sellerCommission = sale.sellerCommissionPaid || 0
       
       // La instalacion se descuenta por separado segun su fecha
-      const netCommission = baseCommission - ADMIN_COST - adCost - sellerCommission
+      // adCost ya no se descuenta automaticamente - debe aplicarse manualmente
+      const netCommission = baseCommission - ADMIN_COST - sellerCommission
       totalBeforePercentage += netCommission
     })
     
@@ -389,15 +391,15 @@ export default function AdminCommissionsPage() {
     let csvContent = ""
     
     if (user.role === "supervisor") {
+      // NOTA: adCost ya no se resta automaticamente en el calculo
       csvContent = [
-        "Cliente,DNI,Plan,Fecha,Base,Instalacion,Admin,Anuncio,Com.Vendedor,Neto",
+        "Cliente,DNI,Plan,Fecha,Base,Instalacion,Admin,Com.Vendedor,Neto",
         ...userSales.map(sale => {
           const base = SUPERVISOR_BASE_COMMISSION
           const inst = sale.installationCost || 0
-          const ad = sale.adCost || 0
           const seller = sale.sellerCommissionPaid || 0
-          const net = base - inst - ADMIN_COST - ad - seller
-          return `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${base},${inst},${ADMIN_COST},${ad},${seller},${net}`
+          const net = base - inst - ADMIN_COST - seller
+          return `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${base},${inst},${ADMIN_COST},${seller},${net}`
         }),
         "",
         `TOTAL COMISION (40%),${calculateSupervisorCommission(user._id)}`
@@ -648,7 +650,7 @@ export default function AdminCommissionsPage() {
               </div>
               <div className="p-4 rounded-lg bg-secondary/30 text-center">
                 <p className="text-sm text-muted-foreground mb-2">+ Costos Variables</p>
-                <p className="text-sm text-muted-foreground">Instalacion, Anuncio, Com. Vendedor</p>
+                <p className="text-sm text-muted-foreground">Instalacion, Com. Vendedor</p>
               </div>
               <div className="p-4 rounded-lg bg-amber-500/20 text-center">
                 <p className="text-sm text-muted-foreground mb-2">Porcentaje Final</p>
@@ -1096,7 +1098,7 @@ export default function AdminCommissionsPage() {
                 </div>
               </Field>
               <Field>
-                <FieldLabel htmlFor="adCost">Costo de Anuncio</FieldLabel>
+                <FieldLabel htmlFor="adCost">Costo de Anuncio (informativo - no se resta automaticamente)</FieldLabel>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input

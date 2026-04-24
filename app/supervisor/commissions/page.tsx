@@ -89,14 +89,14 @@ export default function SupervisorCommissionsPage() {
   const cancelledSales = monthSales.filter(s => s.status === "cancelled")
 
   // Calcular comision detallada
-  // Base: $750,000 - Descontar: Instalacion, Administracion, Anuncio, Comision Vendedor
+  // Base: $750,000 - Descontar: Instalacion, Administracion, Comision Vendedor
+  // NOTA: El costo de anuncio (adCost) ya NO se resta automaticamente
   const calculateDetailedCommission = () => {
     let details: Array<{
       sale: Sale
       baseCommission: number
       installationCost: number
       adminCost: number
-      adCost: number
       sellerCommission: number
       netCommission: number
     }> = []
@@ -107,11 +107,11 @@ export default function SupervisorCommissionsPage() {
       const baseCommission = SUPERVISOR_BASE_COMMISSION // $750,000
       const installationCost = sale.installationCost || 0
       const adminCost = sale.adminCost || 0
-      const adCost = sale.adCost || 0
       const sellerCommission = sale.sellerCommissionPaid || 0
       
-      // Neto = Base - Instalacion - Admin - Anuncio - Comision Vendedor
-      const netCommission = baseCommission - installationCost - adminCost - adCost - sellerCommission
+      // Neto = Base - Instalacion - Admin - Comision Vendedor
+      // adCost ya no se resta automaticamente
+      const netCommission = baseCommission - installationCost - adminCost - sellerCommission
       totalBeforePercentage += netCommission
 
       details.push({
@@ -119,7 +119,6 @@ export default function SupervisorCommissionsPage() {
         baseCommission,
         installationCost,
         adminCost,
-        adCost,
         sellerCommission,
         netCommission,
       })
@@ -200,7 +199,6 @@ export default function SupervisorCommissionsPage() {
       "Base",
       "Costo Instalacion",
       "Costo Admin",
-      "Costo Anuncio",
       "Comision Vendedor",
       "Neto"
     ]
@@ -214,7 +212,6 @@ export default function SupervisorCommissionsPage() {
       d.baseCommission,
       d.installationCost,
       d.adminCost,
-      d.adCost,
       d.sellerCommission,
       d.netCommission,
     ])
@@ -375,7 +372,6 @@ export default function SupervisorCommissionsPage() {
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Base</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Instalacion</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Admin</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Anuncio</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Com. Vendedor</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Neto</th>
                     <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
@@ -397,7 +393,6 @@ export default function SupervisorCommissionsPage() {
                       <td className="py-3 px-4 text-right text-foreground">{formatCurrency(detail.baseCommission)}</td>
                       <td className="py-3 px-4 text-right text-red-400">-{formatCurrency(detail.installationCost)}</td>
                       <td className="py-3 px-4 text-right text-red-400">-{formatCurrency(detail.adminCost)}</td>
-                      <td className="py-3 px-4 text-right text-red-400">-{formatCurrency(detail.adCost)}</td>
                       <td className="py-3 px-4 text-right text-red-400">-{formatCurrency(detail.sellerCommission)}</td>
                       <td className="py-3 px-4 text-right font-semibold text-primary">{formatCurrency(detail.netCommission)}</td>
                       <td className="py-3 px-4 text-center">
@@ -413,7 +408,7 @@ export default function SupervisorCommissionsPage() {
                   ))}
                   {commission.details.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No hay ventas instaladas este mes
                       </td>
                     </tr>
@@ -422,7 +417,7 @@ export default function SupervisorCommissionsPage() {
                 {commission.details.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-border bg-secondary/20">
-                      <td colSpan={7} className="py-3 px-4 text-right font-semibold text-foreground">
+                      <td colSpan={6} className="py-3 px-4 text-right font-semibold text-foreground">
                         Total antes del 40%:
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-foreground">
@@ -432,7 +427,7 @@ export default function SupervisorCommissionsPage() {
                     </tr>
                     {commission.cancelledInstallationCost > 0 && (
                       <tr className="bg-secondary/20">
-                        <td colSpan={7} className="py-3 px-4 text-right font-semibold text-red-400">
+                        <td colSpan={6} className="py-3 px-4 text-right font-semibold text-red-400">
                           Descuento por canceladas:
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-red-400">
@@ -442,7 +437,7 @@ export default function SupervisorCommissionsPage() {
                       </tr>
                     )}
                     <tr className="bg-primary/10">
-                      <td colSpan={7} className="py-3 px-4 text-right font-semibold text-primary">
+                      <td colSpan={6} className="py-3 px-4 text-right font-semibold text-primary">
                         COMISION FINAL (40%):
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-primary text-lg">
@@ -540,7 +535,7 @@ export default function SupervisorCommissionsPage() {
                 </div>
               </Field>
               <Field>
-                <FieldLabel htmlFor="adCost">Costo de Anuncio</FieldLabel>
+                <FieldLabel htmlFor="adCost">Costo de Anuncio (informativo - no se resta automaticamente)</FieldLabel>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input

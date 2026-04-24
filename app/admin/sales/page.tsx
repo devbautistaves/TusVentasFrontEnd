@@ -669,7 +669,7 @@ export default function AdminSalesPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Costo de Anuncio</label>
+                <label className="text-sm font-medium text-foreground">Costo de Anuncio (informativo - no se resta automaticamente)</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input
