@@ -24,22 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { salesAPI, Sale } from "@/lib/api"
+import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
 import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2, Megaphone } from "lucide-react"
 
 // Constantes de comision supervisor
 const SUPERVISOR_BASE_COMMISSION = 750000 // Importe base de comision
 const SUPERVISOR_PERCENTAGE = 0.40
-
-// Interface para costos de anuncio mensuales
-interface SupervisorAdCost {
-  supervisorId: string
-  supervisorName: string
-  amount: number
-  month: string
-  createdAt: string
-  updatedAt: string
-}
 
 export default function SupervisorCommissionsPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -57,21 +47,31 @@ export default function SupervisorCommissionsPage() {
     adCost: 0,
     sellerCommissionPaid: 0,
   })
+  const [monthlyAdCost, setMonthlyAdCost] = useState(0)
   const { toast } = useToast()
 
   useEffect(() => {
-    fetchSales()
-  }, [])
+    fetchData()
+  }, [selectedMonth])
 
-  const fetchSales = async () => {
+  const fetchData = async () => {
     const token = localStorage.getItem("token")
     if (!token) return
 
     try {
-      const response = await salesAPI.getMySales(token)
-      setSales(response.sales)
+      const [salesRes, adCostsRes] = await Promise.all([
+        salesAPI.getMySales(token),
+        adCostsAPI.getMyCosts(token, selectedMonth),
+      ])
+      setSales(salesRes.sales)
+
+      // Obtener el costo de anuncio del mes seleccionado
+      const currentAdCost = adCostsRes.adCosts.find(
+        (cost) => cost.month === selectedMonth
+      )
+      setMonthlyAdCost(currentAdCost?.amount || 0)
     } catch (error) {
-      console.error("Error fetching sales:", error)
+      console.error("Error fetching data:", error)
     } finally {
       setIsLoading(false)
     }
@@ -154,24 +154,7 @@ export default function SupervisorCommissionsPage() {
     }
   }
 
-  // Obtener costo de anuncio mensual del supervisor
-  const getMyAdCostForMonth = (): number => {
-    const userStr = localStorage.getItem("user")
-    if (!userStr) return 0
-
-    const currentUser = JSON.parse(userStr)
-    const savedAdCosts = localStorage.getItem("supervisorAdCosts")
-    if (!savedAdCosts) return 0
-
-    const adCosts: SupervisorAdCost[] = JSON.parse(savedAdCosts)
-    const adCost = adCosts.find(
-      (cost) => cost.supervisorId === currentUser._id && cost.month === selectedMonth
-    )
-    return adCost?.amount || 0
-  }
-
   const commission = calculateDetailedCommission()
-  const monthlyAdCost = getMyAdCostForMonth()
   const finalCommission = Math.max(0, commission.commissionBeforeAdCost - monthlyAdCost)
 
   const handleOpenCostsDialog = (sale: Sale) => {

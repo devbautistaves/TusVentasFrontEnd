@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { salesAPI, Sale } from "@/lib/api"
+import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
 import {
   DollarSign,
   Plus,
@@ -32,16 +32,6 @@ const SUPERVISOR_BASE_COMMISSION = 750000
 const ADMIN_COST = 35000
 const SUPERVISOR_PERCENTAGE = 0.40
 
-// Interface para costos de anuncio mensuales
-interface SupervisorAdCost {
-  supervisorId: string
-  supervisorName: string
-  amount: number
-  month: string
-  createdAt: string
-  updatedAt: string
-}
-
 export default function SupervisorDashboardPage() {
   const [mySales, setMySales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -49,29 +39,25 @@ export default function SupervisorDashboardPage() {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
-  const [myAdCost, setMyAdCost] = useState(0)
+  const [monthlyAdCost, setMonthlyAdCost] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("token")
-      const userStr = localStorage.getItem("user")
-      if (!token || !userStr) return
+      if (!token) return
 
       try {
-        const salesRes = await salesAPI.getMySales(token)
+        const [salesRes, adCostsRes] = await Promise.all([
+          salesAPI.getMySales(token),
+          adCostsAPI.getMyCosts(token, selectedMonth),
+        ])
         setMySales(salesRes.sales)
 
-        // Cargar costo de anuncio del mes actual para este supervisor
-        const currentUser = JSON.parse(userStr)
-        const savedAdCosts = localStorage.getItem("supervisorAdCosts")
-        if (savedAdCosts) {
-          const adCosts: SupervisorAdCost[] = JSON.parse(savedAdCosts)
-          const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
-          const myCurrentAdCost = adCosts.find(
-            (cost) => cost.supervisorId === currentUser._id && cost.month === currentMonth
-          )
-          setMyAdCost(myCurrentAdCost?.amount || 0)
-        }
+        // Obtener el costo de anuncio del mes actual
+        const currentAdCost = adCostsRes.adCosts.find(
+          (cost) => cost.month === selectedMonth
+        )
+        setMonthlyAdCost(currentAdCost?.amount || 0)
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -80,23 +66,7 @@ export default function SupervisorDashboardPage() {
     }
 
     fetchData()
-  }, [])
-
-  // Obtener costo de anuncio del mes seleccionado
-  const getMyAdCostForMonth = (): number => {
-    const userStr = localStorage.getItem("user")
-    if (!userStr) return 0
-
-    const currentUser = JSON.parse(userStr)
-    const savedAdCosts = localStorage.getItem("supervisorAdCosts")
-    if (!savedAdCosts) return 0
-
-    const adCosts: SupervisorAdCost[] = JSON.parse(savedAdCosts)
-    const adCost = adCosts.find(
-      (cost) => cost.supervisorId === currentUser._id && cost.month === selectedMonth
-    )
-    return adCost?.amount || 0
-  }
+  }, [selectedMonth])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -221,7 +191,6 @@ export default function SupervisorDashboardPage() {
 
   const totalBeforePercentage = calculateSupervisorCommission()
   const commissionBeforeAdCost = totalBeforePercentage * SUPERVISOR_PERCENTAGE
-  const monthlyAdCost = getMyAdCostForMonth()
   const totalCommission = Math.max(0, commissionBeforeAdCost - monthlyAdCost)
 
   // Generar meses disponibles

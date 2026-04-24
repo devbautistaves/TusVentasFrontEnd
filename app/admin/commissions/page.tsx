@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { usersAPI, salesAPI, User, Sale } from "@/lib/api"
+import { usersAPI, salesAPI, adCostsAPI, User, Sale, SupervisorAdCost as APIAdCost } from "@/lib/api"
 import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History } from "lucide-react"
 
 // Constantes
@@ -36,16 +36,6 @@ interface CommissionTier {
   minSales: number
   maxSales: number
   amount: number
-}
-
-// Interface para costos de anuncio mensuales por supervisor
-interface SupervisorAdCost {
-  supervisorId: string
-  supervisorName: string
-  amount: number
-  month: string // formato "YYYY-MM"
-  createdAt: string
-  updatedAt: string
 }
 
 const DEFAULT_TIERS: CommissionTier[] = [
@@ -79,16 +69,22 @@ export default function AdminCommissionsPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
   // Estado para costos de anuncio de supervisores
-  const [supervisorAdCosts, setSupervisorAdCosts] = useState<SupervisorAdCost[]>([])
+  const [supervisorAdCosts, setSupervisorAdCosts] = useState<APIAdCost[]>([])
   const [isAdCostDialogOpen, setIsAdCostDialogOpen] = useState(false)
   const [selectedSupervisorForAdCost, setSelectedSupervisorForAdCost] = useState<User | null>(null)
   const [adCostAmount, setAdCostAmount] = useState(0)
   const [isAdCostHistoryDialogOpen, setIsAdCostHistoryDialogOpen] = useState(false)
+  const [isSavingAdCost, setIsSavingAdCost] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Recargar costos de anuncio cuando cambia el mes
+  useEffect(() => {
+    fetchAdCosts()
+  }, [selectedMonth])
 
   const fetchData = async () => {
     const token = localStorage.getItem("token")
@@ -107,11 +103,8 @@ export default function AdminCommissionsPage() {
         setTiers(JSON.parse(savedTiers))
       }
 
-      // Cargar costos de anuncio de supervisores
-      const savedAdCosts = localStorage.getItem("supervisorAdCosts")
-      if (savedAdCosts) {
-        setSupervisorAdCosts(JSON.parse(savedAdCosts))
-      }
+      // Cargar costos de anuncio de supervisores desde API
+      await fetchAdCosts()
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -119,57 +112,65 @@ export default function AdminCommissionsPage() {
     }
   }
 
+  const fetchAdCosts = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      const adCostsRes = await adCostsAPI.getAll(token)
+      setSupervisorAdCosts(adCostsRes.adCosts)
+    } catch (error) {
+      console.error("Error fetching ad costs:", error)
+    }
+  }
+
   // Obtener costo de anuncio de un supervisor para el mes seleccionado
   const getSupervisorAdCostForMonth = (supervisorId: string): number => {
-    const adCost = supervisorAdCosts.find(
-      (cost) => cost.supervisorId === supervisorId && cost.month === selectedMonth
-    )
+    const adCost = supervisorAdCosts.find((cost) => {
+      const costSupervisorId = typeof cost.supervisorId === "object" 
+        ? cost.supervisorId._id 
+        : cost.supervisorId
+      return costSupervisorId === supervisorId && cost.month === selectedMonth
+    })
     return adCost?.amount || 0
   }
 
   // Guardar o actualizar costo de anuncio de un supervisor
-  const handleSaveAdCost = () => {
+  const handleSaveAdCost = async () => {
     if (!selectedSupervisorForAdCost) return
 
-    const now = new Date().toISOString()
-    const existingIndex = supervisorAdCosts.findIndex(
-      (cost) => cost.supervisorId === selectedSupervisorForAdCost._id && cost.month === selectedMonth
-    )
+    const token = localStorage.getItem("token")
+    if (!token) return
 
-    let updatedCosts: SupervisorAdCost[]
-
-    if (existingIndex >= 0) {
-      // Actualizar existente
-      updatedCosts = [...supervisorAdCosts]
-      updatedCosts[existingIndex] = {
-        ...updatedCosts[existingIndex],
-        amount: adCostAmount,
-        updatedAt: now,
-      }
-    } else {
-      // Crear nuevo
-      const newCost: SupervisorAdCost = {
+    setIsSavingAdCost(true)
+    try {
+      await adCostsAPI.upsert(token, {
         supervisorId: selectedSupervisorForAdCost._id,
-        supervisorName: selectedSupervisorForAdCost.name,
         amount: adCostAmount,
         month: selectedMonth,
-        createdAt: now,
-        updatedAt: now,
-      }
-      updatedCosts = [...supervisorAdCosts, newCost]
+      })
+
+      // Recargar costos de anuncio
+      await fetchAdCosts()
+
+      toast({
+        title: "Costo de anuncio actualizado",
+        description: `Se ha guardado el costo de anuncio para ${selectedSupervisorForAdCost.name}`,
+      })
+
+      setIsAdCostDialogOpen(false)
+      setSelectedSupervisorForAdCost(null)
+      setAdCostAmount(0)
+    } catch (error) {
+      console.error("Error saving ad cost:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el costo de anuncio",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingAdCost(false)
     }
-
-    setSupervisorAdCosts(updatedCosts)
-    localStorage.setItem("supervisorAdCosts", JSON.stringify(updatedCosts))
-
-    toast({
-      title: "Costo de anuncio actualizado",
-      description: `Se ha ${existingIndex >= 0 ? "actualizado" : "registrado"} el costo de anuncio para ${selectedSupervisorForAdCost.name}`,
-    })
-
-    setIsAdCostDialogOpen(false)
-    setSelectedSupervisorForAdCost(null)
-    setAdCostAmount(0)
   }
 
   // Abrir dialog para editar costo de anuncio
@@ -180,9 +181,14 @@ export default function AdminCommissionsPage() {
   }
 
   // Obtener historial de costos de anuncio de un supervisor
-  const getSupervisorAdCostHistory = (supervisorId: string): SupervisorAdCost[] => {
+  const getSupervisorAdCostHistory = (supervisorId: string): APIAdCost[] => {
     return supervisorAdCosts
-      .filter((cost) => cost.supervisorId === supervisorId)
+      .filter((cost) => {
+        const costSupervisorId = typeof cost.supervisorId === "object" 
+          ? cost.supervisorId._id 
+          : cost.supervisorId
+        return costSupervisorId === supervisorId
+      })
       .sort((a, b) => b.month.localeCompare(a.month))
   }
 
@@ -1607,9 +1613,17 @@ export default function AdminCommissionsPage() {
               </Button>
               <Button
                 onClick={handleSaveAdCost}
+                disabled={isSavingAdCost}
                 className="bg-amber-500 text-white hover:bg-amber-600"
               >
-                Guardar Costo
+                {isSavingAdCost ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Costo"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1631,7 +1645,7 @@ export default function AdminCommissionsPage() {
               {selectedSupervisorForAdCost && getSupervisorAdCostHistory(selectedSupervisorForAdCost._id).length > 0 ? (
                 getSupervisorAdCostHistory(selectedSupervisorForAdCost._id).map((cost) => (
                   <div
-                    key={`${cost.supervisorId}-${cost.month}`}
+                    key={cost._id}
                     className={`flex items-center justify-between p-3 rounded-lg border ${
                       cost.month === selectedMonth 
                         ? "bg-amber-500/10 border-amber-500/30" 

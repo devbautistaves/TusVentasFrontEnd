@@ -394,6 +394,39 @@ export interface CreateAnnouncementData {
   }
 }
 
+// Supervisor Ad Costs
+export const adCostsAPI = {
+  // Admin: obtener todos los costos de anuncio
+  getAll: (token: string, month?: string, supervisorId?: string) => {
+    const params = new URLSearchParams()
+    if (month) params.append("month", month)
+    if (supervisorId) params.append("supervisorId", supervisorId)
+    const queryString = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; adCosts: SupervisorAdCost[] }>(`/api/admin/ad-costs${queryString}`, { token })
+  },
+
+  // Admin: crear o actualizar costo de anuncio
+  upsert: (token: string, data: { supervisorId: string; amount: number; month: string; notes?: string }) =>
+    fetchAPI<{ success: boolean; adCost: SupervisorAdCost; message: string }>("/api/admin/ad-costs", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  // Admin: eliminar costo de anuncio
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean }>(`/api/admin/ad-costs/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+
+  // Supervisor: obtener mis costos de anuncio
+  getMyCosts: (token: string, month?: string) => {
+    const queryString = month ? `?month=${month}` : ""
+    return fetchAPI<{ success: boolean; adCosts: SupervisorAdCost[] }>(`/api/ad-costs/my${queryString}`, { token })
+  },
+}
+
 // Chat
 export const chatAPI = {
   getRooms: (token: string) =>
@@ -613,4 +646,16 @@ export interface ChatMessage {
   content: string
   attachments?: string[]
   createdAt: string
+}
+
+export interface SupervisorAdCost {
+  _id: string
+  supervisorId: string | { _id: string; name: string; email: string }
+  amount: number
+  month: string
+  notes?: string
+  createdBy?: string | { _id: string; name: string }
+  updatedBy?: string | { _id: string; name: string }
+  createdAt: string
+  updatedAt: string
 }
