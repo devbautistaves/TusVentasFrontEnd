@@ -189,7 +189,7 @@ export default function NewSalePage() {
     }
 
     // Enviar al backend - ignoramos la respuesta porque sabemos que se crea
-    fetch(`https://vps-5905394-x.dattaweb.com/api/sales`, {
+    fetch(`https://tusventasbackend.onrender.com/api/sales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
