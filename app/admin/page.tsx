@@ -27,6 +27,10 @@ import {
   TrendingDown,
   Wrench,
   Filter,
+  Banknote,
+  Building2,
+  UserCheck,
+  UserCog,
 } from "lucide-react"
 import {
   BarChart,
@@ -107,18 +111,38 @@ export default function AdminDashboardPage() {
   const observedSales = monthSales.filter(s => s.status === "pending_appointment")
   const appointedSales = monthSales.filter(s => s.status === "appointed")
 
+  // Constantes de negocio
+  const REVENUE_PER_SALE = 750000 // $750.000 por venta activada
+  const ADMIN_COST_PER_SALE = 35000 // $35.000 costo admin por venta
+
+  // INGRESOS: $750.000 por cada venta activada
+  const totalRevenue = activatedSales.length * REVENUE_PER_SALE
+
+  // COSTO DE ADMINISTRACION: $35.000 por cada venta activada
+  const totalAdminCost = activatedSales.length * ADMIN_COST_PER_SALE
+
   // Calcular totales de costos de instalacion (se descuentan siempre)
   const totalInstallationCosts = monthSales.reduce((acc, sale) => {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  // Calcular comisiones generadas (solo de ventas activadas)
-  const totalCommissionsGenerated = activatedSales.reduce((acc, sale) => {
-    return acc + (sale.commission || 0)
+  // COMISIONES VENDEDORES: suma de comisiones pagadas a vendedores
+  const totalSellerCommissions = activatedSales.reduce((acc, sale) => {
+    return acc + (sale.sellerCommissionPaid || sale.commission || 0)
   }, 0)
 
-  // Comision neta = comisiones - costos de instalacion
-  const netCommission = totalCommissionsGenerated - totalInstallationCosts
+  // COMISIONES SUPERVISORES: (Ingreso - Admin - Instalacion - Anuncios - ComisionVendedor) * 40%
+  const totalSupervisorCommissions = activatedSales.reduce((acc, sale) => {
+    const installationCost = sale.installationCost || 0
+    const adCost = sale.adCost || 0
+    const sellerCommission = sale.sellerCommissionPaid || sale.commission || 0
+    const netBeforePercentage = REVENUE_PER_SALE - ADMIN_COST_PER_SALE - installationCost - adCost - sellerCommission
+    return acc + Math.max(0, netBeforePercentage * 0.4)
+  }, 0)
+
+  // GANANCIA NETA: Ingresos - Costos Admin - Instalacion - Comisiones Vendedores - Comisiones Supervisores
+  const totalCosts = totalAdminCost + totalInstallationCosts + totalSellerCommissions + totalSupervisorCommissions
+  const netProfit = totalRevenue - totalCosts
 
   // Generar meses disponibles
   const getAvailableMonths = () => {
@@ -214,57 +238,128 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Comisiones Generadas */}
+          {/* Ingresos Totales */}
           <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Comisiones Generadas</p>
-                  <p className="text-4xl font-bold text-green-400">{formatCurrency(totalCommissionsGenerated)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Ingresos Totales</p>
+                  <p className="text-4xl font-bold text-green-400">{formatCurrency(totalRevenue)}</p>
                   <p className="text-xs text-muted-foreground pt-1">
-                    Solo ventas activadas
+                    {activatedSales.length} x $750.000
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-green-400" />
+                  <Banknote className="h-6 w-6 text-green-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Costos de Instalacion */}
-          <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
+          {/* Costo Administracion */}
+          <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Costos Instalacion</p>
-                  <p className="text-4xl font-bold text-red-400">-{formatCurrency(totalInstallationCosts)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Costo Administracion</p>
+                  <p className="text-4xl font-bold text-blue-400">{formatCurrency(totalAdminCost)}</p>
                   <p className="text-xs text-muted-foreground pt-1">
-                    Se descuentan siempre
+                    {activatedSales.length} x $35.000
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                  <Wrench className="h-6 w-6 text-red-400" />
+                <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Building2 className="h-6 w-6 text-blue-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Comision Neta */}
+          {/* Ganancia Neta */}
           <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Comision Neta</p>
-                  <p className={`text-4xl font-bold ${netCommission >= 0 ? 'text-primary' : 'text-red-400'}`}>
-                    {formatCurrency(netCommission)}
+                  <p className="text-sm font-medium text-muted-foreground">Ganancia Neta</p>
+                  <p className={`text-4xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-red-400'}`}>
+                    {formatCurrency(netProfit)}
                   </p>
                   <p className="text-xs text-muted-foreground pt-1">
-                    Comisiones - Costos
+                    Ingresos - Todos los costos
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <TrendingDown className="h-6 w-6 text-primary" />
+                  <DollarSign className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Costs Breakdown Row */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Costos de Instalacion */}
+          <Card className="border-red-500/30 bg-card/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <Wrench className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Costos Instalacion</p>
+                    <p className="text-xl font-bold text-red-400">-{formatCurrency(totalInstallationCosts)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comisiones Vendedores */}
+          <Card className="border-amber-500/30 bg-card/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <UserCheck className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Comisiones Vendedores</p>
+                    <p className="text-xl font-bold text-amber-400">-{formatCurrency(totalSellerCommissions)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comisiones Supervisores */}
+          <Card className="border-purple-500/30 bg-card/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <UserCog className="h-5 w-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Comisiones Supervisores</p>
+                    <p className="text-xl font-bold text-purple-400">-{formatCurrency(totalSupervisorCommissions)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Total Costos */}
+          <Card className="border-gray-500/30 bg-card/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-gray-500/10 flex items-center justify-center">
+                    <TrendingDown className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Costos</p>
+                    <p className="text-xl font-bold text-gray-400">-{formatCurrency(totalCosts)}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
