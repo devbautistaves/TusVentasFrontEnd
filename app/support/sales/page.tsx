@@ -493,7 +493,7 @@ function SupportSalesContent() {
               Informacion completa de la venta
             </DialogDescription>
           </DialogHeader>
-          {selectedSale && (
+          {selectedSale && selectedSale.customerInfo && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               {/* Header con estado y fechas */}
               <div className="p-3 bg-secondary/30 rounded-lg space-y-2">
@@ -529,23 +529,30 @@ function SupportSalesContent() {
                 <div className="grid grid-cols-2 gap-4 p-3 bg-secondary/20 rounded-lg">
                   <div>
                     <p className="text-sm text-muted-foreground">Nombre</p>
-                    <p className="font-medium">{selectedSale.customerInfo.name}</p>
+                    <p className="font-medium">{selectedSale.customerInfo?.name || "N/A"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">DNI</p>
-                    <p className="font-medium">{selectedSale.customerInfo.dni}</p>
+                    <p className="font-medium">{selectedSale.customerInfo?.dni || "N/A"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <p>{selectedSale.customerInfo.phone}</p>
+                    <p>{selectedSale.customerInfo?.phone || "N/A"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p>{selectedSale.customerInfo.email || "N/A"}</p>
+                    <p>{selectedSale.customerInfo?.email || "N/A"}</p>
                   </div>
                   <div className="col-span-2 flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <p>{selectedSale.customerInfo.address}</p>
+                    <p>
+                      {typeof selectedSale.customerInfo?.address === 'string' 
+                        ? selectedSale.customerInfo.address 
+                        : selectedSale.customerInfo?.address
+                          ? `${selectedSale.customerInfo.address.street || ''} ${selectedSale.customerInfo.address.number || ''}, ${selectedSale.customerInfo.address.city || ''}, ${selectedSale.customerInfo.address.province || ''}`
+                          : "N/A"
+                      }
+                    </p>
                   </div>
                 </div>
               </div>
@@ -599,6 +606,11 @@ function SupportSalesContent() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+          {selectedSale && !selectedSale.customerInfo && (
+            <div className="p-4 text-center text-muted-foreground">
+              No hay informacion disponible para esta venta
             </div>
           )}
         </DialogContent>
