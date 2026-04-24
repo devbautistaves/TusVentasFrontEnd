@@ -187,43 +187,41 @@ export const dashboardAPI = {
 }
 
 // Support - endpoints que permiten acceso tipo admin para rol support
+// El backend debe configurar estos endpoints para aceptar rol "support" ademas de "admin"
 export const supportAPI = {
-  // Obtener todas las ventas - usa endpoint general /api/sales que devuelve todas las ventas para support
+  // Obtener todas las ventas - usa endpoint admin con token de support
   getSales: async (token: string): Promise<{ success: boolean; sales: Sale[] }> => {
-    // El endpoint /api/sales devuelve todas las ventas para roles support/admin/supervisor
-    const response = await fetch(`${API_URL}/api/sales`, {
+    const response = await fetch(`${API_URL}/api/admin/sales`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       }
     })
     if (!response.ok) {
+      console.error("[v0] Support getSales failed:", response.status)
       throw new Error("Error al obtener ventas")
     }
     return response.json()
   },
 
-  // Obtener usuarios - usa endpoint general /api/sellers que es accesible por support
+  // Obtener usuarios - usa endpoint admin con token de support
   getUsers: async (token: string): Promise<{ success: boolean; users: User[] }> => {
-    // Primero intentar endpoint de sellers que es accesible
-    const response = await fetch(`${API_URL}/api/sellers`, {
+    const response = await fetch(`${API_URL}/api/admin/users`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       }
     })
-    if (response.ok) {
-      const data = await response.json()
-      // El endpoint /api/sellers devuelve { sellers: [...] }, convertir a { users: [...] }
-      return { success: true, users: data.sellers || [] }
+    if (!response.ok) {
+      console.error("[v0] Support getUsers failed:", response.status)
+      return { success: true, users: [] }
     }
-    // Si falla, devolver lista vacia
-    return { success: true, users: [] }
+    return response.json()
   },
 
-  // Actualizar estado de venta - usa endpoint general de sales con soporte para support
+  // Actualizar estado de venta - usa endpoint admin
   updateSaleStatus: async (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string) => {
-    const response = await fetch(`${API_URL}/api/sales/${id}/status`, {
+    const response = await fetch(`${API_URL}/api/admin/sales/${id}/status`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -238,9 +236,9 @@ export const supportAPI = {
     return response.json()
   },
 
-  // Actualizar costos de venta
+  // Actualizar costos de venta - usa endpoint admin
   updateSaleCosts: async (token: string, id: string, costs: { installationCost?: number; adminCost?: number; adCost?: number; sellerCommissionPaid?: number }) => {
-    const response = await fetch(`${API_URL}/api/sales/${id}/costs`, {
+    const response = await fetch(`${API_URL}/api/admin/sales/${id}/costs`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -255,9 +253,9 @@ export const supportAPI = {
     return response.json()
   },
 
-  // Asignar vendedor
+  // Asignar vendedor - usa endpoint admin
   assignSeller: async (token: string, id: string, sellerId: string) => {
-    const response = await fetch(`${API_URL}/api/sales/${id}/assign`, {
+    const response = await fetch(`${API_URL}/api/admin/sales/${id}/assign`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -272,9 +270,9 @@ export const supportAPI = {
     return response.json()
   },
 
-  // Crear venta
+  // Crear venta - usa endpoint admin
   createSale: async (token: string, data: CreateSaleData) => {
-    const response = await fetch(`${API_URL}/api/sales`, {
+    const response = await fetch(`${API_URL}/api/admin/sales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -289,9 +287,9 @@ export const supportAPI = {
     return response.json()
   },
 
-  // Dashboard stats para support - usa endpoint general
+  // Dashboard stats para support - usa endpoint admin
   getStats: async (token: string) => {
-    const response = await fetch(`${API_URL}/api/dashboard/stats`, {
+    const response = await fetch(`${API_URL}/api/admin/stats`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
