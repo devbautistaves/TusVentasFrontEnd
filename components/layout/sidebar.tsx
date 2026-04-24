@@ -71,6 +71,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
   const supportLinks = [
     { href: "/support", label: "Dashboard", icon: LayoutDashboard },
     { href: "/support/sales", label: "Ventas", icon: ShoppingCart },
+    { href: "/support/new-sale", label: "Nueva Venta", icon: TrendingUp },
   ]
 
   const links = role === "admin" 

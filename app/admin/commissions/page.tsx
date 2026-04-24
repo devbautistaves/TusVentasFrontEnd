@@ -384,93 +384,330 @@ export default function AdminCommissionsPage() {
     }
   }
 
-  // Exportar comisiones de un usuario
+  // Helper para obtener etiqueta de estado
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      completed: "ACTIVADA",
+      cancelled: "CANCELADA",
+      pending: "PENDIENTE",
+      pending_appointment: "OBSERVADA",
+      appointed: "TURNADA",
+    }
+    return labels[status] || status.toUpperCase()
+  }
+
+  // Exportar comisiones de un usuario con diseño mejorado para Google Sheets
   const handleExportUserCommissions = (user: User) => {
-    const userSales = getUserSales(user._id, user.role).filter(s => s.status === "completed")
+    const allUserSales = getUserSales(user._id, user.role)
+    const completedUserSales = allUserSales.filter(s => s.status === "completed")
+    const cancelledUserSales = allUserSales.filter(s => s.status === "cancelled")
     
-    let csvContent = ""
+    // Obtener nombre del mes
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+    
+    let csvRows: string[] = []
     
     if (user.role === "supervisor") {
-      // NOTA: adCost ya no se resta automaticamente en el calculo
-      csvContent = [
-        "Cliente,DNI,Plan,Fecha,Base,Instalacion,Admin,Com.Vendedor,Neto",
-        ...userSales.map(sale => {
-          const base = SUPERVISOR_BASE_COMMISSION
-          const inst = sale.installationCost || 0
-          const seller = sale.sellerCommissionPaid || 0
-          const net = base - inst - ADMIN_COST - seller
-          return `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${base},${inst},${ADMIN_COST},${seller},${net}`
-        }),
-        "",
-        `TOTAL COMISION (40%),${calculateSupervisorCommission(user._id)}`
-      ].join("\n")
+      // ENCABEZADO BONITO
+      csvRows.push(`LIQUIDACION DE COMISIONES - SUPERVISOR`)
+      csvRows.push(``)
+      csvRows.push(`Nombre:,${user.name}`)
+      csvRows.push(`Periodo:,${monthName.toUpperCase()}`)
+      csvRows.push(`Fecha de emision:,${new Date().toLocaleDateString("es-AR")}`)
+      csvRows.push(``)
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(``)
+      
+      // SECCION: VENTAS ACTIVADAS
+      csvRows.push(`VENTAS ACTIVADAS (${completedUserSales.length})`)
+      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Fecha Activacion,Base,Instalacion,Admin,Com.Vendedor,Neto`)
+      
+      let totalNetCompleted = 0
+      completedUserSales.forEach((sale, idx) => {
+        const base = SUPERVISOR_BASE_COMMISSION
+        const inst = sale.installationCost || 0
+        const seller = sale.sellerCommissionPaid || 0
+        const net = base - inst - ADMIN_COST - seller
+        totalNetCompleted += net
+        const completedDate = sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-"
+        csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${completedDate},${formatCurrency(base)},${formatCurrency(inst)},${formatCurrency(ADMIN_COST)},${formatCurrency(seller)},${formatCurrency(net)}`)
+      })
+      
+      if (completedUserSales.length === 0) {
+        csvRows.push(`-,Sin ventas activadas este mes,-,-,-,-,-,-,-,-,-`)
+      }
+      
+      csvRows.push(``)
+      csvRows.push(`,,,,,SUBTOTAL ACTIVADAS:,,,,,${formatCurrency(totalNetCompleted)}`)
+      csvRows.push(``)
+      
+      // SECCION: VENTAS CANCELADAS CON DESCUENTO
+      const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
+      csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
+      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
+      
+      let totalCancelledDiscount = 0
+      cancelledWithCost.forEach((sale, idx) => {
+        const inst = sale.installationCost || 0
+        totalCancelledDiscount += inst
+        csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},CANCELADA,-${formatCurrency(inst)}`)
+      })
+      
+      if (cancelledWithCost.length === 0) {
+        csvRows.push(`-,Sin descuentos por cancelaciones,-,-,-,-,-`)
+      }
+      
+      csvRows.push(``)
+      csvRows.push(`,,,,SUBTOTAL DESCUENTOS:,,-${formatCurrency(totalCancelledDiscount)}`)
+      csvRows.push(``)
+      
+      // SECCION: OTRAS VENTAS DEL PERIODO (para referencia)
+      const otherSales = allUserSales.filter(s => s.status !== "completed" && s.status !== "cancelled")
+      if (otherSales.length > 0) {
+        csvRows.push(`OTRAS VENTAS EN PROCESO (${otherSales.length})`)
+        csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+        csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Observacion`)
+        otherSales.forEach((sale, idx) => {
+          csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${getStatusLabel(sale.status)},Pendiente de activacion`)
+        })
+        csvRows.push(``)
+      }
+      
+      // RESUMEN FINAL
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(`RESUMEN DE LIQUIDACION`)
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(``)
+      csvRows.push(`Total Ventas Activadas:,${completedUserSales.length}`)
+      csvRows.push(`Total Ventas Canceladas:,${cancelledUserSales.length}`)
+      csvRows.push(`Total Ventas en Proceso:,${otherSales.length}`)
+      csvRows.push(``)
+      csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(totalNetCompleted)}`)
+      csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(totalCancelledDiscount)}`)
+      csvRows.push(`Total Antes del 40%:,${formatCurrency(totalNetCompleted - totalCancelledDiscount)}`)
+      csvRows.push(``)
+      csvRows.push(`COMISION FINAL (40%):,${formatCurrency(calculateSupervisorCommission(user._id))}`)
+      csvRows.push(``)
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      
     } else {
-      const allUserSales = getUserSales(user._id, user.role)
-      const activatedCount = userSales.length
+      // VENDEDOR
+      const activatedCount = completedUserSales.length
       const perSale = getCommissionPerSale(activatedCount)
       const grossCommission = getSellerGrossCommission(user._id)
       const installationDiscounts = getSellerInstallationDiscounts(user._id)
       const netCommission = calculateSellerCommission(user._id)
       
-      csvContent = [
-        "Cliente,DNI,Plan,Fecha,Estado,Costo Instalacion",
-        ...allUserSales.map(sale => 
-          `${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${sale.status === "completed" ? "Instalada" : sale.status === "cancelled" ? "Cancelada" : "Pendiente"},${sale.installationCost || 0}`
-        ),
-        "",
-        `Ventas Instaladas,${activatedCount}`,
-        `Comision por Venta,${perSale}`,
-        `Comision Bruta,${grossCommission}`,
-        `Descuentos Instalacion,${installationDiscounts}`,
-        `COMISION NETA,${netCommission}`
-      ].join("\n")
+      // ENCABEZADO BONITO
+      csvRows.push(`LIQUIDACION DE COMISIONES - VENDEDOR`)
+      csvRows.push(``)
+      csvRows.push(`Nombre:,${user.name}`)
+      csvRows.push(`Periodo:,${monthName.toUpperCase()}`)
+      csvRows.push(`Fecha de emision:,${new Date().toLocaleDateString("es-AR")}`)
+      csvRows.push(``)
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(``)
+      
+      // ESCALA DE COMISIONES VIGENTE
+      csvRows.push(`ESCALA DE COMISIONES VIGENTE`)
+      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      tiers.forEach(tier => {
+        csvRows.push(`${tier.minSales}-${tier.maxSales} ventas:,${formatCurrency(tier.amount)} por venta`)
+      })
+      csvRows.push(``)
+      
+      // SECCION: VENTAS ACTIVADAS
+      csvRows.push(`VENTAS ACTIVADAS (${completedUserSales.length})`)
+      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Fecha Activacion,Comision Unitaria`)
+      
+      completedUserSales.forEach((sale, idx) => {
+        const completedDate = sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-"
+        csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${completedDate},${formatCurrency(perSale)}`)
+      })
+      
+      if (completedUserSales.length === 0) {
+        csvRows.push(`-,Sin ventas activadas este mes,-,-,-,-,-`)
+      }
+      
+      csvRows.push(``)
+      csvRows.push(`,,,,,SUBTOTAL:,${formatCurrency(grossCommission)}`)
+      csvRows.push(``)
+      
+      // SECCION: VENTAS CANCELADAS CON DESCUENTO
+      const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
+      csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
+      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
+      
+      cancelledWithCost.forEach((sale, idx) => {
+        const inst = sale.installationCost || 0
+        csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},CANCELADA,-${formatCurrency(inst)}`)
+      })
+      
+      if (cancelledWithCost.length === 0) {
+        csvRows.push(`-,Sin descuentos por cancelaciones,-,-,-,-,-`)
+      }
+      
+      csvRows.push(``)
+      csvRows.push(`,,,,SUBTOTAL DESCUENTOS:,,-${formatCurrency(installationDiscounts)}`)
+      csvRows.push(``)
+      
+      // SECCION: OTRAS VENTAS DEL PERIODO (para referencia)
+      const otherSales = allUserSales.filter(s => s.status !== "completed" && s.status !== "cancelled")
+      if (otherSales.length > 0) {
+        csvRows.push(`OTRAS VENTAS EN PROCESO (${otherSales.length})`)
+        csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+        csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Observacion`)
+        otherSales.forEach((sale, idx) => {
+          csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${getStatusLabel(sale.status)},Pendiente de activacion`)
+        })
+        csvRows.push(``)
+      }
+      
+      // RESUMEN FINAL
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(`RESUMEN DE LIQUIDACION`)
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(``)
+      csvRows.push(`Total Ventas Activadas:,${completedUserSales.length}`)
+      csvRows.push(`Total Ventas Canceladas:,${cancelledUserSales.length}`)
+      csvRows.push(`Total Ventas en Proceso:,${otherSales.length}`)
+      csvRows.push(``)
+      csvRows.push(`Comision por Venta (segun escala):,${formatCurrency(perSale)}`)
+      csvRows.push(`Comision Bruta (${activatedCount} x ${formatCurrency(perSale)}):,${formatCurrency(grossCommission)}`)
+      csvRows.push(`Descuento por Instalaciones:,-${formatCurrency(installationDiscounts)}`)
+      csvRows.push(``)
+      csvRows.push(`COMISION NETA A COBRAR:,${formatCurrency(netCommission)}`)
+      csvRows.push(``)
+      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
     }
 
+    // Agregar BOM para que Excel/Sheets detecte UTF-8
+    const BOM = "\uFEFF"
+    const csvContent = BOM + csvRows.join("\n")
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
-    link.download = `comisiones-${user.name.replace(/\s+/g, "-")}-${selectedMonth}.csv`
+    link.download = `liquidacion-${user.name.replace(/\s+/g, "-")}-${selectedMonth}.csv`
     link.click()
 
     toast({
       title: "Exportacion completada",
-      description: `Comisiones de ${user.name} exportadas correctamente`,
+      description: `Liquidacion de ${user.name} exportada correctamente`,
     })
   }
 
-  // Exportar todas las comisiones
+  // Exportar todas las comisiones con diseño mejorado
   const handleExportAll = () => {
-    const rows: string[] = []
-    rows.push("Vendedor/Supervisor,Rol,Ventas Instaladas,Comision Total")
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
     
-    users.forEach(user => {
-      const activatedSales = getSellerSales(user._id)
+    const rows: string[] = []
+    
+    // ENCABEZADO
+    rows.push(`LIQUIDACION GENERAL DE COMISIONES`)
+    rows.push(``)
+    rows.push(`Periodo:,${monthName.toUpperCase()}`)
+    rows.push(`Fecha de emision:,${new Date().toLocaleDateString("es-AR")}`)
+    rows.push(``)
+    rows.push(`═══════════════════════════════════════════════════════════════════════════`)
+    rows.push(``)
+    
+    // RESUMEN POR USUARIO
+    rows.push(`RESUMEN POR USUARIO`)
+    rows.push(`───────────────────────────────────────────────────────────────────────────`)
+    rows.push(`#,Nombre,Rol,Ventas Activadas,Ventas Canceladas,Ventas Proceso,Descuentos,Comision Neta`)
+    
+    let totalActivated = 0
+    let totalCancelled = 0
+    let totalPending = 0
+    let totalDiscounts = 0
+    let grandTotalCommissions = 0
+    
+    users.forEach((user, idx) => {
+      const userSales = getUserSales(user._id, user.role)
+      const activated = userSales.filter(s => s.status === "completed").length
+      const cancelled = userSales.filter(s => s.status === "cancelled").length
+      const pending = userSales.filter(s => s.status !== "completed" && s.status !== "cancelled").length
+      const discounts = user.role === "supervisor" 
+        ? userSales.filter(s => s.status === "cancelled" && s.installationCost).reduce((acc, s) => acc + (s.installationCost || 0), 0)
+        : getSellerInstallationDiscounts(user._id)
       const commission = user.role === "supervisor" 
         ? calculateSupervisorCommission(user._id)
         : calculateSellerCommission(user._id)
       
-      rows.push(`${user.name},${user.role === "supervisor" ? "Supervisor" : "Vendedor"},${activatedSales},${commission}`)
+      totalActivated += activated
+      totalCancelled += cancelled
+      totalPending += pending
+      totalDiscounts += discounts
+      grandTotalCommissions += commission
+      
+      rows.push(`${idx + 1},${user.name},${user.role === "supervisor" ? "Supervisor" : "Vendedor"},${activated},${cancelled},${pending},${formatCurrency(discounts)},${formatCurrency(commission)}`)
     })
+    
+    rows.push(``)
+    rows.push(`,TOTALES,,${totalActivated},${totalCancelled},${totalPending},${formatCurrency(totalDiscounts)},${formatCurrency(grandTotalCommissions)}`)
+    rows.push(``)
+    rows.push(`═══════════════════════════════════════════════════════════════════════════`)
+    rows.push(``)
+    
+    // DETALLE POR VENDEDORES
+    rows.push(`DETALLE VENDEDORES`)
+    rows.push(`───────────────────────────────────────────────────────────────────────────`)
+    
+    sellers.forEach(seller => {
+      const sellerSales = getUserSales(seller._id, seller.role)
+      const activated = sellerSales.filter(s => s.status === "completed").length
+      const perSale = getCommissionPerSale(activated)
+      const gross = getSellerGrossCommission(seller._id)
+      const discounts = getSellerInstallationDiscounts(seller._id)
+      const net = calculateSellerCommission(seller._id)
+      
+      rows.push(``)
+      rows.push(`${seller.name}`)
+      rows.push(`Ventas activadas: ${activated} | Comision por venta: ${formatCurrency(perSale)}`)
+      rows.push(`Comision bruta: ${formatCurrency(gross)} | Descuentos: ${formatCurrency(discounts)} | NETO: ${formatCurrency(net)}`)
+    })
+    
+    rows.push(``)
+    rows.push(`═══════════════════════════════════════════════════════════════════════════`)
+    rows.push(``)
+    
+    // DETALLE POR SUPERVISORES
+    rows.push(`DETALLE SUPERVISORES`)
+    rows.push(`───────────────────────────────────────────────────────────────────────────`)
+    
+    supervisors.forEach(supervisor => {
+      const supSales = getUserSales(supervisor._id, supervisor.role)
+      const activated = supSales.filter(s => s.status === "completed").length
+      const commission = calculateSupervisorCommission(supervisor._id)
+      
+      rows.push(``)
+      rows.push(`${supervisor.name}`)
+      rows.push(`Ventas activadas: ${activated} | COMISION (40%): ${formatCurrency(commission)}`)
+    })
+    
+    rows.push(``)
+    rows.push(`═══════════════════════════════════════════════════════════════════════════`)
+    rows.push(`TOTAL A LIQUIDAR:,${formatCurrency(grandTotalCommissions)}`)
+    rows.push(`═══════════════════════════════════════════════════════════════════════════`)
 
-    const totalCommissions = users.reduce((acc, user) => {
-      return acc + (user.role === "supervisor" 
-        ? calculateSupervisorCommission(user._id)
-        : calculateSellerCommission(user._id))
-    }, 0)
-
-    rows.push("")
-    rows.push(`TOTAL,,${totalCommissions}`)
-
-    const csvContent = rows.join("\n")
+    // Agregar BOM para que Excel/Sheets detecte UTF-8
+    const BOM = "\uFEFF"
+    const csvContent = BOM + rows.join("\n")
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
-    link.download = `liquidacion-comisiones-${selectedMonth}.csv`
+    link.download = `liquidacion-general-${selectedMonth}.csv`
     link.click()
 
     toast({
       title: "Exportacion completada",
-      description: "Liquidacion de comisiones exportada correctamente",
+      description: "Liquidacion general de comisiones exportada correctamente",
     })
   }
 

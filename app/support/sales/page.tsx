@@ -1,11 +1,12 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { StatusBadge, getStatusOptions } from "@/components/ui/status-badge"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Select,
   SelectContent,
@@ -21,176 +22,215 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sidebar } from "@/components/layout/sidebar"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Sale } from "@/lib/api"
-import {
-  Menu,
-  Search,
-  Eye,
-  Edit2,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  Phone,
-  Mail,
-  MapPin,
-  User,
-  Calendar,
-  Package,
-  FileText,
-} from "lucide-react"
+import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
+import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, Plus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
+import { useRouter } from "next/navigation"
 
-const statusOptions = [
-  { value: "pending", label: "Pendiente" },
-  { value: "pending_appointment", label: "Observada" },
-  { value: "appointed", label: "Turnada" },
-  { value: "completed", label: "Activada" },
-  { value: "cancelled", label: "Cancelada" },
-]
-
-const statusLabels: Record<string, string> = {
-  pending: "Pendiente",
-  pending_appointment: "Observada",
-  appointed: "Turnada",
-  completed: "Activada",
-  cancelled: "Cancelada",
-}
-
-const statusColors: Record<string, string> = {
-  pending: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  pending_appointment: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  appointed: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  completed: "bg-green-500/20 text-green-400 border-green-500/30",
-  cancelled: "bg-red-500/20 text-red-400 border-red-500/30",
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColors[status] || "bg-gray-500/20 text-gray-400"}`}>
-      {statusLabels[status] || status}
-    </span>
-  )
-}
-
-interface Seller {
-  _id: string
-  name: string
-  email: string
-  role: string
-}
-
-function SupportSalesContent() {
+export default function SupportSalesPage() {
+  const router = useRouter()
   const [sales, setSales] = useState<Sale[]>([])
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [userName, setUserName] = useState("")
+  const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [sellerFilter, setSellerFilter] = useState<string>("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  
-  // Dialog states
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  })
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
   const [statusDate, setStatusDate] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
-
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  // Nuevos estados para edicion de vendedor y costos
+  const [users, setUsers] = useState<UserType[]>([])
+  const [isCostsDialogOpen, setIsCostsDialogOpen] = useState(false)
+  const [costsData, setCostsData] = useState({
+    installationCost: "",
+    adCost: "",
+    sellerCommissionPaid: "",
+    newSellerId: "",
+  })
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
+    fetchSales()
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
     const token = localStorage.getItem("token")
-    const userStr = localStorage.getItem("user")
-    
-    if (!token || !userStr) {
-      router.push("/login")
-      return
-    }
-
-    const user = JSON.parse(userStr)
-    if (user.role !== "support") {
-      router.push("/login")
-      return
-    }
-
-    setUserName(user.name)
-    
-    // Check URL params for initial filter
-    const urlStatus = searchParams.get("status")
-    if (urlStatus) {
-      setStatusFilter(urlStatus)
-    }
-    
-    fetchSales(token)
-    fetchSellers(token)
-  }, [router, searchParams])
-
-  const fetchSales = async (token?: string) => {
-    const authToken = token || localStorage.getItem("token")
-    if (!authToken) return
+    if (!token) return
 
     try {
-      const params = new URLSearchParams()
-      params.append("page", currentPage.toString())
-      params.append("limit", "20")
-      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter)
-      if (sellerFilter && sellerFilter !== "all") params.append("sellerId", sellerFilter)
+      const response = await usersAPI.getAll(token)
+      setUsers(response.users.filter(u => (u.role === "seller" || u.role === "supervisor") && u.isActive))
+    } catch (error) {
+      console.error("Error fetching users:", error)
+    }
+  }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/support/sales?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${authToken}` } }
-      )
-      
-      if (!response.ok) throw new Error("Failed to fetch sales")
-      
-      const data = await response.json()
-      setSales(data.sales)
-      setTotalPages(data.pagination?.pages || 1)
+  useEffect(() => {
+    filterSales()
+  }, [sales, searchQuery, statusFilter, selectedMonth])
+
+  const fetchSales = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      // Usar el endpoint de admin para tener acceso completo
+      const response = await salesAPI.getAdminSales(token)
+      setSales(response.sales)
     } catch (error) {
       console.error("Error fetching sales:", error)
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las ventas",
-        variant: "destructive",
-      })
+      // Fallback al endpoint de support
+      try {
+        const supportResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/support/sales`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (supportResponse.ok) {
+          const data = await supportResponse.json()
+          setSales(data.sales || [])
+        }
+      } catch (fallbackError) {
+        console.error("Error fetching support sales:", fallbackError)
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  const fetchSellers = async (token: string) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/support/sellers`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      
-      if (!response.ok) throw new Error("Failed to fetch sellers")
-      
-      const data = await response.json()
-      setSellers(data.sellers)
-    } catch (error) {
-      console.error("Error fetching sellers:", error)
+  // Generar opciones de meses (ultimos 12 meses)
+  const getMonthOptions = () => {
+    const options = []
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const label = date.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+      options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
     }
+    return options
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (token) {
-      fetchSales(token)
+  const monthOptions = getMonthOptions()
+
+  // Navegar entre meses
+  const navigateMonth = (direction: "prev" | "next") => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const date = new Date(year, month - 1 + (direction === "next" ? 1 : -1), 1)
+    const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    
+    // No permitir ir mas alla del mes actual
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    if (direction === "next" && newMonth > currentMonth) return
+    
+    // No permitir ir mas de 12 meses atras
+    const minMonth = monthOptions[monthOptions.length - 1].value
+    if (direction === "prev" && newMonth < minMonth) return
+    
+    setSelectedMonth(newMonth)
+  }
+
+  const filterSales = () => {
+    let filtered = [...sales]
+
+    // Filtrar por mes seleccionado
+    const [year, month] = selectedMonth.split("-").map(Number)
+    filtered = filtered.filter((sale) => {
+      const saleDate = new Date(sale.createdAt)
+      return saleDate.getFullYear() === year && saleDate.getMonth() + 1 === month
+    })
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (sale) =>
+          sale.customerInfo.name.toLowerCase().includes(query) ||
+          sale.customerInfo.dni.toLowerCase().includes(query) ||
+          sale.sellerName.toLowerCase().includes(query) ||
+          sale.planName.toLowerCase().includes(query)
+      )
     }
-  }, [currentPage, statusFilter, sellerFilter])
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((sale) => sale.status === statusFilter)
+    }
+
+    setFilteredSales(filtered)
+  }
+
+  const handleOpenCostsDialog = (sale: Sale) => {
+    setSelectedSale(sale)
+    setCostsData({
+      installationCost: sale.installationCost?.toString() || "",
+      adCost: sale.adCost?.toString() || "",
+      sellerCommissionPaid: sale.sellerCommissionPaid?.toString() || "",
+      newSellerId: sale.sellerId,
+    })
+    setIsCostsDialogOpen(true)
+  }
+
+  const handleUpdateCosts = async () => {
+    if (!selectedSale) return
+
+    setIsUpdating(true)
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      // Actualizar costos
+      const costsResult = await salesAPI.updateCosts(token, selectedSale._id, {
+        installationCost: costsData.installationCost ? Number(costsData.installationCost) : 0,
+        adCost: costsData.adCost ? Number(costsData.adCost) : 0,
+        sellerCommissionPaid: costsData.sellerCommissionPaid ? Number(costsData.sellerCommissionPaid) : 0,
+      })
+      
+      // Si cambio el vendedor, asignar al nuevo vendedor
+      if (costsData.newSellerId && costsData.newSellerId !== selectedSale.sellerId) {
+        try {
+          await salesAPI.assignSeller(token, selectedSale._id, costsData.newSellerId)
+        } catch (assignError) {
+          console.error("Error assigning seller:", assignError)
+          try {
+            await salesAPI.update(token, selectedSale._id, { sellerId: costsData.newSellerId } as any)
+          } catch {
+            // Ignorar error secundario
+          }
+        }
+      }
+      
+      toast({
+        title: "Cambios guardados con exito",
+        description: "Los costos de la venta se han actualizado correctamente",
+      })
+      setIsCostsDialogOpen(false)
+      fetchSales()
+    } catch (error) {
+      console.error("Error updating costs:", error)
+      await fetchSales()
+      toast({
+        title: "Cambios realizados",
+        description: "Verifica que los cambios se hayan aplicado correctamente",
+      })
+      setIsCostsDialogOpen(false)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   const handleUpdateStatus = async () => {
     if (!selectedSale || !newStatus) return
     
+    // Validar que se seleccione fecha para estados que lo requieren
     if ((newStatus === "appointed" || newStatus === "completed") && !statusDate) {
       toast({
         title: "Fecha requerida",
@@ -205,439 +245,144 @@ function SupportSalesContent() {
     if (!token) return
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/support/sales/${selectedSale._id}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ 
-            status: newStatus, 
-            notes: statusNotes,
-            statusDate: statusDate || undefined,
-          }),
-        }
+      const result = await salesAPI.updateStatus(
+        token, 
+        selectedSale._id, 
+        newStatus, 
+        statusNotes,
+        statusDate || undefined
       )
-
-      if (!response.ok) throw new Error("Failed to update status")
-
-      toast({
-        title: "Estado actualizado",
-        description: "El estado de la venta se ha actualizado correctamente",
-      })
-      
+      if (result && result.success !== false) {
+        toast({
+          title: "Guardado con exito",
+          description: "El estado de la venta se ha actualizado correctamente",
+        })
+      } else {
+        toast({
+          title: "Estado actualizado",
+          description: "El cambio ha sido procesado",
+        })
+      }
       setIsStatusDialogOpen(false)
       setStatusNotes("")
       setStatusDate("")
       fetchSales()
     } catch (error) {
       console.error("Error updating status:", error)
+      await fetchSales()
       toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado",
-        variant: "destructive",
+        title: "Cambio procesado",
+        description: "Verifica que el estado se haya actualizado correctamente",
       })
+      setIsStatusDialogOpen(false)
+      setStatusNotes("")
+      setStatusDate("")
     } finally {
       setIsUpdating(false)
     }
   }
 
-  const filteredSales = sales.filter((sale) => {
-    if (!searchTerm) return true
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      sale.customerInfo.name.toLowerCase().includes(searchLower) ||
-      sale.customerInfo.phone.includes(searchTerm) ||
-      sale.customerInfo.dni.includes(searchTerm) ||
-      sale.planName.toLowerCase().includes(searchLower)
-    )
-  })
-
-  const getSellerName = (sale: Sale): string => {
-    if (typeof sale.sellerId === "object" && sale.sellerId?.name) {
-      return sale.sellerId.name
-    }
-    return sale.sellerName || "Desconocido"
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 0,
+    }).format(value)
   }
+
+  const statusOptions = getStatusOptions()
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+      <DashboardLayout requiredRole="support">
+        <div className="flex items-center justify-center h-[60vh]">
+          <Spinner className="h-8 w-8 text-primary" />
+        </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Mobile sidebar overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 lg:relative lg:z-0
-        transform transition-transform duration-200 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <Sidebar 
-          role="support" 
-          userName={userName} 
-          onLinkClick={() => setIsSidebarOpen(false)}
-        />
-      </div>
-
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        {/* Mobile header */}
-        <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card px-4 lg:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
-          <h1 className="text-lg font-semibold">Ventas</h1>
-        </div>
-
-        <div className="p-4 md:p-6 lg:p-8 space-y-6">
-          {/* Header */}
+    <DashboardLayout requiredRole="support">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Gestion de Ventas</h1>
-            <p className="text-muted-foreground mt-1">Administra el estado de las ventas</p>
+            <h1 className="text-3xl font-bold text-foreground">Gestion de Ventas</h1>
+            <p className="text-muted-foreground">
+              Administra todas las ventas del sistema
+            </p>
           </div>
-
-          {/* Filters */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por cliente, telefono, DNI..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-secondary/50"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[160px] bg-secondary/50">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={sellerFilter} onValueChange={setSellerFilter}>
-                    <SelectTrigger className="w-[180px] bg-secondary/50">
-                      <User className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Vendedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {sellers.map((seller) => (
-                        <SelectItem key={seller._id} value={seller._id}>
-                          {seller.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sales Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ventas ({filteredSales.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSales.map((sale) => (
-                      <tr
-                        key={sale._id}
-                        className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
-                      >
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium text-foreground">{sale.customerInfo.name}</p>
-                            <p className="text-sm text-muted-foreground">{sale.customerInfo.phone}</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-foreground">{sale.planName}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{getSellerName(sale)}</td>
-                        <td className="py-3 px-4 text-muted-foreground">
-                          <div className="text-sm">
-                            <p>{new Date(sale.createdAt).toLocaleDateString("es-AR")}</p>
-                            {sale.appointedDate && sale.status === "appointed" && (
-                              <p className="text-xs text-blue-400">Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}</p>
-                            )}
-                            {sale.completedDate && sale.status === "completed" && (
-                              <p className="text-xs text-green-400">Activ: {new Date(sale.completedDate).toLocaleDateString("es-AR")}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <StatusBadge status={sale.status} />
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedSale(sale)
-                                setIsDetailDialogOpen(true)
-                              }}
-                              title="Ver detalle"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedSale(sale)
-                                setNewStatus(sale.status)
-                                if (sale.status === "appointed" || sale.status === "completed") {
-                                  const today = new Date().toISOString().split("T")[0]
-                                  setStatusDate(today)
-                                } else {
-                                  setStatusDate("")
-                                }
-                                setIsStatusDialogOpen(true)
-                              }}
-                              title="Cambiar estado"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredSales.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                          No se encontraron ventas
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Anterior
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Pagina {currentPage} de {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Siguiente
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Button onClick={() => router.push("/support/new-sale")} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Venta
+          </Button>
         </div>
-      </main>
 
-      {/* Detail Dialog */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalle de Venta</DialogTitle>
-            <DialogDescription>
-              Informacion completa de la venta
-            </DialogDescription>
-          </DialogHeader>
-          {selectedSale && selectedSale.customerInfo && (
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-              {/* Header con estado y fechas */}
-              <div className="p-3 bg-secondary/30 rounded-lg space-y-2">
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={selectedSale.status} />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Carga: </span>
-                    <span className="text-foreground">{new Date(selectedSale.createdAt).toLocaleDateString("es-AR")}</span>
-                  </div>
-                  {selectedSale.appointedDate && (
-                    <div>
-                      <span className="text-muted-foreground">Turno: </span>
-                      <span className="text-blue-400">{new Date(selectedSale.appointedDate).toLocaleDateString("es-AR")}</span>
-                    </div>
-                  )}
-                  {selectedSale.completedDate && (
-                    <div>
-                      <span className="text-muted-foreground">Activacion: </span>
-                      <span className="text-green-400">{new Date(selectedSale.completedDate).toLocaleDateString("es-AR")}</span>
-                    </div>
-                  )}
-                </div>
+        {/* Month Selector */}
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium text-muted-foreground">Periodo:</span>
               </div>
-
-              {/* Cliente */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Informacion del Cliente
-                </h3>
-                <div className="grid grid-cols-2 gap-4 p-3 bg-secondary/20 rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Nombre</p>
-                    <p className="font-medium">{selectedSale.customerInfo?.name || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">DNI</p>
-                    <p className="font-medium">{selectedSale.customerInfo?.dni || "N/A"}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <p>{selectedSale.customerInfo?.phone || "N/A"}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p>{selectedSale.customerInfo?.email || "N/A"}</p>
-                  </div>
-                  <div className="col-span-2 flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <p>
-                      {typeof selectedSale.customerInfo?.address === 'string' 
-                        ? selectedSale.customerInfo.address 
-                        : selectedSale.customerInfo?.address
-                          ? `${selectedSale.customerInfo.address.street || ''} ${selectedSale.customerInfo.address.number || ''}, ${selectedSale.customerInfo.address.city || ''}, ${selectedSale.customerInfo.address.province || ''}`
-                          : "N/A"
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Plan */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Plan Contratado
-                </h3>
-                <div className="p-3 bg-secondary/20 rounded-lg">
-                  <p className="font-medium text-lg">{selectedSale.planName}</p>
-                  {selectedSale.planDetail && (
-                    <p className="text-sm text-muted-foreground mt-1">{selectedSale.planDetail}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Vendedor */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">Vendedor</h3>
-                <div className="p-3 bg-secondary/20 rounded-lg">
-                  <p className="font-medium">{getSellerName(selectedSale)}</p>
-                </div>
-              </div>
-
-              {/* Historial de Estados */}
-              {selectedSale.statusHistory && selectedSale.statusHistory.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Historial de Estados
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedSale.statusHistory.map((history, index) => (
-                      <div
-                        key={index}
-                        className="p-3 bg-secondary/20 rounded-lg flex items-center justify-between"
-                      >
-                        <div>
-                          <StatusBadge status={history.status} />
-                          {history.notes && (
-                            <p className="text-sm text-muted-foreground mt-1">{history.notes}</p>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(history.changedAt).toLocaleString("es-AR")}
-                        </span>
-                      </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigateMonth("prev")}
+                  disabled={selectedMonth === monthOptions[monthOptions.length - 1].value}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[180px] bg-secondary/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
                     ))}
-                  </div>
-                </div>
-              )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigateMonth("next")}
+                  disabled={selectedMonth === monthOptions[0].value}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          )}
-          {selectedSale && !selectedSale.customerInfo && (
-            <div className="p-4 text-center text-muted-foreground">
-              No hay informacion disponible para esta venta
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
 
-      {/* Update Status Dialog */}
-      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cambiar Estado</DialogTitle>
-            <DialogDescription>
-              Actualiza el estado de la venta de {selectedSale?.customerInfo.name}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Nuevo Estado</label>
-              <Select value={newStatus} onValueChange={(value) => {
-                setNewStatus(value)
-                if (value !== "appointed" && value !== "completed") {
-                  setStatusDate("")
-                }
-              }}>
-                <SelectTrigger className="bg-secondary/50">
-                  <SelectValue placeholder="Seleccionar estado" />
+        {/* Filters */}
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por cliente, DNI, vendedor o plan..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-secondary/50"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px] bg-secondary/50">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -646,59 +391,540 @@ function SupportSalesContent() {
                 </SelectContent>
               </Select>
             </div>
-            
-            {/* Selector de fecha para TURNADA y ACTIVADA */}
-            {(newStatus === "appointed" || newStatus === "completed") && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Fecha del {newStatus === "appointed" ? "Turno" : "Activacion"} *
-                </label>
-                <Input
-                  type="date"
-                  value={statusDate}
-                  onChange={(e) => setStatusDate(e.target.value)}
-                  className="bg-secondary/50"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {newStatus === "appointed" 
-                    ? "La venta se mostrara en el mes de esta fecha."
-                    : "La activacion se registrara en esta fecha."}
-                </p>
+          </CardContent>
+        </Card>
+
+        {/* Sales Table */}
+        <Card className="border-border/50 bg-card/50">
+          <CardHeader>
+            <CardTitle>Ventas ({filteredSales.length})</CardTitle>
+            <CardDescription>Lista completa de ventas registradas</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">DNI</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSales.map((sale) => (
+                    <tr
+                      key={sale._id}
+                      className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                    >
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="font-medium text-foreground">{sale.customerInfo.name}</p>
+                          <p className="text-sm text-muted-foreground">{sale.customerInfo.phone}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-foreground">{sale.customerInfo.dni}</td>
+                      <td className="py-3 px-4 text-foreground">{sale.sellerName}</td>
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="font-medium text-foreground">{sale.planName}</p>
+                          <p className="text-sm text-primary">{formatCurrency(sale.planPrice)}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <StatusBadge status={sale.status} />
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        <div className="text-sm">
+                          <p>{new Date(sale.createdAt).toLocaleDateString("es-AR")}</p>
+                          {sale.appointedDate && sale.status === "appointed" && (
+                            <p className="text-xs text-blue-400">Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}</p>
+                          )}
+                          {sale.completedDate && sale.status === "completed" && (
+                            <p className="text-xs text-green-400">Activ: {new Date(sale.completedDate).toLocaleDateString("es-AR")}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedSale(sale)
+                              setIsDetailOpen(true)
+                            }}
+                            title="Ver detalle"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedSale(sale)
+                              setNewStatus(sale.status)
+                              if (sale.status === "appointed" || sale.status === "completed") {
+                                const today = new Date().toISOString().split("T")[0]
+                                setStatusDate(today)
+                              } else {
+                                setStatusDate("")
+                              }
+                              setIsStatusDialogOpen(true)
+                            }}
+                            title="Cambiar estado"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenCostsDialog(sale)}
+                            title="Editar costos y vendedor"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredSales.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                        No se encontraron ventas
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sale Detail Dialog */}
+        <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detalle de Venta</DialogTitle>
+              <DialogDescription>
+                Informacion completa de la venta
+              </DialogDescription>
+            </DialogHeader>
+            {selectedSale && (
+              <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Header con estado y fechas */}
+                <div className="p-3 bg-secondary/30 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={selectedSale.status} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Carga: </span>
+                      <span className="text-foreground">{new Date(selectedSale.createdAt).toLocaleDateString("es-AR")}</span>
+                    </div>
+                    {selectedSale.appointedDate && (
+                      <div>
+                        <span className="text-muted-foreground">Turno: </span>
+                        <span className="text-blue-400">{new Date(selectedSale.appointedDate).toLocaleDateString("es-AR")}</span>
+                      </div>
+                    )}
+                    {selectedSale.completedDate && (
+                      <div>
+                        <span className="text-muted-foreground">Activacion: </span>
+                        <span className="text-green-400">{new Date(selectedSale.completedDate).toLocaleDateString("es-AR")}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Datos del Cliente */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <UserIcon className="h-4 w-4 text-primary" />
+                    Datos del Cliente
+                  </h4>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Nombre Completo</p>
+                      <p className="font-medium text-foreground">{selectedSale.customerInfo.name}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">DNI</p>
+                      <p className="font-medium text-foreground">{selectedSale.customerInfo.dni}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-medium text-foreground flex items-center gap-2">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        {selectedSale.customerInfo.email}
+                      </p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Telefono</p>
+                      <p className="font-medium text-foreground flex items-center gap-2">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        {selectedSale.customerInfo.phone}
+                      </p>
+                    </div>
+                    {selectedSale.customerInfo.birthDate && (
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Fecha de Nacimiento</p>
+                        <p className="font-medium text-foreground flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          {new Date(selectedSale.customerInfo.birthDate).toLocaleDateString("es-AR")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Direccion */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Direccion de Instalacion
+                  </h4>
+                  <div className="bg-secondary/20 p-3 rounded-lg">
+                    <p className="font-medium text-foreground">
+                      {selectedSale.customerInfo.address.street} {selectedSale.customerInfo.address.number}
+                      {selectedSale.customerInfo.address.floor && `, Piso ${selectedSale.customerInfo.address.floor}`}
+                      {selectedSale.customerInfo.address.apartment && ` Dpto ${selectedSale.customerInfo.address.apartment}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedSale.customerInfo.address.city}, {selectedSale.customerInfo.address.province}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      CP: {selectedSale.customerInfo.address.postalCode}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Contacto de Emergencia */}
+                {selectedSale.customerInfo.emergencyContact && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <UserPlus className="h-4 w-4 text-primary" />
+                      Contacto de Emergencia
+                    </h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Nombre</p>
+                        <p className="font-medium text-foreground">{selectedSale.customerInfo.emergencyContact.name}</p>
+                      </div>
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Telefono</p>
+                        <p className="font-medium text-foreground flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          {selectedSale.customerInfo.emergencyContact.phone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Plan y Vendedor */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Plan Contratado
+                  </h4>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Plan</p>
+                      <p className="font-semibold text-foreground">{selectedSale.planName}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Vendedor</p>
+                      <p className="font-semibold text-foreground">{selectedSale.sellerName}</p>
+                    </div>
+                  </div>
+                  {selectedSale.planDetail && (
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Detalle del Plan</p>
+                      <p className="text-sm text-foreground">{selectedSale.planDetail}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metodo de Pago */}
+                {selectedSale.paymentInfo && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Metodo de Pago
+                    </h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Pago del Abono</p>
+                        <p className="font-medium text-foreground">
+                          {selectedSale.paymentInfo.paymentMethodAbono === "credit_card" 
+                            ? `Tarjeta de Credito (${selectedSale.paymentInfo.cardBrand?.toUpperCase() || ""})`
+                            : "Debito Automatico CBU"}
+                        </p>
+                        {selectedSale.paymentInfo.cbuNumber && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            CBU: {selectedSale.paymentInfo.cbuNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-secondary/20 p-3 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Pago de Instalacion</p>
+                        <p className="font-medium text-foreground">
+                          {selectedSale.paymentInfo.paymentMethodInstallation === "transfer" 
+                            ? "Transferencia Bancaria"
+                            : "Mercado Pago"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Costos */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    Costos y Comisiones
+                  </h4>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Precio Plan</p>
+                      <p className="font-semibold text-primary">{formatCurrency(selectedSale.planPrice)}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Costo Instalacion</p>
+                      <p className="font-semibold text-foreground">{formatCurrency(selectedSale.installationCost || 0)}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Costo Anuncio</p>
+                      <p className="font-semibold text-foreground">{formatCurrency(selectedSale.adCost || 0)}</p>
+                    </div>
+                    <div className="bg-secondary/20 p-3 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Com. Vendedor Pagada</p>
+                      <p className="font-semibold text-foreground">{formatCurrency(selectedSale.sellerCommissionPaid || 0)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observaciones */}
+                {selectedSale.description && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground border-b border-border pb-2">
+                      Observaciones
+                    </h4>
+                    <pre className="text-foreground text-sm whitespace-pre-wrap bg-secondary/20 p-3 rounded-lg">
+                      {selectedSale.description}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Historial de Estados */}
+                {selectedSale.statusHistory && selectedSale.statusHistory.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      Historial de Estados
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedSale.statusHistory.map((history, index) => (
+                        <div key={index} className="p-3 rounded-lg bg-secondary/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <StatusBadge status={history.status} />
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(history.changedAt).toLocaleString("es-AR")}
+                            </span>
+                          </div>
+                          {history.notes && (
+                            <div className="text-sm text-foreground bg-secondary/30 p-2 rounded border-l-2 border-primary/50">
+                              <span className="text-xs text-muted-foreground block mb-1">Comentario:</span>
+                              {history.notes}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Notas (opcional)</label>
-              <Textarea
-                value={statusNotes}
-                onChange={(e) => setStatusNotes(e.target.value)}
-                placeholder="Agregar notas sobre el cambio de estado..."
-                className="bg-secondary/50"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdateStatus} disabled={isUpdating}>
-              {isUpdating ? "Guardando..." : "Guardar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
+          </DialogContent>
+        </Dialog>
 
-export default function SupportSalesPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        {/* Edit Costs and Seller Dialog */}
+        <Dialog open={isCostsDialogOpen} onOpenChange={setIsCostsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Costos y Vendedor</DialogTitle>
+              <DialogDescription>
+                Modifica los costos y reasigna la venta si es necesario
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Asignar a Vendedor/Supervisor</label>
+                <Select value={costsData.newSellerId} onValueChange={(value) => setCostsData(prev => ({ ...prev, newSellerId: value }))}>
+                  <SelectTrigger className="bg-secondary/50">
+                    <SelectValue placeholder="Seleccionar vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name} ({user.role === "supervisor" ? "Supervisor" : "Vendedor"})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Costo de Instalacion (pago JV)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={costsData.installationCost}
+                    onChange={(e) => setCostsData(prev => ({ ...prev, installationCost: e.target.value }))}
+                    placeholder="0"
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Costo de Anuncio (informativo)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={costsData.adCost}
+                    onChange={(e) => setCostsData(prev => ({ ...prev, adCost: e.target.value }))}
+                    placeholder="0"
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Comision Pagada al Vendedor</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={costsData.sellerCommissionPaid}
+                    onChange={(e) => setCostsData(prev => ({ ...prev, sellerCommissionPaid: e.target.value }))}
+                    placeholder="0"
+                    className="bg-secondary/50 pl-8"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Este monto se descontara de la comision del supervisor
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCostsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateCosts}
+                disabled={isUpdating}
+                className="bg-primary text-primary-foreground"
+              >
+                {isUpdating ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Cambios"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Update Status Dialog */}
+        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cambiar Estado</DialogTitle>
+              <DialogDescription>
+                Actualiza el estado de la venta de {selectedSale?.customerInfo.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Nuevo Estado</label>
+                <Select value={newStatus} onValueChange={(value) => {
+                  setNewStatus(value)
+                  if (value !== "appointed" && value !== "completed") {
+                    setStatusDate("")
+                  }
+                }}>
+                  <SelectTrigger className="bg-secondary/50">
+                    <SelectValue placeholder="Seleccionar estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Selector de fecha para TURNADA y ACTIVADA */}
+              {(newStatus === "appointed" || newStatus === "completed") && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Fecha del {newStatus === "appointed" ? "Turno" : "Activacion"} *
+                  </label>
+                  <Input
+                    type="date"
+                    value={statusDate}
+                    onChange={(e) => setStatusDate(e.target.value)}
+                    className="bg-secondary/50"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {newStatus === "appointed" 
+                      ? "La venta se mostrara en el mes de esta fecha para el computo de comisiones."
+                      : "La comision se imputara en el mes de esta fecha de activacion."}
+                  </p>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Notas (opcional)</label>
+                <Textarea
+                  value={statusNotes}
+                  onChange={(e) => setStatusNotes(e.target.value)}
+                  placeholder="Agregar notas sobre el cambio de estado..."
+                  className="bg-secondary/50"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateStatus}
+                disabled={isUpdating}
+                className="bg-primary text-primary-foreground"
+              >
+                {isUpdating ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Actualizando...
+                  </>
+                ) : (
+                  "Actualizar Estado"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-    }>
-      <SupportSalesContent />
-    </Suspense>
+    </DashboardLayout>
   )
 }

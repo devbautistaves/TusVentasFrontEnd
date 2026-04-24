@@ -15,6 +15,7 @@ import {
   Menu,
   Eye,
   AlertCircle,
+  Plus,
 } from "lucide-react"
 
 interface SupportStats {
@@ -254,7 +255,7 @@ export default function SupportDashboard() {
             <CardHeader>
               <CardTitle>Acciones Rapidas</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
+            <CardContent className="grid gap-4 md:grid-cols-3">
               <Button
                 variant="outline"
                 className="h-20 flex flex-col items-center justify-center gap-2"
@@ -270,6 +271,13 @@ export default function SupportDashboard() {
               >
                 <AlertCircle className="h-6 w-6" />
                 <span>Ver Observadas</span>
+              </Button>
+              <Button
+                className="h-20 flex flex-col items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => router.push("/support/new-sale")}
+              >
+                <Plus className="h-6 w-6" />
+                <span>Cargar Nueva Venta</span>
               </Button>
             </CardContent>
           </Card>

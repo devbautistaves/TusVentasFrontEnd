@@ -25,7 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
-import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign } from "lucide-react"
+import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
 
 export default function AdminSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -33,6 +33,10 @@ export default function AdminSalesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  })
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
@@ -70,7 +74,7 @@ export default function AdminSalesPage() {
 
   useEffect(() => {
     filterSales()
-  }, [sales, searchQuery, statusFilter])
+  }, [sales, searchQuery, statusFilter, selectedMonth])
 
   const fetchSales = async () => {
     const token = localStorage.getItem("token")
@@ -86,8 +90,48 @@ export default function AdminSalesPage() {
     }
   }
 
+  // Generar opciones de meses (ultimos 12 meses)
+  const getMonthOptions = () => {
+    const options = []
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const label = date.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+      options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+    }
+    return options
+  }
+
+  const monthOptions = getMonthOptions()
+
+  // Navegar entre meses
+  const navigateMonth = (direction: "prev" | "next") => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const date = new Date(year, month - 1 + (direction === "next" ? 1 : -1), 1)
+    const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    
+    // No permitir ir mas alla del mes actual
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    if (direction === "next" && newMonth > currentMonth) return
+    
+    // No permitir ir mas de 12 meses atras
+    const minMonth = monthOptions[monthOptions.length - 1].value
+    if (direction === "prev" && newMonth < minMonth) return
+    
+    setSelectedMonth(newMonth)
+  }
+
   const filterSales = () => {
     let filtered = [...sales]
+
+    // Filtrar por mes seleccionado
+    const [year, month] = selectedMonth.split("-").map(Number)
+    filtered = filtered.filter((sale) => {
+      const saleDate = new Date(sale.createdAt)
+      return saleDate.getFullYear() === year && saleDate.getMonth() + 1 === month
+    })
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -265,6 +309,50 @@ export default function AdminSalesPage() {
             Administra todas las ventas del sistema
           </p>
         </div>
+
+        {/* Month Selector */}
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium text-muted-foreground">Periodo:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigateMonth("prev")}
+                  disabled={selectedMonth === monthOptions[monthOptions.length - 1].value}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[180px] bg-secondary/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigateMonth("next")}
+                  disabled={selectedMonth === monthOptions[0].value}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Filters */}
         <Card className="border-border/50 bg-card/50">
