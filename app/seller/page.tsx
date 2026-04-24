@@ -8,18 +8,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Spinner } from "@/components/ui/spinner"
-import { dashboardAPI, salesAPI, DashboardStats, Sale } from "@/lib/api"
-import { getActivatedSalesThisMonth, calculateTotalCommission, getCommissionPerSale, getCommissionTier } from "@/lib/commissions"
 import {
-  ShoppingCart,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { dashboardAPI, salesAPI, DashboardStats, Sale } from "@/lib/api"
+import { getCommissionPerSale, calculateTotalCommission } from "@/lib/commissions"
+import {
   DollarSign,
   Plus,
   CheckCircle,
-  TrendingUp,
   XCircle,
   Clock,
   Calendar,
   AlertTriangle,
+  Wrench,
+  TrendingDown,
 } from "lucide-react"
 import {
   AreaChart,
@@ -35,6 +42,10 @@ export default function SellerDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [mySales, setMySales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,13 +77,16 @@ export default function SellerDashboardPage() {
     }).format(value)
   }
 
-  // Filtrar ventas del mes actual
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
-  const salesThisMonth = mySales.filter(sale => {
-    const saleDate = new Date(sale.createdAt)
-    return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear
-  })
+  // Filtrar ventas del mes seleccionado
+  const getMonthSales = () => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    return mySales.filter(sale => {
+      const saleDate = new Date(sale.createdAt)
+      return saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year
+    })
+  }
+
+  const salesThisMonth = getMonthSales()
 
   // Contar por estado
   const installedSales = salesThisMonth.filter(s => s.status === "completed")
@@ -86,7 +100,28 @@ export default function SellerDashboardPage() {
   const commissionPerSale = getCommissionPerSale(activatedCount)
   const totalCommission = calculateTotalCommission(activatedCount)
 
-  // Mock chart data - in production this would come from the API
+  // Calcular costos de instalacion (se descuentan siempre de cualquier venta)
+  const totalInstallationCosts = salesThisMonth.reduce((acc, sale) => {
+    return acc + (sale.installationCost || 0)
+  }, 0)
+
+  // Comision neta = comision - costos de instalacion
+  const netCommission = totalCommission - totalInstallationCosts
+
+  // Generar meses disponibles
+  const getAvailableMonths = () => {
+    const months = []
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const label = date.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+      months.push({ value, label })
+    }
+    return months
+  }
+
+  // Mock chart data
   const chartData = [
     { name: "Lun", ventas: 2 },
     { name: "Mar", ventas: 4 },
@@ -118,16 +153,31 @@ export default function SellerDashboardPage() {
               Resumen de tu actividad de ventas
             </p>
           </div>
-          <Link href="/seller/new-sale">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva Venta
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] bg-secondary/50">
+                <Calendar className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Seleccionar mes" />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableMonths().map(month => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Link href="/seller/new-sale">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Venta
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid - Estado de Ventas */}
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           <StatCard
             title="Instaladas"
             value={installedSales.length}
@@ -158,12 +208,65 @@ export default function SellerDashboardPage() {
             icon={Clock}
             className="border-orange-500/30"
           />
-          <StatCard
-            title="Mi Comision"
-            value={formatCurrency(totalCommission)}
-            icon={DollarSign}
-            description={activatedCount > 0 ? `${activatedCount} x ${formatCurrency(commissionPerSale)}` : "Sin ventas"}
-          />
+        </div>
+
+        {/* Commission Cards */}
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Comision Bruta */}
+          <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Comision Bruta</p>
+                  <p className="text-3xl font-bold text-green-400">{formatCurrency(totalCommission)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {activatedCount} ventas x {formatCurrency(commissionPerSale)}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-green-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Costos de Instalacion */}
+          <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Costos Instalacion</p>
+                  <p className="text-3xl font-bold text-red-400">-{formatCurrency(totalInstallationCosts)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Se descuentan siempre
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                  <Wrench className="h-6 w-6 text-red-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comision Neta */}
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Comision Neta</p>
+                  <p className={`text-3xl font-bold ${netCommission >= 0 ? 'text-primary' : 'text-red-400'}`}>
+                    {formatCurrency(netCommission)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Tu ganancia final
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <TrendingDown className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Charts and Commission Info */}
@@ -210,30 +313,34 @@ export default function SellerDashboardPage() {
           {/* Commission Summary */}
           <Card className="border-border/50 bg-card/50">
             <CardHeader>
-              <CardTitle>Mi Comision</CardTitle>
-              <CardDescription>Resumen de tus ganancias</CardDescription>
+              <CardTitle>Detalle de Comision</CardTitle>
+              <CardDescription>Desglose de tu ganancia</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center py-6">
-                <p className="text-4xl font-bold text-primary">{formatCurrency(totalCommission)}</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {activatedCount > 0 
-                    ? `${activatedCount} ventas x ${formatCurrency(commissionPerSale)}` 
-                    : "Sin ventas activadas"}
-                </p>
-              </div>
-              <div className="border-t border-border pt-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total ventas:</span>
-                  <span className="font-semibold text-foreground">{mySales.length}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                  <span className="text-sm text-muted-foreground">Ventas activadas:</span>
+                  <span className="font-semibold text-foreground">{activatedCount}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Activadas:</span>
-                  <span className="font-semibold text-foreground">{installedSales.length}</span>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                  <span className="text-sm text-muted-foreground">Comision por venta:</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(commissionPerSale)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Pendientes:</span>
-                  <span className="font-semibold text-foreground">{mySales.filter(s => s.status === "pending" || s.status === "pending_appointment" || s.status === "appointed").length}</span>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10">
+                  <span className="text-sm text-muted-foreground">Comision bruta:</span>
+                  <span className="font-semibold text-green-400">{formatCurrency(totalCommission)}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
+                  <span className="text-sm text-muted-foreground">Costos instalacion:</span>
+                  <span className="font-semibold text-red-400">-{formatCurrency(totalInstallationCosts)}</span>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10">
+                    <span className="text-sm font-medium text-foreground">TOTAL NETO:</span>
+                    <span className={`font-bold text-lg ${netCommission >= 0 ? 'text-primary' : 'text-red-400'}`}>
+                      {formatCurrency(netCommission)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -244,8 +351,8 @@ export default function SellerDashboardPage() {
         <Card className="border-border/50 bg-card/50">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Mis Ventas Recientes</CardTitle>
-              <CardDescription>Tus ultimas ventas registradas</CardDescription>
+              <CardTitle>Mis Ventas del Mes</CardTitle>
+              <CardDescription>Ventas de {getAvailableMonths().find(m => m.value === selectedMonth)?.label}</CardDescription>
             </div>
             <Link href="/seller/sales">
               <Button variant="outline" size="sm">
@@ -260,12 +367,13 @@ export default function SellerDashboardPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Costo Inst.</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Fecha</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {mySales.slice(0, 5).map((sale) => (
+                  {salesThisMonth.slice(0, 10).map((sale) => (
                     <tr key={sale._id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                       <td className="py-3 px-4">
                         <div>
@@ -274,18 +382,25 @@ export default function SellerDashboardPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">{sale.planName}</td>
+                      <td className="py-3 px-4 hidden sm:table-cell">
+                        {sale.installationCost ? (
+                          <span className="text-red-400">-{formatCurrency(sale.installationCost)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={sale.status} />
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">
+                      <td className="py-3 px-4 text-muted-foreground hidden sm:table-cell">
                         {new Date(sale.createdAt).toLocaleDateString("es-AR")}
                       </td>
                     </tr>
                   ))}
-                  {mySales.length === 0 && (
+                  {salesThisMonth.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                        No tienes ventas registradas aun
+                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                        No tienes ventas registradas en este mes
                       </td>
                     </tr>
                   )}
@@ -298,5 +413,3 @@ export default function SellerDashboardPage() {
     </DashboardLayout>
   )
 }
-
-

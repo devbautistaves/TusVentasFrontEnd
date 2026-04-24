@@ -8,9 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { salesAPI, Sale } from "@/lib/api"
 import {
-  ShoppingCart,
   DollarSign,
   Plus,
   CheckCircle,
@@ -18,16 +24,23 @@ import {
   Clock,
   Calendar,
   AlertTriangle,
+  Wrench,
+  TrendingDown,
+  Percent,
 } from "lucide-react"
 
 // Constantes de comision supervisor
-const SUPERVISOR_BASE_COMMISSION = 750000 // $720.000 por venta
-const ADMIN_COST = 35000 // $35.000 costo administrativo fijo
-const SUPERVISOR_PERCENTAGE = 0.40 // 40%
+const SUPERVISOR_BASE_COMMISSION = 750000
+const ADMIN_COST = 35000
+const SUPERVISOR_PERCENTAGE = 0.40
 
 export default function SupervisorDashboardPage() {
   const [mySales, setMySales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,13 +68,16 @@ export default function SupervisorDashboardPage() {
     }).format(value)
   }
 
-  // Filtrar ventas del mes actual
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
-  const salesThisMonth = mySales.filter(sale => {
-    const saleDate = new Date(sale.createdAt)
-    return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear
-  })
+  // Filtrar ventas del mes seleccionado
+  const getMonthSales = () => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    return mySales.filter(sale => {
+      const saleDate = new Date(sale.createdAt)
+      return saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year
+    })
+  }
+
+  const salesThisMonth = getMonthSales()
 
   // Contar por estado
   const installedSales = salesThisMonth.filter(s => s.status === "completed")
@@ -70,14 +86,25 @@ export default function SupervisorDashboardPage() {
   const observedSales = salesThisMonth.filter(s => s.status === "pending_appointment")
   const loadedSales = salesThisMonth.filter(s => s.status === "pending")
 
+  // Calcular totales de costos (se descuentan siempre)
+  const totalInstallationCosts = salesThisMonth.reduce((acc, sale) => {
+    return acc + (sale.installationCost || 0)
+  }, 0)
+
+  const totalAdCosts = salesThisMonth.reduce((acc, sale) => {
+    return acc + (sale.adCost || 0)
+  }, 0)
+
+  const totalSellerCommissions = salesThisMonth.reduce((acc, sale) => {
+    return acc + (sale.sellerCommissionPaid || 0)
+  }, 0)
+
   // Calcular comisiones del supervisor
   const calculateSupervisorCommission = () => {
-    // Solo ventas instaladas (completed) del mes
-    const completedSalesThisMonth = installedSales
-
     let totalBeforePercentage = 0
 
-    completedSalesThisMonth.forEach(sale => {
+    // Solo ventas instaladas suman comision base
+    installedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION
       const installationCost = sale.installationCost || 0
       const adCost = sale.adCost || 0
@@ -87,18 +114,31 @@ export default function SupervisorDashboardPage() {
       totalBeforePercentage += netCommission
     })
 
-    // Descontar instalaciones pagadas de ventas canceladas
+    // Descontar instalaciones pagadas de ventas canceladas (se descuentan siempre)
     cancelledSales.forEach(sale => {
       if (sale.installationCost && sale.installationCost > 0) {
         totalBeforePercentage -= sale.installationCost
       }
     })
 
-    // Aplicar el 40%
-    return Math.max(0, totalBeforePercentage * SUPERVISOR_PERCENTAGE)
+    return Math.max(0, totalBeforePercentage)
   }
 
-  const totalCommission = calculateSupervisorCommission()
+  const totalBeforePercentage = calculateSupervisorCommission()
+  const totalCommission = totalBeforePercentage * SUPERVISOR_PERCENTAGE
+
+  // Generar meses disponibles
+  const getAvailableMonths = () => {
+    const months = []
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const label = date.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+      months.push({ value, label })
+    }
+    return months
+  }
 
   if (isLoading) {
     return (
@@ -121,86 +161,190 @@ export default function SupervisorDashboardPage() {
               Resumen de tu actividad como Supervisor
             </p>
           </div>
-          <Link href="/supervisor/new-sale">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva Venta
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] bg-secondary/50">
+                <Calendar className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Seleccionar mes" />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableMonths().map(month => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Link href="/supervisor/new-sale">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Venta
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid - Estado de Ventas */}
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           <StatCard
-            title="Ventas Instaladas"
+            title="Instaladas"
             value={installedSales.length}
             icon={CheckCircle}
             className="border-green-500/30"
           />
           <StatCard
-            title="Ventas Canceladas"
+            title="Canceladas"
             value={cancelledSales.length}
             icon={XCircle}
             className="border-red-500/30"
           />
           <StatCard
-            title="Ventas Turnadas"
+            title="Turnadas"
             value={appointedSales.length}
             icon={Calendar}
             className="border-blue-500/30"
           />
           <StatCard
-            title="Ventas Observadas"
+            title="Observadas"
             value={observedSales.length}
             icon={AlertTriangle}
             className="border-yellow-500/30"
           />
           <StatCard
-            title="Ventas Cargadas"
+            title="Cargadas"
             value={loadedSales.length}
             icon={Clock}
             className="border-orange-500/30"
           />
         </div>
 
-        {/* Commission Summary */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="border-border/50 bg-card/50">
-            <CardHeader>
-              <CardTitle>Mi Comision del Mes</CardTitle>
-              <CardDescription>Calculo basado en ventas instaladas</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center py-6">
-                <p className="text-4xl font-bold text-primary">{formatCurrency(totalCommission)}</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  40% sobre {installedSales.length} ventas instaladas
-                </p>
-              </div>
-              <div className="border-t border-border pt-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Comision base por venta:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(SUPERVISOR_BASE_COMMISSION)}</span>
+        {/* Commission Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Base Total */}
+          <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Base por Ventas</p>
+                  <p className="text-3xl font-bold text-blue-400">
+                    {formatCurrency(installedSales.length * SUPERVISOR_BASE_COMMISSION)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {installedSales.length} x {formatCurrency(SUPERVISOR_BASE_COMMISSION)}
+                  </p>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Costo administrativo:</span>
-                  <span className="font-semibold text-red-400">-{formatCurrency(ADMIN_COST)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Porcentaje aplicado:</span>
-                  <span className="font-semibold text-foreground">40%</span>
+                <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-blue-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Costos Totales */}
+          <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Descuentos Totales</p>
+                  <p className="text-3xl font-bold text-red-400">
+                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Inst + Admin + Ads + Com.Vend
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                  <Wrench className="h-6 w-6 text-red-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Neto antes del % */}
+          <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Neto (antes 40%)</p>
+                  <p className="text-3xl font-bold text-amber-400">
+                    {formatCurrency(totalBeforePercentage)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Base total - Descuentos
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <TrendingDown className="h-6 w-6 text-amber-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comision Final */}
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">MI COMISION (40%)</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(totalCommission)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Tu ganancia final
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Percent className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detailed Breakdown */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Desglose de Costos */}
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader>
+              <CardTitle>Desglose de Descuentos</CardTitle>
+              <CardDescription>Costos que se restan de tu comision</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                <span className="text-sm text-muted-foreground">Costos de Instalacion:</span>
+                <span className="font-semibold text-red-400">-{formatCurrency(totalInstallationCosts)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                <span className="text-sm text-muted-foreground">Costo Admin ({installedSales.length} ventas):</span>
+                <span className="font-semibold text-red-400">-{formatCurrency(installedSales.length * ADMIN_COST)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                <span className="text-sm text-muted-foreground">Costos de Anuncios:</span>
+                <span className="font-semibold text-red-400">-{formatCurrency(totalAdCosts)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                <span className="text-sm text-muted-foreground">Comisiones Vendedores:</span>
+                <span className="font-semibold text-red-400">-{formatCurrency(totalSellerCommissions)}</span>
+              </div>
+              <div className="border-t border-border pt-3">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
+                  <span className="text-sm font-medium text-foreground">TOTAL DESCUENTOS:</span>
+                  <span className="font-bold text-lg text-red-400">
+                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Resumen del Mes */}
           <Card className="border-border/50 bg-card/50">
             <CardHeader>
               <CardTitle>Resumen del Mes</CardTitle>
-              <CardDescription>Total de ventas y estados</CardDescription>
+              <CardDescription>Total de ventas por estado</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-green-400" />
@@ -232,7 +376,7 @@ export default function SupervisorDashboardPage() {
                 <div className="flex items-center justify-between p-3 rounded-lg bg-orange-500/10">
                   <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-orange-400" />
-                    <span className="text-foreground">Cargadas (Pendientes)</span>
+                    <span className="text-foreground">Cargadas</span>
                   </div>
                   <span className="font-bold text-orange-400">{loadedSales.length}</span>
                 </div>
@@ -245,8 +389,8 @@ export default function SupervisorDashboardPage() {
         <Card className="border-border/50 bg-card/50">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Mis Ventas Recientes</CardTitle>
-              <CardDescription>Tus ultimas ventas registradas</CardDescription>
+              <CardTitle>Mis Ventas del Mes</CardTitle>
+              <CardDescription>Ventas de {getAvailableMonths().find(m => m.value === selectedMonth)?.label}</CardDescription>
             </div>
             <Link href="/supervisor/sales">
               <Button variant="outline" size="sm">
@@ -261,12 +405,13 @@ export default function SupervisorDashboardPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Costo Inst.</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Fecha</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {mySales.slice(0, 5).map((sale) => (
+                  {salesThisMonth.slice(0, 10).map((sale) => (
                     <tr key={sale._id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                       <td className="py-3 px-4">
                         <div>
@@ -275,18 +420,25 @@ export default function SupervisorDashboardPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">{sale.planName}</td>
+                      <td className="py-3 px-4 hidden sm:table-cell">
+                        {sale.installationCost ? (
+                          <span className="text-red-400">-{formatCurrency(sale.installationCost)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={sale.status} />
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">
+                      <td className="py-3 px-4 text-muted-foreground hidden sm:table-cell">
                         {new Date(sale.createdAt).toLocaleDateString("es-AR")}
                       </td>
                     </tr>
                   ))}
-                  {mySales.length === 0 && (
+                  {salesThisMonth.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                        No tienes ventas registradas aun
+                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                        No tienes ventas registradas en este mes
                       </td>
                     </tr>
                   )}

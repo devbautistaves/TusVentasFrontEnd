@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Megaphone,
   X,
+  History,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -40,6 +41,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/admin/new-sale", label: "Nueva Venta", icon: TrendingUp },
+    { href: "/admin/history", label: "Historial", icon: History },
     { href: "/admin/users", label: "Usuarios", icon: Users },
     { href: "/admin/plans", label: "Planes", icon: Package },
     { href: "/admin/commissions", label: "Comisiones", icon: DollarSign },
