@@ -34,6 +34,7 @@ import {
   Wifi,
   WifiOff,
   Circle,
+  AlertTriangle,
 } from "lucide-react"
 import {
   BarChart,
