@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -80,7 +80,7 @@ interface Seller {
   role: string
 }
 
-export default function SupportSalesPage() {
+function SupportSalesContent() {
   const [sales, setSales] = useState<Sale[]>([])
   const [sellers, setSellers] = useState<Seller[]>([])
   const [userName, setUserName] = useState("")
@@ -676,5 +676,17 @@ export default function SupportSalesPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function SupportSalesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    }>
+      <SupportSalesContent />
+    </Suspense>
   )
 }
