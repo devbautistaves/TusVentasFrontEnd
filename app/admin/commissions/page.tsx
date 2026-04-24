@@ -390,13 +390,12 @@ export default function AdminCommissionsPage() {
       }
     })
     
-    // Aplicar 40% sobre el neto
-    const commissionBeforeAdCost = totalBeforePercentage * SUPERVISOR_PERCENTAGE
-    
-    // Descontar costo de anuncio mensual del 100% (sobre la comision, no sobre el neto)
+    // Descontar costo de anuncio mensual del neto (100%) ANTES de aplicar el 40%
     const monthlyAdCost = getSupervisorAdCostForMonth(supervisorId)
+    const netAfterAdCost = totalBeforePercentage - monthlyAdCost
     
-    return Math.max(0, commissionBeforeAdCost - monthlyAdCost)
+    // Aplicar 40% sobre el neto despues de descontar anuncio
+    return Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
   }
 
   // Calcular comision ANTES de descontar costo de anuncio (para mostrar desglose)
@@ -617,7 +616,7 @@ export default function AdminCommissionsPage() {
       // SECCION: VENTAS CANCELADAS CON DESCUENTO
       const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
       csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-      csvRows.push(`────────────────────���──────────────────────────────────────────────────────`)
+      csvRows.push(`─────────────��──���───���──────────────────────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
       
       let totalCancelledDiscount = 0
@@ -650,7 +649,7 @@ export default function AdminCommissionsPage() {
       // RESUMEN FINAL
       const supervisorAdCost = getSupervisorAdCostForMonth(user._id)
       const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
-      const commissionBeforeAdCost = calculateSupervisorCommissionBeforeAdCost(user._id)
+      const netAfterAdCost = netBeforePercentage - supervisorAdCost
       const commissionFinal = calculateSupervisorCommission(user._id)
       
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
@@ -664,13 +663,12 @@ export default function AdminCommissionsPage() {
       csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(totalNetCompleted)}`)
       csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(totalCancelledDiscount)}`)
       csvRows.push(`Neto (100%):,${formatCurrency(netBeforePercentage)}`)
-      csvRows.push(``)
-      csvRows.push(`COMISION (40% del Neto):,${formatCurrency(commissionBeforeAdCost)}`)
       if (supervisorAdCost > 0) {
         csvRows.push(`Costo de Anuncio Mensual (sobre 100%):,-${formatCurrency(supervisorAdCost)}`)
+        csvRows.push(`Neto despues de Anuncio:,${formatCurrency(netAfterAdCost)}`)
       }
       csvRows.push(``)
-      csvRows.push(`COMISION FINAL:,${formatCurrency(commissionFinal)}`)
+      csvRows.push(`COMISION FINAL (40%):,${formatCurrency(commissionFinal)}`)
       csvRows.push(``)
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
       
@@ -741,7 +739,7 @@ export default function AdminCommissionsPage() {
       const otherSales = allUserSales.filter(s => s.status !== "completed" && s.status !== "cancelled")
       if (otherSales.length > 0) {
         csvRows.push(`OTRAS VENTAS EN PROCESO (${otherSales.length})`)
-        csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+        csvRows.push(`─────────────────────────────────────────────────���─────────────────────────`)
         csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Observacion`)
         otherSales.forEach((sale, idx) => {
           csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${getStatusLabel(sale.status)},Pendiente de activacion`)
@@ -875,7 +873,7 @@ export default function AdminCommissionsPage() {
     rows.push(``)
     rows.push(`═══════════════════════════════════════════════════════════════════════════`)
     rows.push(`TOTAL A LIQUIDAR:,${formatCurrency(grandTotalCommissions)}`)
-    rows.push(`══════════════════════════════════════════════════════════════���════════════`)
+    rows.push(`════════════════════════════════════��════���════════════════════���════════════`)
 
     // Agregar BOM para que Excel/Sheets detecte UTF-8
     const BOM = "\uFEFF"
@@ -1637,7 +1635,7 @@ export default function AdminCommissionsPage() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Este monto se restara de la comision final del supervisor (40% del neto).
+                  Este monto se restara del neto (100%) del supervisor antes de aplicar el 40%.
                 </p>
               </Field>
             </FieldGroup>

@@ -152,9 +152,9 @@ export default function SupervisorCommissionsPage() {
   }
 
   const commission = calculateDetailedCommission()
-  // Primero aplicar 40% sobre el neto, luego descontar costo de anuncio del 100%
-  const commissionBeforeAdCost = commission.totalBeforePercentage * SUPERVISOR_PERCENTAGE
-  const finalCommission = Math.max(0, commissionBeforeAdCost - monthlyAdCost)
+  // Descontar costo de anuncio del neto (100%), LUEGO aplicar 40%
+  const netAfterAdCost = commission.totalBeforePercentage - monthlyAdCost
+  const finalCommission = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
 
   const handleOpenCostsDialog = (sale: Sale) => {
     setSelectedSale(sale)
@@ -295,13 +295,12 @@ export default function SupervisorCommissionsPage() {
     csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost)}`)
     csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(commission.cancelledInstallationCost)}`)
     csvRows.push(`Neto (100%):,${formatCurrency(commission.totalBeforePercentage)}`)
-    csvRows.push(``)
-    csvRows.push(`COMISION (40% del Neto):,${formatCurrency(commissionBeforeAdCost)}`)
     if (monthlyAdCost > 0) {
       csvRows.push(`Costo de Anuncio Mensual (sobre 100%):,-${formatCurrency(monthlyAdCost)}`)
+      csvRows.push(`Neto despues de Anuncio:,${formatCurrency(netAfterAdCost)}`)
     }
     csvRows.push(``)
-    csvRows.push(`COMISION FINAL:,${formatCurrency(finalCommission)}`)
+    csvRows.push(`COMISION FINAL (40%):,${formatCurrency(finalCommission)}`)
     csvRows.push(``)
     csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
 
