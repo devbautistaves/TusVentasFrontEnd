@@ -31,8 +31,9 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   }
 
   if (!response.ok) {
-    // Si el token expiro o es invalido, limpiar sesion y redirigir
-    if (response.status === 401 || response.status === 403) {
+    // Solo redirigir a login si el token expiro (401), no en 403 (permisos)
+    // El 403 puede ocurrir cuando un rol intenta acceder a endpoints de otro rol
+    if (response.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("token")
         localStorage.removeItem("user")
@@ -118,11 +119,11 @@ export const salesAPI = {
       body: JSON.stringify(data),
     }),
 
-  updateStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string) =>
+  updateStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string) =>
     fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
       method: "PUT",
       token,
-      body: JSON.stringify({ status, notes, statusDate }),
+      body: JSON.stringify({ status, notes, statusDate, ctoNumber }),
     }),
 
   getAdminSales: (token: string) =>
@@ -187,107 +188,120 @@ export const dashboardAPI = {
 
 // Support - endpoints que permiten acceso tipo admin para rol support
 export const supportAPI = {
-  // Obtener todas las ventas (usa el mismo endpoint que admin pero con fallback)
+  // Obtener todas las ventas - usa endpoint general /api/sales que devuelve todas las ventas para support
   getSales: async (token: string): Promise<{ success: boolean; sales: Sale[] }> => {
-    try {
-      // Primero intentar endpoint de support
-      const response = await fetch(`${API_URL}/api/support/sales`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      if (response.ok) {
-        return response.json()
+    // El endpoint /api/sales devuelve todas las ventas para roles support/admin/supervisor
+    const response = await fetch(`${API_URL}/api/sales`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       }
-      // Si no existe, intentar endpoint de admin
-      return fetchAPI<{ success: boolean; sales: Sale[] }>("/api/admin/sales", { token })
-    } catch {
-      // Fallback final
-      return fetchAPI<{ success: boolean; sales: Sale[] }>("/api/admin/sales", { token })
+    })
+    if (!response.ok) {
+      throw new Error("Error al obtener ventas")
     }
+    return response.json()
   },
 
-  // Obtener usuarios (usa el mismo endpoint que admin)
+  // Obtener usuarios - usa endpoint general /api/sellers que es accesible por support
   getUsers: async (token: string): Promise<{ success: boolean; users: User[] }> => {
-    try {
-      const response = await fetch(`${API_URL}/api/support/users`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      if (response.ok) {
-        return response.json()
+    // Primero intentar endpoint de sellers que es accesible
+    const response = await fetch(`${API_URL}/api/sellers`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       }
-      return fetchAPI<{ success: boolean; users: User[] }>("/api/admin/users", { token })
-    } catch {
-      return fetchAPI<{ success: boolean; users: User[] }>("/api/admin/users", { token })
+    })
+    if (response.ok) {
+      const data = await response.json()
+      // El endpoint /api/sellers devuelve { sellers: [...] }, convertir a { users: [...] }
+      return { success: true, users: data.sellers || [] }
     }
+    // Si falla, devolver lista vacia
+    return { success: true, users: [] }
   },
 
-  // Actualizar estado de venta
-  updateSaleStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string) =>
-    fetchAPI<{ success: boolean; sale: Sale }>(`/api/support/sales/${id}/status`, {
+  // Actualizar estado de venta - usa endpoint general de sales con soporte para support
+  updateSaleStatus: async (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string) => {
+    const response = await fetch(`${API_URL}/api/sales/${id}/status`, {
       method: "PUT",
-      token,
-      body: JSON.stringify({ status, notes, statusDate }),
-    }).catch(() => 
-      // Fallback a endpoint de admin
-      fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
-        method: "PUT",
-        token,
-        body: JSON.stringify({ status, notes, statusDate }),
-      })
-    ),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ status, notes, statusDate, ctoNumber }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Error al actualizar estado" }))
+      throw new Error(error.message || "Error al actualizar estado")
+    }
+    return response.json()
+  },
 
   // Actualizar costos de venta
-  updateSaleCosts: (token: string, id: string, costs: { installationCost?: number; adminCost?: number; adCost?: number; sellerCommissionPaid?: number }) =>
-    fetchAPI<{ success: boolean; sale: Sale }>(`/api/support/sales/${id}/costs`, {
+  updateSaleCosts: async (token: string, id: string, costs: { installationCost?: number; adminCost?: number; adCost?: number; sellerCommissionPaid?: number }) => {
+    const response = await fetch(`${API_URL}/api/sales/${id}/costs`, {
       method: "PUT",
-      token,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify(costs),
-    }).catch(() =>
-      fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/costs`, {
-        method: "PUT",
-        token,
-        body: JSON.stringify(costs),
-      })
-    ),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Error al actualizar costos" }))
+      throw new Error(error.message || "Error al actualizar costos")
+    }
+    return response.json()
+  },
 
   // Asignar vendedor
-  assignSeller: (token: string, id: string, sellerId: string) =>
-    fetchAPI<{ success: boolean; sale: Sale }>(`/api/support/sales/${id}/assign`, {
+  assignSeller: async (token: string, id: string, sellerId: string) => {
+    const response = await fetch(`${API_URL}/api/sales/${id}/assign`, {
       method: "PUT",
-      token,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify({ sellerId }),
-    }).catch(() =>
-      fetchAPI<{ success: boolean; sale: Sale }>(`/api/sales/${id}/assign`, {
-        method: "PUT",
-        token,
-        body: JSON.stringify({ sellerId }),
-      })
-    ),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Error al asignar vendedor" }))
+      throw new Error(error.message || "Error al asignar vendedor")
+    }
+    return response.json()
+  },
 
   // Crear venta
-  createSale: (token: string, data: CreateSaleData) =>
-    fetchAPI<{ success: boolean; sale: Sale }>("/api/support/sales", {
+  createSale: async (token: string, data: CreateSaleData) => {
+    const response = await fetch(`${API_URL}/api/sales`, {
       method: "POST",
-      token,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify(data),
-    }).catch(() =>
-      fetchAPI<{ success: boolean; sale: Sale }>("/api/sales", {
-        method: "POST",
-        token,
-        body: JSON.stringify(data),
-      })
-    ),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Error al crear venta" }))
+      throw new Error(error.message || "Error al crear venta")
+    }
+    return response.json()
+  },
 
-  // Dashboard stats para support
-  getStats: (token: string) =>
-    fetchAPI<AdminStats>("/api/support/stats", { token }).catch(() =>
-      fetchAPI<AdminStats>("/api/admin/stats", { token })
-    ),
+  // Dashboard stats para support - usa endpoint general
+  getStats: async (token: string) => {
+    const response = await fetch(`${API_URL}/api/dashboard/stats`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    })
+    if (!response.ok) {
+      throw new Error("Error al obtener estadisticas")
+    }
+    return response.json()
+  },
 }
 
 // Notifications
@@ -454,6 +468,8 @@ export interface Sale {
   appointedDate?: string
   completedDate?: string
   installationCostDate?: string
+  // Numero de CTO para ventas activadas
+  ctoNumber?: string
   createdAt: string
   updatedAt: string
 }

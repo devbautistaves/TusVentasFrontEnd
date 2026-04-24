@@ -43,6 +43,7 @@ export default function AdminSalesPage() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
   const [statusDate, setStatusDate] = useState("")
+  const [ctoNumber, setCtoNumber] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
   // Nuevos estados para edicion de vendedor y costos
   const [users, setUsers] = useState<UserType[]>([])
@@ -234,6 +235,16 @@ export default function AdminSalesPage() {
       return
     }
 
+    // Validar CTO para estado "completed" (Activada)
+    if (newStatus === "completed" && !ctoNumber.trim()) {
+      toast({
+        title: "Numero de CTO requerido",
+        description: "Debes ingresar el numero de CTO para activar la venta",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsUpdating(true)
     const token = localStorage.getItem("token")
     if (!token) return
@@ -244,7 +255,8 @@ export default function AdminSalesPage() {
         selectedSale._id, 
         newStatus, 
         statusNotes,
-        statusDate || undefined
+        statusDate || undefined,
+        newStatus === "completed" ? ctoNumber.trim() : undefined
       )
       // Verificar si el resultado indica exito
       if (result && result.success !== false) {
@@ -261,6 +273,7 @@ export default function AdminSalesPage() {
       setIsStatusDialogOpen(false)
       setStatusNotes("")
       setStatusDate("")
+      setCtoNumber("")
       fetchSales()
     } catch (error) {
       console.error("Error updating status:", error)
@@ -274,6 +287,7 @@ export default function AdminSalesPage() {
       setIsStatusDialogOpen(false)
       setStatusNotes("")
       setStatusDate("")
+      setCtoNumber("")
     } finally {
       setIsUpdating(false)
     }
@@ -437,6 +451,9 @@ export default function AdminSalesPage() {
                           {sale.completedDate && sale.status === "completed" && (
                             <p className="text-xs text-green-400">Activ: {new Date(sale.completedDate).toLocaleDateString("es-AR")}</p>
                           )}
+                          {sale.ctoNumber && sale.status === "completed" && (
+                            <p className="text-xs text-primary font-medium">CTO: {sale.ctoNumber}</p>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -465,6 +482,8 @@ export default function AdminSalesPage() {
                               } else {
                                 setStatusDate("")
                               }
+                              // Inicializar CTO si existe
+                              setCtoNumber(sale.ctoNumber || "")
                               setIsStatusDialogOpen(true)
                             }}
                             title="Cambiar estado"
@@ -856,6 +875,25 @@ export default function AdminSalesPage() {
                     {newStatus === "appointed" 
                       ? "La venta se mostrara en el mes de esta fecha para el computo de comisiones."
                       : "La comision se imputara en el mes de esta fecha de activacion."}
+                  </p>
+                </div>
+              )}
+
+              {/* Campo de CTO para ACTIVADA */}
+              {newStatus === "completed" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Numero de CTO *
+                  </label>
+                  <Input
+                    type="text"
+                    value={ctoNumber}
+                    onChange={(e) => setCtoNumber(e.target.value)}
+                    placeholder="Ej: CTO-12345"
+                    className="bg-secondary/50"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ingresa el numero de CTO asignado a esta instalacion
                   </p>
                 </div>
               )}

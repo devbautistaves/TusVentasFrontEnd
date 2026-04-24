@@ -24,9 +24,6 @@ import {
   Clock,
   Calendar,
   AlertTriangle,
-  Wrench,
-  TrendingDown,
-  Percent,
 } from "lucide-react"
 
 // Constantes de comision supervisor
@@ -86,16 +83,18 @@ export default function SupervisorDashboardPage() {
   const observedSales = salesThisMonth.filter(s => s.status === "pending_appointment")
   const loadedSales = salesThisMonth.filter(s => s.status === "pending")
 
-  // Calcular totales de costos (se descuentan siempre)
-  const totalInstallationCosts = salesThisMonth.reduce((acc, sale) => {
+  // Calcular totales de costos para el desglose
+  const totalInstallationCosts = installedSales.reduce((acc, sale) => {
+    return acc + (sale.installationCost || 0)
+  }, 0) + cancelledSales.reduce((acc, sale) => {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  const totalAdCosts = salesThisMonth.reduce((acc, sale) => {
+  const totalAdCosts = installedSales.reduce((acc, sale) => {
     return acc + (sale.adCost || 0)
   }, 0)
 
-  const totalSellerCommissions = salesThisMonth.reduce((acc, sale) => {
+  const totalSellerCommissions = installedSales.reduce((acc, sale) => {
     return acc + (sale.sellerCommissionPaid || 0)
   }, 0)
 
@@ -218,88 +217,25 @@ export default function SupervisorDashboardPage() {
           />
         </div>
 
-        {/* Commission Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Base Total */}
-          <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Base por Ventas</p>
-                  <p className="text-3xl font-bold text-blue-400">
-                    {formatCurrency(installedSales.length * SUPERVISOR_BASE_COMMISSION)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {installedSales.length} x {formatCurrency(SUPERVISOR_BASE_COMMISSION)}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-blue-400" />
-                </div>
+        {/* Commission Card - Final Commission Only */}
+        <Card className="border-[#39FF14]/50 bg-gradient-to-br from-[#39FF14]/20 via-card to-card shadow-lg shadow-[#39FF14]/10">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between">
+              <div className="space-y-3">
+                <p className="text-lg font-semibold text-foreground">MI COMISION FINAL (40%)</p>
+                <p className="text-5xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.5)]">
+                  {formatCurrency(totalCommission)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Basado en {installedSales.length} ventas instaladas
+                </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Costos Totales */}
-          <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Descuentos Totales</p>
-                  <p className="text-3xl font-bold text-red-400">
-                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Inst + Admin + Ads + Com.Vend
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                  <Wrench className="h-6 w-6 text-red-400" />
-                </div>
+              <div className="h-16 w-16 rounded-2xl bg-[#39FF14]/20 flex items-center justify-center">
+                <DollarSign className="h-8 w-8 text-[#39FF14]" />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Neto antes del % */}
-          <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Neto (antes 40%)</p>
-                  <p className="text-3xl font-bold text-amber-400">
-                    {formatCurrency(totalBeforePercentage)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Base total - Descuentos
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                  <TrendingDown className="h-6 w-6 text-amber-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Comision Final */}
-          <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">MI COMISION (40%)</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {formatCurrency(totalCommission)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Tu ganancia final
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <Percent className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Detailed Breakdown */}
         <div className="grid gap-6 lg:grid-cols-2">
