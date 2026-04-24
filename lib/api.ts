@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tusventasbackend.onrender.com"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
 
 interface FetchOptions extends RequestInit {
   token?: string
