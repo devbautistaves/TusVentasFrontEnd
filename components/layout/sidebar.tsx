@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
-  role: "admin" | "seller" | "supervisor"
+  role: "admin" | "seller" | "supervisor" | "support"
   userName: string
   onLinkClick?: () => void
 }

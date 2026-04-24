@@ -45,7 +45,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tusventasbackend.onrender.com"
 
 interface AnnouncementFormData {
   title: string
