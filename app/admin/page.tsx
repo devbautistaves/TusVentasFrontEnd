@@ -51,7 +51,9 @@ import {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#eab308",
-  pending_appointment: "#f97316",
+  pending_signature: "#f97316",
+  pending_appointment: "#a855f7",
+  observed: "#d97706",
   appointed: "#3b82f6",
   completed: "#22c55e",
   cancelled: "#ef4444",
@@ -204,7 +206,9 @@ export default function AdminDashboardPage() {
   const activatedSales = monthSales.filter(s => s.status === "completed")
   const cancelledSales = monthSales.filter(s => s.status === "cancelled")
   const pendingSales = monthSales.filter(s => s.status === "pending")
-  const observedSales = monthSales.filter(s => s.status === "pending_appointment")
+  const pendingSignatureSales = monthSales.filter(s => s.status === "pending_signature")
+  const pendingTurnSales = monthSales.filter(s => s.status === "pending_appointment")
+  const observedSales = monthSales.filter(s => s.status === "observed")
   const appointedSales = monthSales.filter(s => s.status === "appointed")
 
   // Constantes de negocio
@@ -255,9 +259,11 @@ export default function AdminDashboardPage() {
 
   const pieChartData = [
     { name: "Cargadas", value: pendingSales.length, color: STATUS_COLORS.pending },
-    { name: "Observadas", value: observedSales.length, color: STATUS_COLORS.pending_appointment },
+    { name: "Pend. Firma", value: pendingSignatureSales.length, color: STATUS_COLORS.pending_signature },
+    { name: "Pend. Turno", value: pendingTurnSales.length, color: STATUS_COLORS.pending_appointment },
+    { name: "Observadas", value: observedSales.length, color: STATUS_COLORS.observed },
     { name: "Turnadas", value: appointedSales.length, color: STATUS_COLORS.appointed },
-    { name: "Activadas", value: activatedSales.length, color: STATUS_COLORS.completed },
+    { name: "Instaladas", value: activatedSales.length, color: STATUS_COLORS.completed },
     { name: "Canceladas", value: cancelledSales.length, color: STATUS_COLORS.cancelled },
   ].filter(d => d.value > 0)
 
@@ -463,7 +469,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Status Cards Row */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           <StatusCard
             title="Cargadas"
             count={pendingSales.length}
@@ -473,12 +479,28 @@ export default function AdminDashboardPage() {
             borderColor="border-yellow-500/30"
           />
           <StatusCard
-            title="Observadas"
-            count={observedSales.length}
-            icon={Calendar}
+            title="Pend. Firma"
+            count={pendingSignatureSales.length}
+            icon={Clock}
             color="text-orange-400"
             bgColor="bg-orange-500/10"
             borderColor="border-orange-500/30"
+          />
+          <StatusCard
+            title="Pend. Turno"
+            count={pendingTurnSales.length}
+            icon={Calendar}
+            color="text-purple-400"
+            bgColor="bg-purple-500/10"
+            borderColor="border-purple-500/30"
+          />
+          <StatusCard
+            title="Observadas"
+            count={observedSales.length}
+            icon={AlertTriangle}
+            color="text-amber-400"
+            bgColor="bg-amber-500/10"
+            borderColor="border-amber-500/30"
           />
           <StatusCard
             title="Turnadas"
@@ -489,7 +511,7 @@ export default function AdminDashboardPage() {
             borderColor="border-blue-500/30"
           />
           <StatusCard
-            title="Activadas"
+            title="Instaladas"
             count={activatedSales.length}
             icon={CheckCircle}
             color="text-green-400"

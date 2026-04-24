@@ -468,7 +468,7 @@ export interface Sale {
   commissionRate: number
   description: string
   planDetail?: string
-  status: "pending" | "completed" | "cancelled" | "pending_appointment" | "appointed"
+  status: "pending" | "pending_signature" | "pending_appointment" | "observed" | "appointed" | "completed" | "cancelled"
   statusHistory: StatusHistoryItem[]
   customerInfo: CustomerInfo
   paymentInfo?: PaymentInfo
@@ -480,6 +480,7 @@ export interface Sale {
   // Fechas de estados para corte mensual
   appointedDate?: string
   completedDate?: string
+  installationCostDate?: string
   installationCostDate?: string
   // Numero de CTO para ventas activadas
   ctoNumber?: string

@@ -98,16 +98,16 @@ export default function AdminCommissionsPage() {
   }
 
   // Filtrar ventas del mes seleccionado segun reglas de negocio:
-  // - ACTIVADAS (completed): Se muestran en el mes de completedDate (fecha de activacion)
+  // - INSTALADAS (completed): Se muestran en el mes de completedDate (fecha de activacion)
   // - TURNADAS (appointed): Se muestran en el mes de appointedDate (fecha del turno)
-  // - OBSERVADAS (pending_appointment): Aparecen en TODOS los meses hasta que se resuelvan
+  // - PENDIENTE DE TURNO (pending_appointment): Aparecen en TODOS los meses hasta que se resuelvan
   // - CANCELADAS: Quedan en el mes donde fueron canceladas (createdAt)
-  // - PENDIENTES: Se muestran en el mes de createdAt
+  // - CARGADAS y PENDIENTE DE FIRMA: Se muestran en el mes de createdAt
   const getMonthSales = () => {
     const [year, month] = selectedMonth.split("-").map(Number)
     
     return sales.filter(sale => {
-      // OBSERVADAS: aparecen en todos los meses
+      // PENDIENTE DE TURNO: aparecen en todos los meses
       if (sale.status === "pending_appointment") {
         return true
       }
@@ -387,11 +387,13 @@ export default function AdminCommissionsPage() {
   // Helper para obtener etiqueta de estado
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      completed: "ACTIVADA",
-      cancelled: "CANCELADA",
-      pending: "PENDIENTE",
-      pending_appointment: "OBSERVADA",
+      pending: "CARGADA",
+      pending_signature: "PENDIENTE DE FIRMA",
+      pending_appointment: "PENDIENTE DE TURNO",
+      observed: "OBSERVADA",
       appointed: "TURNADA",
+      completed: "INSTALADA",
+      cancelled: "CANCELADA",
     }
     return labels[status] || status.toUpperCase()
   }
@@ -421,7 +423,7 @@ export default function AdminCommissionsPage() {
       
       // SECCION: VENTAS ACTIVADAS
       csvRows.push(`VENTAS ACTIVADAS (${completedUserSales.length})`)
-      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`───────────────────���───────────────────────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Fecha Activacion,Base,Instalacion,Admin,Com.Vendedor,Neto`)
       
       let totalNetCompleted = 0
@@ -679,7 +681,7 @@ export default function AdminCommissionsPage() {
     
     // DETALLE POR SUPERVISORES
     rows.push(`DETALLE SUPERVISORES`)
-    rows.push(`───────────────────────────────────────────────────────────────────────────`)
+    rows.push(`──��────────────────────────────────────────────────────────────────────────`)
     
     supervisors.forEach(supervisor => {
       const supSales = getUserSales(supervisor._id, supervisor.role)

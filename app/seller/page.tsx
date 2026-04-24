@@ -92,7 +92,9 @@ export default function SellerDashboardPage() {
   const installedSales = salesThisMonth.filter(s => s.status === "completed")
   const cancelledSales = salesThisMonth.filter(s => s.status === "cancelled")
   const appointedSales = salesThisMonth.filter(s => s.status === "appointed")
-  const observedSales = salesThisMonth.filter(s => s.status === "pending_appointment")
+  const pendingTurnSales = salesThisMonth.filter(s => s.status === "pending_appointment")
+  const observedSales = salesThisMonth.filter(s => s.status === "observed")
+  const pendingSignatureSales = salesThisMonth.filter(s => s.status === "pending_signature")
   const loadedSales = salesThisMonth.filter(s => s.status === "pending")
   
   // Calcular comision total basada en la cantidad de ventas activadas
@@ -177,7 +179,7 @@ export default function SellerDashboardPage() {
         </div>
 
         {/* Stats Grid - Estado de Ventas */}
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
           <StatCard
             title="Instaladas"
             value={installedSales.length}
@@ -197,16 +199,28 @@ export default function SellerDashboardPage() {
             className="border-blue-500/30"
           />
           <StatCard
+            title="Pend. Turno"
+            value={pendingTurnSales.length}
+            icon={AlertTriangle}
+            className="border-purple-500/30"
+          />
+          <StatCard
             title="Observadas"
             value={observedSales.length}
             icon={AlertTriangle}
-            className="border-yellow-500/30"
+            className="border-amber-500/30"
+          />
+          <StatCard
+            title="Pend. Firma"
+            value={pendingSignatureSales.length}
+            icon={Clock}
+            className="border-orange-500/30"
           />
           <StatCard
             title="Cargadas"
             value={loadedSales.length}
             icon={Clock}
-            className="border-orange-500/30"
+            className="border-yellow-500/30"
           />
         </div>
 

@@ -556,27 +556,7 @@ export default function AdminUsersPage() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field>
-                <FieldLabel htmlFor="commissionRate">Porcentaje de Comision (%)</FieldLabel>
-                <Input
-                  id="commissionRate"
-                  name="commissionRate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={Math.round(formData.commissionRate * 100)}
-                  onChange={(e) => setFormData((prev) => ({ 
-                    ...prev, 
-                    commissionRate: parseFloat(e.target.value) / 100 
-                  }))}
-                  placeholder="30"
-                  className="bg-secondary/50"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Ejemplo: 30 = 30% de comision sobre cada venta
-                </p>
-              </Field>
+
             </FieldGroup>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

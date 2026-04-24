@@ -16,12 +16,18 @@ import {
   Eye,
   AlertCircle,
   Plus,
+  DollarSign,
+  FileText,
 } from "lucide-react"
+
+// Constante de costo de administracion por venta instalada
+const ADMIN_COST_PER_SALE = 35000
 import { supportAPI } from "@/lib/api"
 
 interface SupportStats {
   totalSales: number
   pendingSales: number
+  pendingSignature: number
   pendingAppointment: number
   appointedSales: number
   completedSales: number
@@ -77,6 +83,7 @@ export default function SupportDashboard() {
         setStats({
           totalSales: sales.length,
           pendingSales: sales.filter(s => s.status === "pending").length,
+          pendingSignature: sales.filter(s => s.status === "pending_signature").length,
           pendingAppointment: sales.filter(s => s.status === "pending_appointment").length,
           appointedSales: sales.filter(s => s.status === "appointed").length,
           completedSales: sales.filter(s => s.status === "completed").length,
@@ -224,16 +231,16 @@ export default function SupportDashboard() {
               </CardContent>
             </Card>
 
-            {/* Observadas */}
-            <Card className="border-orange-500/30 bg-card">
+            {/* Pendiente de Turno */}
+            <Card className="border-purple-500/30 bg-card">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Observadas</p>
-                    <p className="text-4xl font-bold text-orange-400">{stats?.pendingAppointment || 0}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Pend. de Turno</p>
+                    <p className="text-4xl font-bold text-purple-400">{stats?.pendingAppointment || 0}</p>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-orange-400" />
+                  <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-purple-400" />
                   </div>
                 </div>
               </CardContent>
@@ -270,6 +277,30 @@ export default function SupportDashboard() {
             </Card>
           </div>
 
+          {/* Sueldo Total Card */}
+          <Card className="border-[#39FF14]/50 bg-gradient-to-br from-[#39FF14]/20 via-card to-card shadow-lg shadow-[#39FF14]/10">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-3">
+                  <p className="text-lg font-semibold text-foreground">MI SUELDO TOTAL</p>
+                  <p className="text-5xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.5)]">
+                    {new Intl.NumberFormat("es-AR", {
+                      style: "currency",
+                      currency: "ARS",
+                      minimumFractionDigits: 0,
+                    }).format((stats?.completedSales || 0) * ADMIN_COST_PER_SALE)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {stats?.completedSales || 0} ventas instaladas x ${ADMIN_COST_PER_SALE.toLocaleString("es-AR")} = Sueldo acumulado
+                  </p>
+                </div>
+                <div className="h-16 w-16 rounded-2xl bg-[#39FF14]/20 flex items-center justify-center">
+                  <DollarSign className="h-8 w-8 text-[#39FF14]" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Quick Actions */}
           <Card>
             <CardHeader>
@@ -290,7 +321,7 @@ export default function SupportDashboard() {
                 onClick={() => router.push("/support/sales?status=pending_appointment")}
               >
                 <AlertCircle className="h-6 w-6" />
-                <span>Ver Observadas</span>
+                <span>Ver Pend. Turno</span>
               </Button>
               <Button
                 className="h-20 flex flex-col items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"

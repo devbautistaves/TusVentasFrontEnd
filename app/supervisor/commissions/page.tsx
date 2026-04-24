@@ -191,11 +191,13 @@ export default function SupervisorCommissionsPage() {
   // Helper para obtener etiqueta de estado
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      completed: "ACTIVADA",
-      cancelled: "CANCELADA",
-      pending: "PENDIENTE",
-      pending_appointment: "OBSERVADA",
+      pending: "CARGADA",
+      pending_signature: "PENDIENTE DE FIRMA",
+      pending_appointment: "PENDIENTE DE TURNO",
+      observed: "OBSERVADA",
       appointed: "TURNADA",
+      completed: "INSTALADA",
+      cancelled: "CANCELADA",
     }
     return labels[status] || status.toUpperCase()
   }

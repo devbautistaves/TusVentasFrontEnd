@@ -65,13 +65,61 @@ export default function SupervisorDashboardPage() {
     }).format(value)
   }
 
-  // Filtrar ventas del mes seleccionado
+  // Filtrar ventas del mes seleccionado segun reglas de negocio:
+  // - INSTALADAS (completed): Se muestran en el mes de completedDate (fecha de activacion)
+  // - TURNADAS (appointed): Se muestran en el mes de appointedDate (fecha del turno)
+  // - PENDIENTE DE TURNO (pending_appointment): Aparecen en TODOS los meses hasta que se resuelvan
+  // - CANCELADAS: Quedan en el mes donde fueron canceladas (createdAt)
+  // - CARGADAS y PENDIENTE DE FIRMA: Se muestran en el mes de createdAt
   const getMonthSales = () => {
     const [year, month] = selectedMonth.split("-").map(Number)
+    
     return mySales.filter(sale => {
+      // PENDIENTE DE TURNO: aparecen en todos los meses
+      if (sale.status === "pending_appointment") {
+        return true
+      }
+      
+      // INSTALADAS: usar fecha de activacion
+      if (sale.status === "completed" && sale.completedDate) {
+        const completedDate = new Date(sale.completedDate)
+        return completedDate.getMonth() + 1 === month && completedDate.getFullYear() === year
+      }
+      
+      // TURNADAS: usar fecha del turno
+      if (sale.status === "appointed" && sale.appointedDate) {
+        const appointedDate = new Date(sale.appointedDate)
+        return appointedDate.getMonth() + 1 === month && appointedDate.getFullYear() === year
+      }
+      
+      // CANCELADAS, CARGADAS, PENDIENTE DE FIRMA y otras: usar fecha de creacion
       const saleDate = new Date(sale.createdAt)
       return saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year
     })
+  }
+  
+  // Obtener costo de instalacion del mes seleccionado
+  const getInstallationCostForMonth = (sale: Sale): number => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    
+    if (!sale.installationCost || sale.installationCost <= 0) return 0
+    
+    // Si tiene fecha de costo de instalacion, usar esa fecha
+    if (sale.installationCostDate) {
+      const costDate = new Date(sale.installationCostDate)
+      if (costDate.getMonth() + 1 === month && costDate.getFullYear() === year) {
+        return sale.installationCost
+      }
+      return 0
+    }
+    
+    // Si no tiene fecha especifica, usar la fecha de creacion
+    const saleDate = new Date(sale.createdAt)
+    if (saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year) {
+      return sale.installationCost
+    }
+    
+    return 0
   }
 
   const salesThisMonth = getMonthSales()
@@ -80,14 +128,14 @@ export default function SupervisorDashboardPage() {
   const installedSales = salesThisMonth.filter(s => s.status === "completed")
   const cancelledSales = salesThisMonth.filter(s => s.status === "cancelled")
   const appointedSales = salesThisMonth.filter(s => s.status === "appointed")
-  const observedSales = salesThisMonth.filter(s => s.status === "pending_appointment")
+  const pendingTurnSales = salesThisMonth.filter(s => s.status === "pending_appointment")
+  const observedSales = salesThisMonth.filter(s => s.status === "observed")
+  const pendingSignatureSales = salesThisMonth.filter(s => s.status === "pending_signature")
   const loadedSales = salesThisMonth.filter(s => s.status === "pending")
 
-  // Calcular totales de costos para el desglose
-  const totalInstallationCosts = installedSales.reduce((acc, sale) => {
-    return acc + (sale.installationCost || 0)
-  }, 0) + cancelledSales.reduce((acc, sale) => {
-    return acc + (sale.installationCost || 0)
+  // Calcular totales de costos para el desglose (costos del mes actual)
+  const totalInstallationCosts = mySales.reduce((acc, sale) => {
+    return acc + getInstallationCostForMonth(sale)
   }, 0)
 
   const totalAdCosts = installedSales.reduce((acc, sale) => {
@@ -98,25 +146,31 @@ export default function SupervisorDashboardPage() {
     return acc + (sale.sellerCommissionPaid || 0)
   }, 0)
 
-  // Calcular comisiones del supervisor
-  // NOTA: adCost ya no se resta automaticamente
+  // Calcular comisiones del supervisor (mismo calculo que admin)
+  // La comision se imputa en el mes que se activa (completedDate)
+  // El costo de instalacion se descuenta en el mes que se coloco (installationCostDate)
   const calculateSupervisorCommission = () => {
     let totalBeforePercentage = 0
 
     // Solo ventas instaladas suman comision base
+    // NOTA: El costo de anuncio (adCost) ya NO se resta automaticamente
+    // Solo se restan: Base - Admin - Comision del vendedor
     installedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION
-      const installationCost = sale.installationCost || 0
       const sellerCommission = sale.sellerCommissionPaid || 0
       
-      const netCommission = baseCommission - installationCost - ADMIN_COST - sellerCommission
+      // La instalacion se descuenta por separado segun su fecha
+      // adCost ya no se descuenta automaticamente - debe aplicarse manualmente
+      const netCommission = baseCommission - ADMIN_COST - sellerCommission
       totalBeforePercentage += netCommission
     })
 
-    // Descontar instalaciones pagadas de ventas canceladas (se descuentan siempre)
-    cancelledSales.forEach(sale => {
-      if (sale.installationCost && sale.installationCost > 0) {
-        totalBeforePercentage -= sale.installationCost
+    // Descontar costos de instalacion que correspondan a este mes
+    // Revisar TODAS las ventas del supervisor para costos de instalacion
+    mySales.forEach(sale => {
+      const installationCost = getInstallationCostForMonth(sale)
+      if (installationCost > 0) {
+        totalBeforePercentage -= installationCost
       }
     })
 
@@ -184,7 +238,7 @@ export default function SupervisorDashboardPage() {
         </div>
 
         {/* Stats Grid - Estado de Ventas */}
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
           <StatCard
             title="Instaladas"
             value={installedSales.length}
@@ -204,16 +258,28 @@ export default function SupervisorDashboardPage() {
             className="border-blue-500/30"
           />
           <StatCard
+            title="Pend. Turno"
+            value={pendingTurnSales.length}
+            icon={AlertTriangle}
+            className="border-purple-500/30"
+          />
+          <StatCard
             title="Observadas"
             value={observedSales.length}
             icon={AlertTriangle}
-            className="border-yellow-500/30"
+            className="border-amber-500/30"
+          />
+          <StatCard
+            title="Pend. Firma"
+            value={pendingSignatureSales.length}
+            icon={Clock}
+            className="border-orange-500/30"
           />
           <StatCard
             title="Cargadas"
             value={loadedSales.length}
             icon={Clock}
-            className="border-orange-500/30"
+            className="border-yellow-500/30"
           />
         </div>
 
@@ -302,19 +368,33 @@ export default function SupervisorDashboardPage() {
                   </div>
                   <span className="font-bold text-blue-400">{appointedSales.length}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-purple-500/10">
                   <div className="flex items-center gap-3">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                    <AlertTriangle className="h-5 w-5 text-purple-400" />
+                    <span className="text-foreground">Pendiente de Turno</span>
+                  </div>
+                  <span className="font-bold text-purple-400">{pendingTurnSales.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-400" />
                     <span className="text-foreground">Observadas</span>
                   </div>
-                  <span className="font-bold text-yellow-400">{observedSales.length}</span>
+                  <span className="font-bold text-amber-400">{observedSales.length}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-orange-500/10">
                   <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-orange-400" />
+                    <span className="text-foreground">Pendiente de Firma</span>
+                  </div>
+                  <span className="font-bold text-orange-400">{pendingSignatureSales.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5 text-yellow-400" />
                     <span className="text-foreground">Cargadas</span>
                   </div>
-                  <span className="font-bold text-orange-400">{loadedSales.length}</span>
+                  <span className="font-bold text-yellow-400">{loadedSales.length}</span>
                 </div>
               </div>
             </CardContent>
