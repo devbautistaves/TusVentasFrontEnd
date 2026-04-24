@@ -62,7 +62,8 @@ export default function SupervisorDashboardPage() {
       style: "currency",
       currency: "ARS",
       minimumFractionDigits: 0,
-    }).format(value)
+      maximumFractionDigits: 0,
+    }).format(Math.round(value))
   }
 
   // Filtrar ventas del mes seleccionado segun reglas de negocio:
@@ -237,6 +238,26 @@ export default function SupervisorDashboardPage() {
           </div>
         </div>
 
+        {/* Commission Card - Final Commission Only */}
+        <Card className="border-[#39FF14]/50 bg-gradient-to-br from-[#39FF14]/20 via-card to-card shadow-lg shadow-[#39FF14]/10">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between">
+              <div className="space-y-3">
+                <p className="text-lg font-semibold text-foreground">MI COMISION FINAL (40%)</p>
+                <p className="text-5xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.5)]">
+                  {formatCurrency(totalCommission)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Basado en {installedSales.length} ventas instaladas
+                </p>
+              </div>
+              <div className="h-16 w-16 rounded-2xl bg-[#39FF14]/20 flex items-center justify-center">
+                <DollarSign className="h-8 w-8 text-[#39FF14]" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats Grid - Estado de Ventas */}
         <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
           <StatCard
@@ -282,26 +303,6 @@ export default function SupervisorDashboardPage() {
             className="border-yellow-500/30"
           />
         </div>
-
-        {/* Commission Card - Final Commission Only */}
-        <Card className="border-[#39FF14]/50 bg-gradient-to-br from-[#39FF14]/20 via-card to-card shadow-lg shadow-[#39FF14]/10">
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between">
-              <div className="space-y-3">
-                <p className="text-lg font-semibold text-foreground">MI COMISION FINAL (40%)</p>
-                <p className="text-5xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,0.5)]">
-                  {formatCurrency(totalCommission)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Basado en {installedSales.length} ventas instaladas
-                </p>
-              </div>
-              <div className="h-16 w-16 rounded-2xl bg-[#39FF14]/20 flex items-center justify-center">
-                <DollarSign className="h-8 w-8 text-[#39FF14]" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Detailed Breakdown */}
         <div className="grid gap-6 lg:grid-cols-2">
