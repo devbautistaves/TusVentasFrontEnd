@@ -390,16 +390,16 @@ export default function SupportNewSalePage() {
                     <FieldGroup>
                       <Field>
                         <FieldLabel>Asignar a Supervisor</FieldLabel>
-                        <Select value={selectedSupervisorId} onValueChange={(value) => {
-                          setSelectedSupervisorId(value)
+                        <Select value={selectedSupervisorId || "none"} onValueChange={(value) => {
+                          setSelectedSupervisorId(value === "none" ? "" : value)
                           // Si selecciona supervisor, limpiar vendedor
-                          if (value) setSelectedSellerId("")
+                          if (value && value !== "none") setSelectedSellerId("")
                         }}>
                           <SelectTrigger className="bg-secondary/50">
                             <SelectValue placeholder="Selecciona un supervisor (opcional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sin supervisor directo</SelectItem>
+                            <SelectItem value="none">Sin supervisor directo</SelectItem>
                             {supervisors.map((supervisor) => (
                               <SelectItem key={supervisor._id} value={supervisor._id}>
                                 {supervisor.name} (Supervisor)
