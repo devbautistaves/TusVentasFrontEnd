@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useToast } from "@/hooks/use-toast"
-import { plansAPI, supportAPI, Plan, User } from "@/lib/api"
+import { supportAPI, Plan, User } from "@/lib/api"
 import {
   Select,
   SelectContent,
@@ -94,11 +94,11 @@ export default function SupportNewSalePage() {
   const fetchData = async (token: string) => {
     try {
       const [plansRes, usersRes] = await Promise.all([
-        plansAPI.getAll(token),
+        supportAPI.getPlans(token),
         supportAPI.getUsers(token),
       ])
       
-      setPlans(plansRes.plans)
+      setPlans(plansRes.plans || [])
       
       // Separar vendedores y supervisores activos
       const allUsers = usersRes.users || []

@@ -198,7 +198,7 @@ export const supportAPI = {
       }
     })
     if (!response.ok) {
-      console.error("[v0] Support getSales failed:", response.status)
+      console.error("Support getSales failed:", response.status)
       throw new Error("Error al obtener ventas")
     }
     return response.json()
@@ -213,8 +213,23 @@ export const supportAPI = {
       }
     })
     if (!response.ok) {
-      console.error("[v0] Support getUsers failed:", response.status)
+      console.error("Support getUsers failed:", response.status)
       return { success: true, users: [] }
+    }
+    return response.json()
+  },
+
+  // Obtener planes - usa endpoint general /api/plans
+  getPlans: async (token: string): Promise<{ success: boolean; plans: Plan[] }> => {
+    const response = await fetch(`${API_URL}/api/plans`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    })
+    if (!response.ok) {
+      console.error("Support getPlans failed:", response.status)
+      return { success: true, plans: [] }
     }
     return response.json()
   },
