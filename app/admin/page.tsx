@@ -213,12 +213,12 @@ export default function AdminDashboardPage() {
   const appointedSales = monthSales.filter(s => s.status === "appointed")
 
   // Constantes de negocio
-  const REVENUE_PER_SALE = 750000 // $750.000 por venta activada
+  const SUPERVISOR_BASE_COMMISSION = 750000 // $750.000 base por venta activada
   const ADMIN_COST_PER_SALE = 35000 // $35.000 costo admin por venta
   const SUPERVISOR_PERCENTAGE = 0.40 // 40% para supervisores
 
   // INGRESOS: $750.000 por cada venta activada
-  const totalRevenue = activatedSales.length * REVENUE_PER_SALE
+  const totalRevenue = activatedSales.length * SUPERVISOR_BASE_COMMISSION
 
   // COSTO DE ADMINISTRACION: $35.000 por cada venta activada
   const totalAdminCost = activatedSales.length * ADMIN_COST_PER_SALE
@@ -228,21 +228,43 @@ export default function AdminDashboardPage() {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  // COMISIONES VENDEDORES: Usar sellerCommissionPaid si existe, si no usar commission
-  // Esto representa lo que realmente se le pago al vendedor por cada venta activada
-  const totalSellerCommissions = activatedSales.reduce((acc, sale) => {
-    // Primero usar sellerCommissionPaid (monto real pagado)
-    // Si no existe, usar commission (calculado automaticamente al crear venta)
-    return acc + (sale.sellerCommissionPaid || sale.commission || 0)
-  }, 0)
+  // COMISIONES VENDEDORES: Calcular usando el sistema de tiers por vendedor
+  // Agrupar ventas activadas por vendedor y calcular comision segun escala
+  const sellerCommissionsMap: Record<string, { count: number; commission: number }> = {}
+  activatedSales.forEach(sale => {
+    const sellerId = typeof sale.sellerId === "string" ? sale.sellerId : (sale.sellerId as any)?._id || "unknown"
+    if (!sellerCommissionsMap[sellerId]) {
+      sellerCommissionsMap[sellerId] = { count: 0, commission: 0 }
+    }
+    sellerCommissionsMap[sellerId].count++
+  })
+  
+  // Calcular comision por tier para cada vendedor
+  // 1-4 ventas: $200,000/venta, 5-9: $300,000, 10-19: $350,000, 20-25: $375,000, 26+: $400,000
+  Object.keys(sellerCommissionsMap).forEach(sellerId => {
+    const count = sellerCommissionsMap[sellerId].count
+    let commissionPerSale = 200000 // default 1-4 ventas
+    if (count >= 26) commissionPerSale = 400000
+    else if (count >= 20) commissionPerSale = 375000
+    else if (count >= 10) commissionPerSale = 350000
+    else if (count >= 5) commissionPerSale = 300000
+    sellerCommissionsMap[sellerId].commission = count * commissionPerSale
+  })
+  
+  const totalSellerCommissions = Object.values(sellerCommissionsMap).reduce((acc, s) => acc + s.commission, 0)
 
   // COMISIONES SUPERVISORES: Para cada venta activada:
-  // (Base $750.000 - Admin $35.000 - Costo Instalacion - Comision Vendedor) * 40%
+  // (Base $750.000 - Admin $35.000 - Costo Instalacion - Comision Vendedor proporcional) * 40%
+  // Calculamos la comision del vendedor para cada venta especifica
   const totalSupervisorCommissions = activatedSales.reduce((acc, sale) => {
     const installationCost = sale.installationCost || 0
-    const sellerCommission = sale.sellerCommissionPaid || sale.commission || 0
+    const sellerId = typeof sale.sellerId === "string" ? sale.sellerId : (sale.sellerId as any)?._id || "unknown"
+    const sellerData = sellerCommissionsMap[sellerId]
+    // Comision del vendedor por esta venta especifica
+    const sellerCommissionForThisSale = sellerData ? (sellerData.commission / sellerData.count) : 200000
+    
     // Base - Admin - Instalacion - ComisionVendedor, luego 40%
-    const netBeforePercentage = REVENUE_PER_SALE - ADMIN_COST_PER_SALE - installationCost - sellerCommission
+    const netBeforePercentage = SUPERVISOR_BASE_COMMISSION - ADMIN_COST_PER_SALE - installationCost - sellerCommissionForThisSale
     // Solo agregar si el neto es positivo
     return acc + Math.max(0, netBeforePercentage * SUPERVISOR_PERCENTAGE)
   }, 0)
@@ -755,70 +777,6 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Recent Sales */}
-        <Card className="border-border/50 bg-card/50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Ventas Recientes del Mes</CardTitle>
-              <CardDescription>Ultimas ventas registradas en {getAvailableMonths().find(m => m.value === selectedMonth)?.label}</CardDescription>
-            </div>
-            <Link href="/admin/sales">
-              <Button variant="outline" size="sm">
-                Ver todas
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Vendedor</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Costo Inst.</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthSales.slice(0, 10).map((sale) => (
-                    <tr key={sale._id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium text-foreground">{sale.customerInfo.name}</p>
-                          <p className="text-sm text-muted-foreground hidden sm:block">{sale.customerInfo.phone}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-foreground hidden md:table-cell">{sale.sellerName}</td>
-                      <td className="py-3 px-4 text-foreground">{sale.planName}</td>
-                      <td className="py-3 px-4 hidden sm:table-cell">
-                        {sale.installationCost ? (
-                          <span className="text-red-400">-{formatCurrency(sale.installationCost)}</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <StatusBadge status={sale.status} />
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground hidden sm:table-cell">
-                        {new Date(sale.createdAt).toLocaleDateString("es-AR")}
-                      </td>
-                    </tr>
-                  ))}
-                  {monthSales.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                        No hay ventas registradas en este mes
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   )
