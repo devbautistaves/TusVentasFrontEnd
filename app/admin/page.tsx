@@ -217,6 +217,31 @@ export default function AdminDashboardPage() {
   const ADMIN_COST_PER_SALE = 35000 // $35.000 costo admin por venta
   const SUPERVISOR_PERCENTAGE = 0.40 // 40% para supervisores
 
+  // Tiers de comisiones para vendedores
+  const COMMISSION_TIERS = [
+    { minSales: 1, maxSales: 4, amount: 200000 },
+    { minSales: 5, maxSales: 9, amount: 300000 },
+    { minSales: 10, maxSales: 19, amount: 350000 },
+    { minSales: 20, maxSales: 25, amount: 375000 },
+    { minSales: 26, maxSales: 999, amount: 400000 },
+  ]
+
+  const getCommissionPerSale = (salesCount: number) => {
+    for (const tier of COMMISSION_TIERS) {
+      if (salesCount >= tier.minSales && salesCount <= tier.maxSales) {
+        return tier.amount
+      }
+    }
+    return 0
+  }
+
+  // Helper para extraer el ID
+  const extractId = (field: string | { _id: string } | undefined): string => {
+    if (!field) return ""
+    if (typeof field === "string") return field
+    return field._id || ""
+  }
+
   // INGRESOS: $750.000 por cada venta activada
   const totalRevenue = activatedSales.length * SUPERVISOR_BASE_COMMISSION
 
@@ -228,50 +253,51 @@ export default function AdminDashboardPage() {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  // COMISIONES VENDEDORES: Calcular usando el sistema de tiers por vendedor
-  // Agrupar ventas activadas por vendedor y calcular comision segun escala
-  const sellerCommissionsMap: Record<string, { count: number; commission: number }> = {}
-  activatedSales.forEach(sale => {
-    const sellerId = typeof sale.sellerId === "string" ? sale.sellerId : (sale.sellerId as any)?._id || "unknown"
-    if (!sellerCommissionsMap[sellerId]) {
-      sellerCommissionsMap[sellerId] = { count: 0, commission: 0 }
-    }
-    sellerCommissionsMap[sellerId].count++
-  })
-  
-  // Calcular comision por tier para cada vendedor
-  // 1-4 ventas: $200,000/venta, 5-9: $300,000, 10-19: $350,000, 20-25: $375,000, 26+: $400,000
-  Object.keys(sellerCommissionsMap).forEach(sellerId => {
-    const count = sellerCommissionsMap[sellerId].count
-    let commissionPerSale = 200000 // default 1-4 ventas
-    if (count >= 26) commissionPerSale = 400000
-    else if (count >= 20) commissionPerSale = 375000
-    else if (count >= 10) commissionPerSale = 350000
-    else if (count >= 5) commissionPerSale = 300000
-    sellerCommissionsMap[sellerId].commission = count * commissionPerSale
-  })
-  
-  const totalSellerCommissions = Object.values(sellerCommissionsMap).reduce((acc, s) => acc + s.commission, 0)
-
-  // COMISIONES SUPERVISORES: Para cada venta activada:
-  // (Base $750.000 - Admin $35.000 - Costo Instalacion - Comision Vendedor proporcional) * 40%
-  // Calculamos la comision del vendedor para cada venta especifica
-  const totalSupervisorCommissions = activatedSales.reduce((acc, sale) => {
-    const installationCost = sale.installationCost || 0
-    const sellerId = typeof sale.sellerId === "string" ? sale.sellerId : (sale.sellerId as any)?._id || "unknown"
-    const sellerData = sellerCommissionsMap[sellerId]
-    // Comision del vendedor por esta venta especifica
-    const sellerCommissionForThisSale = sellerData ? (sellerData.commission / sellerData.count) : 200000
+  // COMISIONES VENDEDORES: Sumar la comision final de cada vendedor
+  // Misma logica que en la pagina de comisiones
+  const sellers = allUsers.filter(u => u.role === "seller" && u.isActive)
+  const totalSellerCommissions = sellers.reduce((total, seller) => {
+    // Ventas completadas del mes donde este usuario es el vendedor
+    const sellerCompletedSales = activatedSales.filter(s => extractId(s.sellerId) === seller._id)
+    const activatedCount = sellerCompletedSales.length
+    if (activatedCount === 0) return total
     
-    // Base - Admin - Instalacion - ComisionVendedor, luego 40%
-    const netBeforePercentage = SUPERVISOR_BASE_COMMISSION - ADMIN_COST_PER_SALE - installationCost - sellerCommissionForThisSale
-    // Solo agregar si el neto es positivo
-    return acc + Math.max(0, netBeforePercentage * SUPERVISOR_PERCENTAGE)
+    const perSale = getCommissionPerSale(activatedCount)
+    let commission = activatedCount * perSale
+    
+    // Descontar costos de instalacion de este vendedor
+    sellerCompletedSales.forEach(sale => {
+      commission -= (sale.installationCost || 0)
+    })
+    
+    return total + Math.max(0, commission)
+  }, 0)
+
+  // COMISIONES SUPERVISORES: Sumar la comision final de cada supervisor
+  // Misma logica que en la pagina de comisiones
+  const supervisors = allUsers.filter(u => u.role === "supervisor" && u.isActive)
+  const totalSupervisorCommissions = supervisors.reduce((total, supervisor) => {
+    // Ventas completadas donde este supervisor es el vendedor O es el supervisor asignado
+    const supervisorCompletedSales = activatedSales.filter(s => 
+      extractId(s.sellerId) === supervisor._id || extractId(s.supervisorId) === supervisor._id
+    )
+    
+    if (supervisorCompletedSales.length === 0) return total
+    
+    let netBeforePercentage = 0
+    
+    supervisorCompletedSales.forEach(sale => {
+      const sellerCommission = sale.sellerCommissionPaid || 0
+      const installationCost = sale.installationCost || 0
+      const net = SUPERVISOR_BASE_COMMISSION - ADMIN_COST_PER_SALE - sellerCommission - installationCost
+      netBeforePercentage += net
+    })
+    
+    const commission = Math.max(0, netBeforePercentage * SUPERVISOR_PERCENTAGE)
+    return total + commission
   }, 0)
 
   // GANANCIA NETA: Ingresos - Todos los costos y comisiones
-  // Ingresos = $750.000 x ventas activadas
-  // Costos = Admin + Instalacion + ComisionVendedor + ComisionSupervisor
   const totalCosts = totalAdminCost + totalInstallationCosts + totalSellerCommissions + totalSupervisorCommissions
   const netProfit = totalRevenue - totalCosts
 
