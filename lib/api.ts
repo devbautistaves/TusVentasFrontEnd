@@ -549,6 +549,8 @@ export interface CustomerInfo {
     city: string
     province: string
     postalCode: string
+    entreCalles?: string
+    googleMapsLink?: string
   }
   emergencyContact?: {
     name: string
