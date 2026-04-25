@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
-import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2, Megaphone } from "lucide-react"
+import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2, Megaphone, Wrench } from "lucide-react"
 
 // Constantes de comision supervisor
 const SUPERVISOR_BASE_COMMISSION = 750000 // Importe base de comision
@@ -97,6 +97,39 @@ export default function SupervisorCommissionsPage() {
   const monthSales = getMonthSales()
   const completedSales = monthSales.filter(s => s.status === "completed")
   const cancelledSales = monthSales.filter(s => s.status === "cancelled")
+  const pendingSales = monthSales.filter(s => !["completed", "cancelled"].includes(s.status))
+
+  // Calcular costos de instalacion de TODAS las ventas (cualquier estado)
+  const getAllInstallationCosts = () => {
+    let totalFromCompleted = 0
+    let totalFromCancelled = 0
+    let totalFromOther = 0
+    const salesWithInstallation: Array<{ sale: Sale; cost: number }> = []
+
+    monthSales.forEach(sale => {
+      const cost = sale.installationCost || 0
+      if (cost > 0) {
+        salesWithInstallation.push({ sale, cost })
+        if (sale.status === "completed") {
+          totalFromCompleted += cost
+        } else if (sale.status === "cancelled") {
+          totalFromCancelled += cost
+        } else {
+          totalFromOther += cost
+        }
+      }
+    })
+
+    return {
+      totalFromCompleted,
+      totalFromCancelled,
+      totalFromOther,
+      total: totalFromCompleted + totalFromCancelled + totalFromOther,
+      salesWithInstallation,
+    }
+  }
+
+  const installationCosts = getAllInstallationCosts()
 
   // Calcular comision detallada
   // Base: $750,000 - Descontar: Instalacion, Administracion, Comision Vendedor
@@ -112,6 +145,7 @@ export default function SupervisorCommissionsPage() {
     }> = []
 
     let totalBeforePercentage = 0
+    let totalInstallationCost = 0
 
     completedSales.forEach(sale => {
       const baseCommission = SUPERVISOR_BASE_COMMISSION // $750,000
@@ -123,6 +157,7 @@ export default function SupervisorCommissionsPage() {
       // adCost ya no se resta automaticamente
       const netCommission = baseCommission - installationCost - adminCost - sellerCommission
       totalBeforePercentage += netCommission
+      totalInstallationCost += installationCost
 
       details.push({
         sale,
@@ -144,10 +179,22 @@ export default function SupervisorCommissionsPage() {
 
     totalBeforePercentage -= cancelledInstallationCost
 
+    // Descontar instalaciones de ventas en otros estados (pending, appointed, etc.)
+    let otherInstallationCost = 0
+    pendingSales.forEach(sale => {
+      if (sale.installationCost && sale.installationCost > 0) {
+        otherInstallationCost += sale.installationCost
+      }
+    })
+
+    totalBeforePercentage -= otherInstallationCost
+
     return {
       details,
       totalBeforePercentage,
       cancelledInstallationCost,
+      otherInstallationCost,
+      totalInstallationCost,
     }
   }
 
@@ -221,9 +268,6 @@ export default function SupervisorCommissionsPage() {
     const userStr = localStorage.getItem("user")
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Supervisor" }
     
-    // Ventas en proceso (no completadas ni canceladas)
-    const pendingSales = monthSales.filter(s => s.status !== "completed" && s.status !== "cancelled")
-    
     const csvRows: string[] = []
     
     // ENCABEZADO
@@ -251,7 +295,7 @@ export default function SupervisorCommissionsPage() {
     }
     
     csvRows.push(``)
-    csvRows.push(`,,,,,SUBTOTAL ACTIVADAS:,,,,,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost)}`)
+    csvRows.push(`,,,,,SUBTOTAL ACTIVADAS:,,,,,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost + commission.otherInstallationCost)}`)
     csvRows.push(``)
     
     // SECCION: VENTAS CANCELADAS CON DESCUENTO
@@ -272,12 +316,27 @@ export default function SupervisorCommissionsPage() {
     csvRows.push(`,,,,SUBTOTAL DESCUENTOS:,,-${formatCurrency(commission.cancelledInstallationCost)}`)
     csvRows.push(``)
     
-    // SECCION: OTRAS VENTAS DEL PERIODO
-    if (pendingSales.length > 0) {
-      csvRows.push(`OTRAS VENTAS EN PROCESO (${pendingSales.length})`)
+    // SECCION: VENTAS EN PROCESO CON COSTO DE INSTALACION
+    const pendingWithCost = pendingSales.filter(s => s.installationCost && s.installationCost > 0)
+    if (pendingWithCost.length > 0) {
+      csvRows.push(`VENTAS EN PROCESO CON COSTO DE INSTALACION (${pendingWithCost.length})`)
+      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
+      pendingWithCost.forEach((sale, idx) => {
+        csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${getStatusLabel(sale.status)},-${formatCurrency(sale.installationCost || 0)}`)
+      })
+      csvRows.push(``)
+      csvRows.push(`,,,,SUBTOTAL INSTALACIONES PENDIENTES:,,-${formatCurrency(commission.otherInstallationCost)}`)
+      csvRows.push(``)
+    }
+    
+    // SECCION: OTRAS VENTAS DEL PERIODO (sin costo de instalacion)
+    const pendingWithoutCost = pendingSales.filter(s => !s.installationCost || s.installationCost <= 0)
+    if (pendingWithoutCost.length > 0) {
+      csvRows.push(`OTRAS VENTAS EN PROCESO (${pendingWithoutCost.length})`)
       csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Observacion`)
-      pendingSales.forEach((sale, idx) => {
+      pendingWithoutCost.forEach((sale, idx) => {
         csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${getStatusLabel(sale.status)},Pendiente de activacion`)
       })
       csvRows.push(``)
@@ -292,8 +351,16 @@ export default function SupervisorCommissionsPage() {
     csvRows.push(`Total Ventas Canceladas:,${cancelledSales.length}`)
     csvRows.push(`Total Ventas en Proceso:,${pendingSales.length}`)
     csvRows.push(``)
-    csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost)}`)
-    csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(commission.cancelledInstallationCost)}`)
+    csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(commission.totalBeforePercentage + commission.cancelledInstallationCost + commission.otherInstallationCost)}`)
+    if (commission.totalInstallationCost > 0) {
+      csvRows.push(`Instalaciones de Activadas:,-${formatCurrency(commission.totalInstallationCost)}`)
+    }
+    if (commission.cancelledInstallationCost > 0) {
+      csvRows.push(`Instalaciones de Canceladas:,-${formatCurrency(commission.cancelledInstallationCost)}`)
+    }
+    if (commission.otherInstallationCost > 0) {
+      csvRows.push(`Instalaciones de Pendientes:,-${formatCurrency(commission.otherInstallationCost)}`)
+    }
     csvRows.push(`Neto (100%):,${formatCurrency(commission.totalBeforePercentage)}`)
     if (monthlyAdCost > 0) {
       csvRows.push(`Costo de Anuncio Mensual (sobre 100%):,-${formatCurrency(monthlyAdCost)}`)
@@ -406,19 +473,51 @@ export default function SupervisorCommissionsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-lg bg-red-500/10 flex items-center justify-center">
-                  <Download className="h-6 w-6 text-red-400" />
+          {commission.totalInstallationCost > 0 && (
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <Wrench className="h-6 w-6 text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Instalaciones (100%)</p>
+                    <p className="text-2xl font-bold text-orange-400">-{formatCurrency(commission.totalInstallationCost)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Desc. Canceladas</p>
-                  <p className="text-2xl font-bold text-red-400">-{formatCurrency(commission.cancelledInstallationCost)}</p>
+              </CardContent>
+            </Card>
+          )}
+          {commission.cancelledInstallationCost > 0 && (
+            <Card className="border-border/50 bg-card/50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <Download className="h-6 w-6 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Inst. Canceladas</p>
+                    <p className="text-2xl font-bold text-red-400">-{formatCurrency(commission.cancelledInstallationCost)}</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+          {commission.otherInstallationCost > 0 && (
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                    <Wrench className="h-6 w-6 text-yellow-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Inst. Pendientes</p>
+                    <p className="text-2xl font-bold text-yellow-400">-{formatCurrency(commission.otherInstallationCost)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {monthlyAdCost > 0 && (
             <Card className="border-amber-500/30 bg-amber-500/5">
               <CardContent className="p-6">

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, salesAPI, adCostsAPI, User, Sale, SupervisorAdCost as APIAdCost } from "@/lib/api"
-import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History } from "lucide-react"
+import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench } from "lucide-react"
 
 // Constantes
 const SUPERVISOR_BASE_COMMISSION = 750000
@@ -467,6 +467,26 @@ export default function AdminCommissionsPage() {
     return totalBeforePercentage
   }
 
+  // Calcular total de costos de instalacion de un supervisor en el mes
+  const getSupervisorInstallationCostForMonth = (supervisorId: string) => {
+    // Obtener TODAS las ventas del supervisor (en cualquier estado)
+    const allSupervisorSales = sales.filter(s => {
+      const saleSellerIdStr = extractId(s.sellerId)
+      const saleSupervisorIdStr = extractId(s.supervisorId)
+      return saleSellerIdStr === supervisorId || saleSupervisorIdStr === supervisorId
+    })
+    
+    let totalInstallationCost = 0
+    allSupervisorSales.forEach(sale => {
+      const installationCost = getInstallationCostForMonth(sale)
+      if (installationCost > 0) {
+        totalInstallationCost += installationCost
+      }
+    })
+    
+    return totalInstallationCost
+  }
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -616,7 +636,7 @@ export default function AdminCommissionsPage() {
       // SECCION: VENTAS CANCELADAS CON DESCUENTO
       const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
       csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-      csvRows.push(`─────────────��──���───���──────────────────────────────────────────────────────`)
+      csvRows.push(`─────────────���──���───���──────────────────────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
       
       let totalCancelledDiscount = 0
@@ -647,6 +667,7 @@ export default function AdminCommissionsPage() {
       }
       
       // RESUMEN FINAL
+      const supervisorInstallationCost = getSupervisorInstallationCostForMonth(user._id)
       const supervisorAdCost = getSupervisorAdCostForMonth(user._id)
       const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
       const netAfterAdCost = netBeforePercentage - supervisorAdCost
@@ -662,6 +683,9 @@ export default function AdminCommissionsPage() {
       csvRows.push(``)
       csvRows.push(`Subtotal Neto Activadas:,${formatCurrency(totalNetCompleted)}`)
       csvRows.push(`Descuento Cancelaciones:,-${formatCurrency(totalCancelledDiscount)}`)
+      if (supervisorInstallationCost > 0) {
+        csvRows.push(`Costo de Instalaciones (sobre 100%):,-${formatCurrency(supervisorInstallationCost)}`)
+      }
       csvRows.push(`Neto (100%):,${formatCurrency(netBeforePercentage)}`)
       if (supervisorAdCost > 0) {
         csvRows.push(`Costo de Anuncio Mensual (sobre 100%):,-${formatCurrency(supervisorAdCost)}`)
@@ -739,7 +763,7 @@ export default function AdminCommissionsPage() {
       const otherSales = allUserSales.filter(s => s.status !== "completed" && s.status !== "cancelled")
       if (otherSales.length > 0) {
         csvRows.push(`OTRAS VENTAS EN PROCESO (${otherSales.length})`)
-        csvRows.push(`─────────────────────────────────────────────────���─────────────────────────`)
+        csvRows.push(`─────────────────────────────────────────────────���───────────���─────────────`)
         csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Observacion`)
         otherSales.forEach((sale, idx) => {
           csvRows.push(`${idx + 1},${sale.customerInfo.name},${sale.customerInfo.dni},${sale.planName},${new Date(sale.createdAt).toLocaleDateString("es-AR")},${getStatusLabel(sale.status)},Pendiente de activacion`)
@@ -873,7 +897,7 @@ export default function AdminCommissionsPage() {
     rows.push(``)
     rows.push(`═══════════════════════════════════════════════════════════════════════════`)
     rows.push(`TOTAL A LIQUIDAR:,${formatCurrency(grandTotalCommissions)}`)
-    rows.push(`════════════════════════════════════��════���════════════════════���════════════`)
+    rows.push(`════════════════════════════════════��════���═══��════════════════���════════════`)
 
     // Agregar BOM para que Excel/Sheets detecte UTF-8
     const BOM = "\uFEFF"
@@ -1096,8 +1120,14 @@ export default function AdminCommissionsPage() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Neto (100%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                         <div className="flex items-center gap-1">
+                          <Wrench className="h-3 w-3" />
+                          Instalacion
+                        </div>
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1">
                           <Megaphone className="h-3 w-3" />
-                          Costo Anuncio
+                          Anuncio
                         </div>
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. (40%)</th>
@@ -1107,6 +1137,7 @@ export default function AdminCommissionsPage() {
                   <tbody>
                     {supervisors.map((user) => {
                       const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
+                      const installationCost = getSupervisorInstallationCostForMonth(user._id)
                       const adCost = getSupervisorAdCostForMonth(user._id)
                       const totalCommission = calculateSupervisorCommission(user._id)
 
@@ -1144,6 +1175,13 @@ export default function AdminCommissionsPage() {
                             <span className="text-foreground">
                               {formatCurrency(netBeforePercentage)}
                             </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {installationCost > 0 ? (
+                              <span className="text-red-400 font-medium">-{formatCurrency(installationCost)}</span>
+                            ) : (
+                              <span className="text-muted-foreground">$0</span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
