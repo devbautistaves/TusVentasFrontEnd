@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { dashboardAPI, salesAPI, usersAPI, AdminStats, Sale, User } from "@/lib/api"
+import { dashboardAPI, salesAPI, usersAPI, adCostsAPI, AdminStats, Sale, User, SupervisorAdCost } from "@/lib/api"
 import {
   ShoppingCart,
   Users,
@@ -70,6 +70,7 @@ export default function AdminDashboardPage() {
   const [allSales, setAllSales] = useState<Sale[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
+  const [supervisorAdCosts, setSupervisorAdCosts] = useState<SupervisorAdCost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -82,15 +83,17 @@ export default function AdminDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes, usersRes] = await Promise.all([
+        const [statsRes, salesRes, usersRes, adCostsRes] = await Promise.all([
           dashboardAPI.getAdminStats(token),
           salesAPI.getAdminSales(token),
           usersAPI.getAll(token),
+          adCostsAPI.getAll(token),
         ])
         setStats(statsRes)
         setAllSales(salesRes.sales || [])
         const users = usersRes.users || []
         setAllUsers(users)
+        setSupervisorAdCosts(adCostsRes.adCosts || [])
         
         // Fetch online users from API
         fetchOnlineUsers(token, users)
@@ -242,6 +245,17 @@ export default function AdminDashboardPage() {
     return field._id || ""
   }
 
+  // Obtener costo de anuncio de un supervisor para el mes seleccionado
+  const getSupervisorAdCostForMonth = (supervisorId: string): number => {
+    const adCost = supervisorAdCosts.find((cost) => {
+      const costSupervisorId = typeof cost.supervisorId === "object"
+        ? (cost.supervisorId as { _id: string })._id
+        : cost.supervisorId
+      return costSupervisorId === supervisorId && cost.month === selectedMonth
+    })
+    return adCost?.amount || 0
+  }
+
   // INGRESOS: $750.000 por cada venta activada
   const totalRevenue = activatedSales.length * SUPERVISOR_BASE_COMMISSION
 
@@ -253,8 +267,7 @@ export default function AdminDashboardPage() {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  // COMISIONES VENDEDORES: Sumar la comision final de cada vendedor
-  // Misma logica que en la pagina de comisiones
+  // COMISIONES VENDEDORES: Comision BRUTA (tier * ventas, SIN descontar instalacion)
   const sellers = allUsers.filter(u => u.role === "seller" && u.isActive)
   const totalSellerCommissions = sellers.reduce((total, seller) => {
     // Ventas completadas del mes donde este usuario es el vendedor
@@ -262,39 +275,46 @@ export default function AdminDashboardPage() {
     const activatedCount = sellerCompletedSales.length
     if (activatedCount === 0) return total
     
+    // Comision bruta: tier * cantidad de ventas (SIN restar instalacion)
     const perSale = getCommissionPerSale(activatedCount)
-    let commission = activatedCount * perSale
+    const commission = activatedCount * perSale
     
-    // Descontar costos de instalacion de este vendedor
-    sellerCompletedSales.forEach(sale => {
-      commission -= (sale.installationCost || 0)
-    })
-    
-    return total + Math.max(0, commission)
+    return total + commission
   }, 0)
 
-  // COMISIONES SUPERVISORES: Sumar la comision final de cada supervisor
-  // Misma logica que en la pagina de comisiones
+  // COMISIONES SUPERVISORES: Sumar solo la columna "Com. (40%)" de cada supervisor
+  // Formula: (Neto100% - Instalacion - Anuncio) * 40%
+  // Exactamente igual que en la pagina de comisiones
   const supervisors = allUsers.filter(u => u.role === "supervisor" && u.isActive)
   const totalSupervisorCommissions = supervisors.reduce((total, supervisor) => {
-    // Ventas completadas donde este supervisor es el vendedor O es el supervisor asignado
-    const supervisorCompletedSales = activatedSales.filter(s => 
+    // Ventas del supervisor (como vendedor o supervisor asignado) del mes
+    const supervisorSales = monthSales.filter(s => 
       extractId(s.sellerId) === supervisor._id || extractId(s.supervisorId) === supervisor._id
     )
+    const completedSales = supervisorSales.filter(s => s.status === "completed")
     
-    if (supervisorCompletedSales.length === 0) return total
+    // Si no hay ventas completadas, devolver 0 (no tiene comision)
+    if (completedSales.length === 0) return total
     
-    let netBeforePercentage = 0
-    
-    supervisorCompletedSales.forEach(sale => {
+    // Calcular Neto (100%): Base - Admin - ComisionVendedor por cada venta completada
+    let neto100 = 0
+    completedSales.forEach(sale => {
       const sellerCommission = sale.sellerCommissionPaid || 0
-      const installationCost = sale.installationCost || 0
-      const net = SUPERVISOR_BASE_COMMISSION - ADMIN_COST_PER_SALE - sellerCommission - installationCost
-      netBeforePercentage += net
+      neto100 += SUPERVISOR_BASE_COMMISSION - ADMIN_COST_PER_SALE - sellerCommission
     })
     
-    const commission = Math.max(0, netBeforePercentage * SUPERVISOR_PERCENTAGE)
-    return total + commission
+    // Restar costos de instalacion de TODAS las ventas del supervisor del mes
+    supervisorSales.forEach(sale => {
+      neto100 -= (sale.installationCost || 0)
+    })
+    
+    // Restar costo de anuncio mensual del supervisor
+    const monthlyAdCost = getSupervisorAdCostForMonth(supervisor._id)
+    const netAfterAdCost = neto100 - monthlyAdCost
+    
+    // Aplicar 40% sobre el neto despues de descontar anuncio
+    const commission40 = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+    return total + commission40
   }, 0)
 
   // GANANCIA NETA: Ingresos - Todos los costos y comisiones
