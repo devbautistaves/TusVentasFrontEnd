@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,20 @@ import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
 import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
 
 export default function AdminSalesPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Spinner className="h-8 w-8" />
+        </div>
+      </DashboardLayout>
+    }>
+      <AdminSalesContent />
+    </Suspense>
+  )
+}
+
+function AdminSalesContent() {
   const searchParams = useSearchParams()
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
