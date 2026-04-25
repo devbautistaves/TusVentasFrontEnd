@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,12 +29,17 @@ import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
 import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
 
 export default function AdminSalesPage() {
+  const searchParams = useSearchParams()
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    return searchParams.get("status") || "all"
+  })
   const [selectedMonth, setSelectedMonth] = useState(() => {
+    const monthParam = searchParams.get("month")
+    if (monthParam) return monthParam
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })

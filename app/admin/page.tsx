@@ -215,6 +215,7 @@ export default function AdminDashboardPage() {
   // Constantes de negocio
   const REVENUE_PER_SALE = 750000 // $750.000 por venta activada
   const ADMIN_COST_PER_SALE = 35000 // $35.000 costo admin por venta
+  const SUPERVISOR_PERCENTAGE = 0.40 // 40% para supervisores
 
   // INGRESOS: $750.000 por cada venta activada
   const totalRevenue = activatedSales.length * REVENUE_PER_SALE
@@ -222,26 +223,33 @@ export default function AdminDashboardPage() {
   // COSTO DE ADMINISTRACION: $35.000 por cada venta activada
   const totalAdminCost = activatedSales.length * ADMIN_COST_PER_SALE
 
-  // Calcular totales de costos de instalacion (se descuentan siempre)
-  const totalInstallationCosts = monthSales.reduce((acc, sale) => {
+  // Calcular totales de costos de instalacion (solo de ventas activadas del mes)
+  const totalInstallationCosts = activatedSales.reduce((acc, sale) => {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  // COMISIONES VENDEDORES: suma de comisiones pagadas a vendedores
+  // COMISIONES VENDEDORES: Usar sellerCommissionPaid si existe, si no usar commission
+  // Esto representa lo que realmente se le pago al vendedor por cada venta activada
   const totalSellerCommissions = activatedSales.reduce((acc, sale) => {
+    // Primero usar sellerCommissionPaid (monto real pagado)
+    // Si no existe, usar commission (calculado automaticamente al crear venta)
     return acc + (sale.sellerCommissionPaid || sale.commission || 0)
   }, 0)
 
-  // COMISIONES SUPERVISORES: (Ingreso - Admin - Instalacion - ComisionVendedor) * 40%
-  // NOTA: adCost ya no se resta automaticamente
+  // COMISIONES SUPERVISORES: Para cada venta activada:
+  // (Base $750.000 - Admin $35.000 - Costo Instalacion - Comision Vendedor) * 40%
   const totalSupervisorCommissions = activatedSales.reduce((acc, sale) => {
     const installationCost = sale.installationCost || 0
     const sellerCommission = sale.sellerCommissionPaid || sale.commission || 0
+    // Base - Admin - Instalacion - ComisionVendedor, luego 40%
     const netBeforePercentage = REVENUE_PER_SALE - ADMIN_COST_PER_SALE - installationCost - sellerCommission
-    return acc + Math.max(0, netBeforePercentage * 0.4)
+    // Solo agregar si el neto es positivo
+    return acc + Math.max(0, netBeforePercentage * SUPERVISOR_PERCENTAGE)
   }, 0)
 
-  // GANANCIA NETA: Ingresos - Costos Admin - Instalacion - Comisiones Vendedores - Comisiones Supervisores
+  // GANANCIA NETA: Ingresos - Todos los costos y comisiones
+  // Ingresos = $750.000 x ventas activadas
+  // Costos = Admin + Instalacion + ComisionVendedor + ComisionSupervisor
   const totalCosts = totalAdminCost + totalInstallationCosts + totalSellerCommissions + totalSupervisorCommissions
   const netProfit = totalRevenue - totalCosts
 
@@ -478,6 +486,8 @@ export default function AdminDashboardPage() {
             color="text-yellow-400"
             bgColor="bg-yellow-500/10"
             borderColor="border-yellow-500/30"
+            status="pending"
+            month={selectedMonth}
           />
           <StatusCard
             title="Pend. Firma"
@@ -486,6 +496,8 @@ export default function AdminDashboardPage() {
             color="text-orange-400"
             bgColor="bg-orange-500/10"
             borderColor="border-orange-500/30"
+            status="pending_signature"
+            month={selectedMonth}
           />
           <StatusCard
             title="Pend. Turno"
@@ -494,6 +506,8 @@ export default function AdminDashboardPage() {
             color="text-purple-400"
             bgColor="bg-purple-500/10"
             borderColor="border-purple-500/30"
+            status="pending_appointment"
+            month={selectedMonth}
           />
           <StatusCard
             title="Observadas"
@@ -502,6 +516,8 @@ export default function AdminDashboardPage() {
             color="text-amber-400"
             bgColor="bg-amber-500/10"
             borderColor="border-amber-500/30"
+            status="observed"
+            month={selectedMonth}
           />
           <StatusCard
             title="Turnadas"
@@ -510,6 +526,8 @@ export default function AdminDashboardPage() {
             color="text-blue-400"
             bgColor="bg-blue-500/10"
             borderColor="border-blue-500/30"
+            status="appointed"
+            month={selectedMonth}
           />
           <StatusCard
             title="Instaladas"
@@ -518,6 +536,8 @@ export default function AdminDashboardPage() {
             color="text-green-400"
             bgColor="bg-green-500/10"
             borderColor="border-green-500/30"
+            status="completed"
+            month={selectedMonth}
           />
           <StatusCard
             title="Canceladas"
@@ -526,6 +546,8 @@ export default function AdminDashboardPage() {
             color="text-red-400"
             bgColor="bg-red-500/10"
             borderColor="border-red-500/30"
+            status="cancelled"
+            month={selectedMonth}
           />
         </div>
 
@@ -648,36 +670,88 @@ export default function AdminDashboardPage() {
 
         </div>
 
-        {/* Top Sellers */}
+        {/* Top Sellers - Grid de cuadraditos */}
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
-            <CardTitle>Top Vendedores</CardTitle>
-            <CardDescription>Ranking por cantidad de ventas</CardDescription>
+            <CardTitle>Vendedores del Mes</CardTitle>
+            <CardDescription>Ventas activadas y turnadas por vendedor</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px]">
-              {topSellersData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topSellersData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" width={70} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar dataKey="ventas" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  No hay datos de vendedores
+            {(() => {
+              // Calcular ventas por vendedor del mes
+              const sellerStats = monthSales.reduce((acc, sale) => {
+                const sellerName = sale.sellerName
+                if (!acc[sellerName]) {
+                  acc[sellerName] = { 
+                    name: sellerName, 
+                    activated: 0, 
+                    appointed: 0, 
+                    total: 0 
+                  }
+                }
+                if (sale.status === "completed") acc[sellerName].activated++
+                if (sale.status === "appointed") acc[sellerName].appointed++
+                acc[sellerName].total++
+                return acc
+              }, {} as Record<string, { name: string; activated: number; appointed: number; total: number }>)
+
+              const sellersArray = Object.values(sellerStats).sort((a, b) => {
+                // Ordenar primero por activadas, luego por turnadas
+                if (b.activated !== a.activated) return b.activated - a.activated
+                return b.appointed - a.appointed
+              })
+
+              if (sellersArray.length === 0) {
+                return (
+                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                    No hay ventas registradas en este mes
+                  </div>
+                )
+              }
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {sellersArray.map((seller, index) => (
+                    <div
+                      key={seller.name}
+                      className={`relative p-4 rounded-lg border transition-colors ${
+                        index === 0 
+                          ? "border-primary/50 bg-primary/10" 
+                          : "border-border/50 bg-secondary/20 hover:bg-secondary/30"
+                      }`}
+                    >
+                      {index === 0 && (
+                        <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                          <span className="text-xs font-bold text-primary-foreground">1</span>
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                          <span className="text-sm font-semibold text-primary">
+                            {seller.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                          </span>
+                        </div>
+                        <p className="font-medium text-foreground text-sm truncate">{seller.name.split(" ")[0]}</p>
+                        <div className="flex items-center justify-center gap-3 mt-2">
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-green-400">{seller.activated}</p>
+                            <p className="text-[10px] text-muted-foreground">Activ.</p>
+                          </div>
+                          <div className="h-6 w-px bg-border" />
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-blue-400">{seller.appointed}</p>
+                            <p className="text-[10px] text-muted-foreground">Turn.</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Total: {seller.total}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              )
+            })()}
           </CardContent>
         </Card>
 
@@ -757,6 +831,8 @@ function StatusCard({
   color,
   bgColor,
   borderColor,
+  status,
+  month,
 }: {
   title: string
   count: number
@@ -764,20 +840,24 @@ function StatusCard({
   color: string
   bgColor: string
   borderColor: string
+  status: string
+  month: string
 }) {
   return (
-    <Card className={`border ${borderColor} bg-card/50 hover:bg-card/80 transition-colors`}>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-lg ${bgColor} flex items-center justify-center flex-shrink-0`}>
-            <Icon className={`h-5 w-5 ${color}`} />
+    <Link href={`/admin/sales?status=${status}&month=${month}`}>
+      <Card className={`border ${borderColor} bg-card/50 hover:bg-card/80 hover:scale-[1.02] transition-all cursor-pointer`}>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-lg ${bgColor} flex items-center justify-center flex-shrink-0`}>
+              <Icon className={`h-5 w-5 ${color}`} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-foreground">{count}</p>
+              <p className="text-xs text-muted-foreground truncate">{title}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-foreground">{count}</p>
-            <p className="text-xs text-muted-foreground truncate">{title}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   )
 }

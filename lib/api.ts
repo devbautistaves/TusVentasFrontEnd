@@ -464,6 +464,7 @@ export interface User {
   location: string
   role: "seller" | "admin" | "supervisor" | "support"
   commissionRate: number
+  supervisorBaseCommission?: number
   isActive: boolean
   totalSales: number
   totalCommissions: number

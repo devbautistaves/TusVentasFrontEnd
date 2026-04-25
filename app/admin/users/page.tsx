@@ -56,6 +56,7 @@ export default function AdminUsersPage() {
     location: "",
     role: "seller" as "seller" | "admin" | "supervisor" | "support",
     commissionRate: 0.30,
+    supervisorBaseCommission: 750000,
   })
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function AdminUsersPage() {
         location: user.location,
         role: user.role as "seller" | "admin" | "supervisor" | "support",
         commissionRate: user.commissionRate || 0.30,
+        supervisorBaseCommission: user.supervisorBaseCommission || 750000,
       })
     } else {
       setSelectedUser(null)
@@ -127,6 +129,7 @@ export default function AdminUsersPage() {
         location: "",
         role: "seller",
         commissionRate: 0.30,
+        supervisorBaseCommission: 750000,
       })
     }
     setIsDialogOpen(true)
@@ -139,13 +142,16 @@ export default function AdminUsersPage() {
 
     try {
       if (selectedUser) {
-        const updateData: Partial<User> & { password?: string } = {
+        const updateData: Partial<User> & { password?: string; supervisorBaseCommission?: number } = {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           location: formData.location,
           role: formData.role,
           commissionRate: formData.commissionRate,
+        }
+        if (formData.role === "supervisor") {
+          updateData.supervisorBaseCommission = formData.supervisorBaseCommission
         }
         if (formData.password) {
           updateData.password = formData.password
@@ -156,7 +162,12 @@ export default function AdminUsersPage() {
           description: "El usuario se ha actualizado correctamente",
         })
       } else {
-        await usersAPI.create(token, { ...formData, commissionRate: formData.commissionRate })
+        const createData = { 
+          ...formData, 
+          commissionRate: formData.commissionRate,
+          ...(formData.role === "supervisor" && { supervisorBaseCommission: formData.supervisorBaseCommission })
+        }
+        await usersAPI.create(token, createData as any)
         toast({
           title: "Usuario creado",
           description: "El usuario se ha creado correctamente",
@@ -556,6 +567,27 @@ export default function AdminUsersPage() {
                   </SelectContent>
                 </Select>
               </Field>
+
+              {formData.role === "supervisor" && (
+                <Field>
+                  <FieldLabel htmlFor="supervisorBaseCommission">Comision Base por Venta</FieldLabel>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="supervisorBaseCommission"
+                      name="supervisorBaseCommission"
+                      type="number"
+                      value={formData.supervisorBaseCommission}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supervisorBaseCommission: Number(e.target.value) }))}
+                      placeholder="750000"
+                      className="bg-secondary/50 pl-8"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Monto base que recibe el supervisor por cada venta activada (default: $750.000)
+                  </p>
+                </Field>
+              )}
 
             </FieldGroup>
             <DialogFooter>

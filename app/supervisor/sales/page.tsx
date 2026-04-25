@@ -420,18 +420,34 @@ export default function SupervisorSalesPage() {
                     <MapPin className="h-4 w-4 text-primary" />
                     Direccion de Instalacion
                   </h4>
-                  <div className="bg-secondary/20 p-3 rounded-lg">
+                  <div className="bg-secondary/20 p-3 rounded-lg space-y-2">
                     <p className="font-medium text-foreground">
                       {selectedSale.customerInfo.address.street} {selectedSale.customerInfo.address.number}
                       {selectedSale.customerInfo.address.floor && `, Piso ${selectedSale.customerInfo.address.floor}`}
                       {selectedSale.customerInfo.address.apartment && ` Dpto ${selectedSale.customerInfo.address.apartment}`}
                     </p>
+                    {selectedSale.customerInfo.address.entreCalles && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="text-foreground/70">Entre calles:</span> {selectedSale.customerInfo.address.entreCalles}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       {selectedSale.customerInfo.address.city}, {selectedSale.customerInfo.address.province}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       CP: {selectedSale.customerInfo.address.postalCode}
                     </p>
+                    {selectedSale.customerInfo.address.googleMapsLink && (
+                      <a 
+                        href={selectedSale.customerInfo.address.googleMapsLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+                      >
+                        <MapPin className="h-3 w-3" />
+                        Ver en Google Maps
+                      </a>
+                    )}
                   </div>
                 </div>
 
