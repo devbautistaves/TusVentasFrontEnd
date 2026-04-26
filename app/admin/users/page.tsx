@@ -57,6 +57,8 @@ export default function AdminUsersPage() {
     role: "seller" as "seller" | "admin" | "supervisor" | "support",
     commissionRate: 0.30,
     supervisorBaseCommission: 750000,
+    fixedCommissionPerSale: null as number | null,
+    useFixedCommission: false,
   })
 
   useEffect(() => {
@@ -118,6 +120,8 @@ export default function AdminUsersPage() {
         role: user.role as "seller" | "admin" | "supervisor" | "support",
         commissionRate: user.commissionRate || 0.30,
         supervisorBaseCommission: user.supervisorBaseCommission || 750000,
+        fixedCommissionPerSale: user.fixedCommissionPerSale || null,
+        useFixedCommission: user.fixedCommissionPerSale !== null && user.fixedCommissionPerSale !== undefined,
       })
     } else {
       setSelectedUser(null)
@@ -130,6 +134,8 @@ export default function AdminUsersPage() {
         role: "seller",
         commissionRate: 0.30,
         supervisorBaseCommission: 750000,
+        fixedCommissionPerSale: null,
+        useFixedCommission: false,
       })
     }
     setIsDialogOpen(true)
@@ -142,7 +148,7 @@ export default function AdminUsersPage() {
 
     try {
       if (selectedUser) {
-        const updateData: Partial<User> & { password?: string; supervisorBaseCommission?: number } = {
+        const updateData: Partial<User> & { password?: string; supervisorBaseCommission?: number; fixedCommissionPerSale?: number | null } = {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -152,6 +158,10 @@ export default function AdminUsersPage() {
         }
         if (formData.role === "supervisor") {
           updateData.supervisorBaseCommission = formData.supervisorBaseCommission
+        }
+        // Para vendedores, agregar comision fija si esta habilitada
+        if (formData.role === "seller") {
+          updateData.fixedCommissionPerSale = formData.useFixedCommission ? formData.fixedCommissionPerSale : null
         }
         if (formData.password) {
           updateData.password = formData.password
@@ -165,7 +175,8 @@ export default function AdminUsersPage() {
         const createData = { 
           ...formData, 
           commissionRate: formData.commissionRate,
-          ...(formData.role === "supervisor" && { supervisorBaseCommission: formData.supervisorBaseCommission })
+          ...(formData.role === "supervisor" && { supervisorBaseCommission: formData.supervisorBaseCommission }),
+          ...(formData.role === "seller" && formData.useFixedCommission && { fixedCommissionPerSale: formData.fixedCommissionPerSale }),
         }
         await usersAPI.create(token, createData as any)
         toast({
@@ -587,6 +598,63 @@ export default function AdminUsersPage() {
                     Monto base que recibe el supervisor por cada venta activada (default: $750.000)
                   </p>
                 </Field>
+              )}
+
+              {formData.role === "seller" && (
+                <div className="space-y-3 p-3 border border-border/50 rounded-lg bg-secondary/20">
+                  <div className="flex items-center justify-between">
+                    <FieldLabel>Tipo de Comision</FieldLabel>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, useFixedCommission: false, fixedCommissionPerSale: null }))}
+                        className={`px-3 py-1.5 text-sm rounded-l-lg border transition-all ${
+                          !formData.useFixedCommission 
+                            ? "bg-primary text-primary-foreground border-primary" 
+                            : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/50"
+                        }`}
+                      >
+                        Escala
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, useFixedCommission: true, fixedCommissionPerSale: prev.fixedCommissionPerSale || 200000 }))}
+                        className={`px-3 py-1.5 text-sm rounded-r-lg border transition-all ${
+                          formData.useFixedCommission 
+                            ? "bg-primary text-primary-foreground border-primary" 
+                            : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/50"
+                        }`}
+                      >
+                        Fija
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {formData.useFixedCommission ? (
+                    <Field>
+                      <FieldLabel htmlFor="fixedCommissionPerSale">Comision Fija por Venta</FieldLabel>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input
+                          id="fixedCommissionPerSale"
+                          name="fixedCommissionPerSale"
+                          type="number"
+                          value={formData.fixedCommissionPerSale || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, fixedCommissionPerSale: Number(e.target.value) }))}
+                          placeholder="200000"
+                          className="bg-secondary/50 pl-8"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Este vendedor recibira siempre este monto por cada venta activada
+                      </p>
+                    </Field>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Escala por defecto: 1-4 ventas: $200.000 | 5-9: $300.000 | 10-19: $350.000 | 20-25: $375.000 | 26+: $400.000
+                    </p>
+                  )}
+                </div>
               )}
 
             </FieldGroup>

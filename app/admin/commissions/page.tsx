@@ -287,13 +287,28 @@ export default function AdminCommissionsPage() {
     return userSales.filter(s => s.status === status).length
   }
 
-  const getCommissionPerSale = (salesCount: number) => {
+  // Obtener comision por venta para un usuario (considera comision fija si existe)
+  const getCommissionPerSale = (salesCount: number, userId?: string) => {
+    // Si se proporciona userId, verificar si tiene comision fija
+    if (userId) {
+      const user = users.find(u => u._id === userId)
+      if (user?.fixedCommissionPerSale !== null && user?.fixedCommissionPerSale !== undefined) {
+        return user.fixedCommissionPerSale
+      }
+    }
+    // Usar escala por tiers
     for (const tier of tiers) {
       if (salesCount >= tier.minSales && salesCount <= tier.maxSales) {
         return tier.amount
       }
     }
     return 0
+  }
+  
+  // Verificar si un usuario tiene comision fija
+  const hasFixedCommission = (userId: string) => {
+    const user = users.find(u => u._id === userId)
+    return user?.fixedCommissionPerSale !== null && user?.fixedCommissionPerSale !== undefined
   }
 
   // Calcular comision del vendedor con descuentos de instalacion
@@ -306,7 +321,7 @@ export default function AdminCommissionsPage() {
     
     // Comision base por cantidad de ventas instaladas en este mes
     const activatedCount = completedSales.length
-    const perSale = getCommissionPerSale(activatedCount)
+    const perSale = getCommissionPerSale(activatedCount, sellerId)
     let totalCommission = activatedCount * perSale
     
     // Descontar costos de instalacion que correspondan a este mes
@@ -329,7 +344,7 @@ export default function AdminCommissionsPage() {
   // Obtener solo la comision bruta (sin descuentos) para mostrar en tabla
   const getSellerGrossCommission = (sellerId: string) => {
     const activatedSales = getSellerSales(sellerId)
-    const perSale = getCommissionPerSale(activatedSales)
+    const perSale = getCommissionPerSale(activatedSales, sellerId)
     return activatedSales * perSale
   }
   
@@ -696,10 +711,10 @@ export default function AdminCommissionsPage() {
       csvRows.push(``)
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
       
-    } else {
-      // VENDEDOR
-      const activatedCount = completedUserSales.length
-      const perSale = getCommissionPerSale(activatedCount)
+        } else {
+        // VENDEDOR
+        const activatedCount = completedUserSales.length
+        const perSale = getCommissionPerSale(activatedCount, user._id)
       const grossCommission = getSellerGrossCommission(user._id)
       const installationDiscounts = getSellerInstallationDiscounts(user._id)
       const netCommission = calculateSellerCommission(user._id)
@@ -862,10 +877,10 @@ export default function AdminCommissionsPage() {
     rows.push(`DETALLE VENDEDORES`)
     rows.push(`───────────────────────────────────────────────────────────────────────────`)
     
-    sellers.forEach(seller => {
-      const sellerSales = getUserSales(seller._id, seller.role)
-      const activated = sellerSales.filter(s => s.status === "completed").length
-      const perSale = getCommissionPerSale(activated)
+      sellers.forEach(seller => {
+        const sellerSales = getUserSales(seller._id, seller.role)
+        const activated = sellerSales.filter(s => s.status === "completed").length
+        const perSale = getCommissionPerSale(activated, seller._id)
       const gross = getSellerGrossCommission(seller._id)
       const discounts = getSellerInstallationDiscounts(seller._id)
       const net = calculateSellerCommission(seller._id)
@@ -882,7 +897,7 @@ export default function AdminCommissionsPage() {
     
     // DETALLE POR SUPERVISORES
     rows.push(`DETALLE SUPERVISORES`)
-    rows.push(`──��────────────────────────────────────────────────────────────────────────`)
+    rows.push(`──��────────────────────────────────────────��───────────────────────────────`)
     
     supervisors.forEach(supervisor => {
       const supSales = getUserSales(supervisor._id, supervisor.role)
@@ -1271,9 +1286,10 @@ export default function AdminCommissionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sellers.map((user) => {
-                    const activatedSales = getSellerSales(user._id)
-                    const commissionPerSale = getCommissionPerSale(activatedSales)
+                    {sellers.map((user) => {
+                      const activatedSales = getSellerSales(user._id)
+                      const commissionPerSale = getCommissionPerSale(activatedSales, user._id)
+                      const isFixed = hasFixedCommission(user._id)
                     const grossCommission = getSellerGrossCommission(user._id)
                     const installationDiscounts = getSellerInstallationDiscounts(user._id)
                     const netCommission = calculateSellerCommission(user._id)

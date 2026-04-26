@@ -275,8 +275,13 @@ export default function AdminDashboardPage() {
     const activatedCount = sellerCompletedSales.length
     if (activatedCount === 0) return total
     
-    // Comision bruta: tier * cantidad de ventas (SIN restar instalacion)
-    const perSale = getCommissionPerSale(activatedCount)
+    // Verificar si tiene comision fija
+    let perSale: number
+    if (seller.fixedCommissionPerSale !== null && seller.fixedCommissionPerSale !== undefined) {
+      perSale = seller.fixedCommissionPerSale
+    } else {
+      perSale = getCommissionPerSale(activatedCount)
+    }
     const commission = activatedCount * perSale
     
     return total + commission

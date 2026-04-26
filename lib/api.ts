@@ -119,11 +119,11 @@ export const salesAPI = {
       body: JSON.stringify(data),
     }),
 
-  updateStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string) =>
+  updateStatus: (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string, appointmentSlot?: string) =>
     fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/status`, {
       method: "PUT",
       token,
-      body: JSON.stringify({ status, notes, statusDate, ctoNumber }),
+      body: JSON.stringify({ status, notes, statusDate, ctoNumber, appointmentSlot }),
     }),
 
   getAdminSales: (token: string) =>
@@ -148,6 +148,13 @@ export const salesAPI = {
       method: "PUT",
       token,
       body: JSON.stringify(data),
+    }),
+  
+  updateContract: (token: string, id: string, contractNumber: string) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}/contract`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ contractNumber }),
     }),
 }
 
@@ -465,6 +472,7 @@ export interface User {
   role: "seller" | "admin" | "supervisor" | "support"
   commissionRate: number
   supervisorBaseCommission?: number
+  fixedCommissionPerSale?: number | null
   isActive: boolean
   totalSales: number
   totalCommissions: number
@@ -513,11 +521,13 @@ export interface Sale {
   sellerCommissionPaid?: number
   // Fechas de estados para corte mensual
   appointedDate?: string
+  appointmentSlot?: "AM" | "PM"
   completedDate?: string
-  installationCostDate?: string
   installationCostDate?: string
   // Numero de CTO para ventas activadas
   ctoNumber?: string
+  // Numero de contrato
+  contractNumber?: string
   createdAt: string
   updatedAt: string
 }

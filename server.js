@@ -216,6 +216,12 @@ const userSchema = new mongoose.Schema(
       min: [0, "Commission rate cannot be negative"],
       max: [1, "Commission rate cannot exceed 100%"],
     },
+    // Comision fija por venta (si es null/undefined, usa la escala por tiers)
+    fixedCommissionPerSale: {
+      type: Number,
+      default: null,
+      min: [0, "Fixed commission cannot be negative"],
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -409,6 +415,37 @@ planPrice: {
         type: String,
         enum: ["transfer", "mercadopago"],
       },
+    },
+    // Campos adicionales
+    appointedDate: {
+      type: Date,
+    },
+    appointmentSlot: {
+      type: String,
+      enum: ["AM", "PM"],
+    },
+    completedDate: {
+      type: Date,
+    },
+    ctoNumber: {
+      type: String,
+      trim: true,
+    },
+    contractNumber: {
+      type: String,
+      trim: true,
+    },
+    installationCost: {
+      type: Number,
+      default: 0,
+    },
+    adCost: {
+      type: Number,
+      default: 0,
+    },
+    sellerCommissionPaid: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -1359,14 +1396,14 @@ app.get("/api/admin/sales", authenticateToken, requireAdmin, async (req, res) =>
 
 app.put("/api/admin/sales/:id/status", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { status, notes } = req.body;
+    const { status, notes, statusDate, ctoNumber, appointmentSlot } = req.body;
     const { id } = req.params;
 
     if (!status) {
       return res.status(400).json({ success: false, error: "Status is required" });
     }
 
-    const validStatuses = ["pending", "completed", "cancelled", "pending_appointment", "appointed"];
+    const validStatuses = ["pending", "pending_signature", "pending_appointment", "observed", "completed", "cancelled", "appointed"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -1390,6 +1427,22 @@ app.put("/api/admin/sales/:id/status", authenticateToken, requireAdmin, async (r
     });
 
     sale.status = status;
+    
+    // Guardar fecha de turno cuando el estado es "appointed"
+    if (status === "appointed" && statusDate) {
+      sale.appointedDate = new Date(statusDate);
+      if (appointmentSlot) {
+        sale.appointmentSlot = appointmentSlot;
+      }
+    }
+    
+    // Guardar fecha de activacion y CTO cuando el estado es "completed"
+    if (status === "completed" && statusDate) {
+      sale.completedDate = new Date(statusDate);
+      if (ctoNumber) {
+        sale.ctoNumber = ctoNumber;
+      }
+    }
 
     // === CANCELAR venta ===
     if (status === "cancelled" && previousStatus !== "cancelled") {
@@ -1446,6 +1499,30 @@ if (previousStatus === "cancelled" && status !== "cancelled") {
     });
   } catch (error) {
     handleError(res, error, "Failed to update sale status");
+  }
+});
+
+// Actualizar numero de contrato de una venta
+app.put("/api/admin/sales/:id/contract", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { contractNumber } = req.body;
+
+    const sale = await Sale.findById(id);
+    if (!sale) {
+      return res.status(404).json({ success: false, error: "Sale not found" });
+    }
+
+    sale.contractNumber = contractNumber || "";
+    await sale.save();
+
+    res.json({
+      success: true,
+      message: "Contract number updated successfully",
+      sale,
+    });
+  } catch (error) {
+    handleError(res, error, "Failed to update contract number");
   }
 });
 
@@ -1658,19 +1735,24 @@ app.post("/api/admin/users", authenticateToken, requireAdmin, async (req, res) =
 
 app.put("/api/admin/users/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, email, phone, location, role, commissionRate, isActive, password } = req.body
-
+    const { name, email, phone, location, role, commissionRate, isActive, password, fixedCommissionPerSale } = req.body
+    
     const updateData = {
       name,
       phone,
       location,
       isActive,
     }
-
+    
     if (email) updateData.email = email
     if (role) updateData.role = role
     if (commissionRate !== undefined) updateData.commissionRate = Number(commissionRate)
-
+    
+    // Comision fija por venta (null = usa escala por tiers)
+    if (fixedCommissionPerSale !== undefined) {
+      updateData.fixedCommissionPerSale = fixedCommissionPerSale === null ? null : Number(fixedCommissionPerSale)
+    }
+    
     // Hash password if provided
     if (password && password.length >= 6) {
       updateData.password = await bcrypt.hash(password, 12)

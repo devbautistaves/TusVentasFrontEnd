@@ -63,7 +63,10 @@ function AdminSalesContent() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
   const [statusDate, setStatusDate] = useState("")
+  const [appointmentSlot, setAppointmentSlot] = useState<"AM" | "PM">("AM")
   const [ctoNumber, setCtoNumber] = useState("")
+  const [contractNumber, setContractNumber] = useState("")
+  const [isContractDialogOpen, setIsContractDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   // Nuevos estados para edicion de vendedor y costos
   const [users, setUsers] = useState<UserType[]>([])
@@ -276,7 +279,8 @@ function AdminSalesContent() {
         newStatus, 
         statusNotes,
         statusDate || undefined,
-        newStatus === "completed" ? ctoNumber.trim() : undefined
+        newStatus === "completed" ? ctoNumber.trim() : undefined,
+        newStatus === "appointed" ? appointmentSlot : undefined
       )
       // Verificar si el resultado indica exito
       if (result && result.success !== false) {
@@ -294,6 +298,7 @@ function AdminSalesContent() {
       setStatusNotes("")
       setStatusDate("")
       setCtoNumber("")
+      setAppointmentSlot("AM")
       fetchSales()
     } catch (error) {
       console.error("Error updating status:", error)
@@ -308,6 +313,7 @@ function AdminSalesContent() {
       setStatusNotes("")
       setStatusDate("")
       setCtoNumber("")
+      setAppointmentSlot("AM")
     } finally {
       setIsUpdating(false)
     }
@@ -432,6 +438,7 @@ function AdminSalesContent() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">DNI</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Contrato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
@@ -452,6 +459,18 @@ function AdminSalesContent() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">{sale.customerInfo.dni}</td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => {
+                            setSelectedSale(sale)
+                            setContractNumber(sale.contractNumber || "")
+                            setIsContractDialogOpen(true)
+                          }}
+                          className="text-foreground hover:text-primary transition-colors"
+                        >
+                          {sale.contractNumber || <span className="text-muted-foreground text-xs">Sin contrato</span>}
+                        </button>
+                      </td>
                       <td className="py-3 px-4 text-foreground">{sale.sellerName}</td>
                       <td className="py-3 px-4">
                         <div>
@@ -466,7 +485,10 @@ function AdminSalesContent() {
                         <div className="text-sm">
                           <p>{new Date(sale.createdAt).toLocaleDateString("es-AR")}</p>
                           {sale.appointedDate && sale.status === "appointed" && (
-                            <p className="text-xs text-blue-400">Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}</p>
+                            <p className="text-xs text-blue-400">
+                              Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}
+                              {sale.appointmentSlot && ` (${sale.appointmentSlot})`}
+                            </p>
                           )}
                           {sale.completedDate && sale.status === "completed" && (
                             <p className="text-xs text-green-400">Activ: {new Date(sale.completedDate).toLocaleDateString("es-AR")}</p>
@@ -524,7 +546,7 @@ function AdminSalesContent() {
                   ))}
                   {filteredSales.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No se encontraron ventas
                       </td>
                     </tr>
@@ -922,6 +944,41 @@ function AdminSalesContent() {
                 </div>
               )}
 
+              {/* Selector de horario para TURNADA */}
+              {newStatus === "appointed" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Horario del Turno *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAppointmentSlot("AM")}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        appointmentSlot === "AM" 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="font-medium">AM</div>
+                      <div className="text-xs">8:30 a 13:30</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAppointmentSlot("PM")}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        appointmentSlot === "PM" 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="font-medium">PM</div>
+                      <div className="text-xs">13:30 a 18:30</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Campo de CTO para ACTIVADA */}
               {newStatus === "completed" && (
                 <div className="space-y-2">
@@ -967,6 +1024,72 @@ function AdminSalesContent() {
                   </>
                 ) : (
                   "Actualizar Estado"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Contract Number Dialog */}
+        <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Numero de Contrato</DialogTitle>
+              <DialogDescription>
+                {selectedSale?.customerInfo.name} - {selectedSale?.customerInfo.dni}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Numero de Contrato</label>
+                <Input
+                  type="text"
+                  value={contractNumber}
+                  onChange={(e) => setContractNumber(e.target.value)}
+                  placeholder="Ej: CONT-12345"
+                  className="bg-secondary/50"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsContractDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!selectedSale) return
+                  setIsUpdating(true)
+                  const token = localStorage.getItem("token")
+                  if (!token) return
+                  try {
+                    await salesAPI.updateContract(token, selectedSale._id, contractNumber)
+                    toast({
+                      title: "Contrato actualizado",
+                      description: "El numero de contrato se ha guardado correctamente",
+                    })
+                    setIsContractDialogOpen(false)
+                    fetchSales()
+                  } catch (error) {
+                    console.error("Error updating contract:", error)
+                    toast({
+                      title: "Error",
+                      description: "No se pudo guardar el contrato",
+                      variant: "destructive",
+                    })
+                  } finally {
+                    setIsUpdating(false)
+                  }
+                }}
+                disabled={isUpdating}
+                className="bg-primary text-primary-foreground"
+              >
+                {isUpdating ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Contrato"
                 )}
               </Button>
             </DialogFooter>
