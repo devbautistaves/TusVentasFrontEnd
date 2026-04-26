@@ -56,6 +56,8 @@ export default function SupportSalesPage() {
     sellerCommissionPaid: "",
     newSellerId: "",
   })
+  const [contractNumber, setContractNumber] = useState("")
+  const [isContractDialogOpen, setIsContractDialogOpen] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -402,6 +404,7 @@ export default function SupportSalesPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">DNI</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Contrato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
@@ -422,6 +425,18 @@ export default function SupportSalesPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-foreground">{sale.customerInfo.dni}</td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => {
+                            setSelectedSale(sale)
+                            setContractNumber(sale.contractNumber || "")
+                            setIsContractDialogOpen(true)
+                          }}
+                          className="text-foreground hover:text-primary transition-colors"
+                        >
+                          {sale.contractNumber || <span className="text-muted-foreground text-xs">Sin contrato</span>}
+                        </button>
+                      </td>
                       <td className="py-3 px-4 text-foreground">{sale.sellerName}</td>
                       <td className="py-3 px-4">
                         <div>
@@ -492,7 +507,7 @@ export default function SupportSalesPage() {
                   ))}
                   {filteredSales.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No se encontraron ventas
                       </td>
                     </tr>
@@ -960,6 +975,72 @@ export default function SupportSalesPage() {
                   </>
                 ) : (
                   "Actualizar Estado"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Contract Number Dialog */}
+        <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Numero de Contrato</DialogTitle>
+              <DialogDescription>
+                {selectedSale?.customerInfo.name} - {selectedSale?.customerInfo.dni}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Numero de Contrato</label>
+                <Input
+                  type="text"
+                  value={contractNumber}
+                  onChange={(e) => setContractNumber(e.target.value)}
+                  placeholder="Ej: CONT-12345"
+                  className="bg-secondary/50"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsContractDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!selectedSale) return
+                  setIsUpdating(true)
+                  const token = localStorage.getItem("token")
+                  if (!token) return
+                  try {
+                    await salesAPI.updateContract(token, selectedSale._id, contractNumber)
+                    toast({
+                      title: "Contrato actualizado",
+                      description: "El numero de contrato se ha guardado correctamente",
+                    })
+                    setIsContractDialogOpen(false)
+                    fetchSales()
+                  } catch (error) {
+                    console.error("Error updating contract:", error)
+                    toast({
+                      title: "Error",
+                      description: "No se pudo guardar el contrato",
+                      variant: "destructive",
+                    })
+                  } finally {
+                    setIsUpdating(false)
+                  }
+                }}
+                disabled={isUpdating}
+                className="bg-primary text-primary-foreground"
+              >
+                {isUpdating ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Contrato"
                 )}
               </Button>
             </DialogFooter>
