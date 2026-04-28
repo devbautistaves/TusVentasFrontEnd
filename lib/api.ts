@@ -242,14 +242,14 @@ export const supportAPI = {
   },
 
   // Actualizar estado de venta - usa endpoint admin
-  updateSaleStatus: async (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string) => {
+  updateSaleStatus: async (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string, appointmentSlot?: string) => {
     const response = await fetch(`${API_URL}/api/admin/sales/${id}/status`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ status, notes, statusDate, ctoNumber }),
+      body: JSON.stringify({ status, notes, statusDate, ctoNumber, appointmentSlot }),
     })
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: "Error al actualizar estado" }))

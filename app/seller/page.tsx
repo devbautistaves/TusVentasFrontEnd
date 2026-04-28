@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { dashboardAPI, salesAPI, DashboardStats, Sale } from "@/lib/api"
+import { dashboardAPI, salesAPI, usersAPI, DashboardStats, Sale } from "@/lib/api"
 import { getCommissionPerSale, calculateTotalCommission } from "@/lib/commissions"
 import {
   DollarSign,
@@ -38,9 +38,16 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
+interface UserProfile {
+  _id: string
+  name: string
+  fixedCommissionPerSale?: number | null
+}
+
 export default function SellerDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [mySales, setMySales] = useState<Sale[]>([])
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -53,12 +60,14 @@ export default function SellerDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes] = await Promise.all([
+        const [statsRes, salesRes, profileRes] = await Promise.all([
           dashboardAPI.getStats(token),
           salesAPI.getMySales(token),
+          usersAPI.getProfile(token),
         ])
         setStats(statsRes)
         setMySales(salesRes.sales)
+        setUserProfile(profileRes.user as UserProfile)
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -98,9 +107,13 @@ export default function SellerDashboardPage() {
   const loadedSales = salesThisMonth.filter(s => s.status === "pending")
   
   // Calcular comision total basada en la cantidad de ventas activadas
+  // Si el usuario tiene comision fija, usarla; sino usar la escala
   const activatedCount = installedSales.length
-  const commissionPerSale = getCommissionPerSale(activatedCount)
-  const totalCommission = calculateTotalCommission(activatedCount)
+  const hasFixedCommission = userProfile?.fixedCommissionPerSale !== null && userProfile?.fixedCommissionPerSale !== undefined
+  const commissionPerSale = hasFixedCommission 
+    ? userProfile!.fixedCommissionPerSale! 
+    : getCommissionPerSale(activatedCount)
+  const totalCommission = activatedCount * commissionPerSale
 
   // Calcular costos de instalacion (se descuentan siempre de cualquier venta)
   const totalInstallationCosts = salesThisMonth.reduce((acc, sale) => {
@@ -178,53 +191,7 @@ export default function SellerDashboardPage() {
           </div>
         </div>
 
-        {/* Stats Grid - Estado de Ventas */}
-        <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
-          <StatCard
-            title="Instaladas"
-            value={installedSales.length}
-            icon={CheckCircle}
-            className="border-green-500/30"
-          />
-          <StatCard
-            title="Canceladas"
-            value={cancelledSales.length}
-            icon={XCircle}
-            className="border-red-500/30"
-          />
-          <StatCard
-            title="Turnadas"
-            value={appointedSales.length}
-            icon={Calendar}
-            className="border-blue-500/30"
-          />
-          <StatCard
-            title="Pend. Turno"
-            value={pendingTurnSales.length}
-            icon={AlertTriangle}
-            className="border-purple-500/30"
-          />
-          <StatCard
-            title="Observadas"
-            value={observedSales.length}
-            icon={AlertTriangle}
-            className="border-amber-500/30"
-          />
-          <StatCard
-            title="Pend. Firma"
-            value={pendingSignatureSales.length}
-            icon={Clock}
-            className="border-orange-500/30"
-          />
-          <StatCard
-            title="Cargadas"
-            value={loadedSales.length}
-            icon={Clock}
-            className="border-yellow-500/30"
-          />
-        </div>
-
-        {/* Commission Cards */}
+        {/* Commission Cards - PRIMERO */}
         <div className="grid gap-4 md:grid-cols-3">
           {/* Comision Bruta */}
           <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
@@ -235,6 +202,7 @@ export default function SellerDashboardPage() {
                   <p className="text-3xl font-bold text-green-400">{formatCurrency(totalCommission)}</p>
                   <p className="text-xs text-muted-foreground">
                     {activatedCount} ventas x {formatCurrency(commissionPerSale)}
+                    {hasFixedCommission && " (fija)"}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
@@ -281,6 +249,52 @@ export default function SellerDashboardPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Stats Grid - Estado de Ventas */}
+        <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
+          <StatCard
+            title="Instaladas"
+            value={installedSales.length}
+            icon={CheckCircle}
+            className="border-green-500/30"
+          />
+          <StatCard
+            title="Canceladas"
+            value={cancelledSales.length}
+            icon={XCircle}
+            className="border-red-500/30"
+          />
+          <StatCard
+            title="Turnadas"
+            value={appointedSales.length}
+            icon={Calendar}
+            className="border-blue-500/30"
+          />
+          <StatCard
+            title="Pend. Turno"
+            value={pendingTurnSales.length}
+            icon={AlertTriangle}
+            className="border-purple-500/30"
+          />
+          <StatCard
+            title="Observadas"
+            value={observedSales.length}
+            icon={AlertTriangle}
+            className="border-amber-500/30"
+          />
+          <StatCard
+            title="Pend. Firma"
+            value={pendingSignatureSales.length}
+            icon={Clock}
+            className="border-orange-500/30"
+          />
+          <StatCard
+            title="Cargadas"
+            value={loadedSales.length}
+            icon={Clock}
+            className="border-yellow-500/30"
+          />
         </div>
 
         {/* Charts and Commission Info */}

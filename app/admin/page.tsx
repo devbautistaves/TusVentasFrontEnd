@@ -267,6 +267,13 @@ export default function AdminDashboardPage() {
     return acc + (sale.installationCost || 0)
   }, 0)
 
+  // Helper para verificar si tiene comision fija
+  const hasFixedCommission = (user: User) => {
+    return user.fixedCommissionPerSale !== null && 
+           user.fixedCommissionPerSale !== undefined && 
+           typeof user.fixedCommissionPerSale === 'number'
+  }
+
   // COMISIONES VENDEDORES: Comision BRUTA (tier * ventas, SIN descontar instalacion)
   const sellers = allUsers.filter(u => u.role === "seller" && u.isActive)
   const totalSellerCommissions = sellers.reduce((total, seller) => {
@@ -275,10 +282,10 @@ export default function AdminDashboardPage() {
     const activatedCount = sellerCompletedSales.length
     if (activatedCount === 0) return total
     
-    // Verificar si tiene comision fija
+    // Verificar si tiene comision fija (puede ser 0 o cualquier numero)
     let perSale: number
-    if (seller.fixedCommissionPerSale !== null && seller.fixedCommissionPerSale !== undefined) {
-      perSale = seller.fixedCommissionPerSale
+    if (hasFixedCommission(seller)) {
+      perSale = seller.fixedCommissionPerSale!
     } else {
       perSale = getCommissionPerSale(activatedCount)
     }

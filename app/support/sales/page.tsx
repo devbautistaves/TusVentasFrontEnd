@@ -46,6 +46,7 @@ export default function SupportSalesPage() {
   const [statusNotes, setStatusNotes] = useState("")
   const [statusDate, setStatusDate] = useState("")
   const [ctoNumber, setCtoNumber] = useState("")
+  const [appointmentSlot, setAppointmentSlot] = useState<"AM" | "PM">("AM")
   const [isUpdating, setIsUpdating] = useState(false)
   // Nuevos estados para edicion de vendedor y costos
   const [users, setUsers] = useState<UserType[]>([])
@@ -245,7 +246,8 @@ export default function SupportSalesPage() {
         newStatus, 
         statusNotes,
         statusDate || undefined,
-        newStatus === "completed" ? ctoNumber.trim() : undefined
+        newStatus === "completed" ? ctoNumber.trim() : undefined,
+        newStatus === "appointed" ? appointmentSlot : undefined
       )
       if (result && result.success !== false) {
         toast({
@@ -262,6 +264,7 @@ export default function SupportSalesPage() {
       setStatusNotes("")
       setStatusDate("")
       setCtoNumber("")
+      setAppointmentSlot("AM")
       fetchSales()
     } catch (error) {
       console.error("Error updating status:", error)
@@ -274,6 +277,7 @@ export default function SupportSalesPage() {
       setStatusNotes("")
       setStatusDate("")
       setCtoNumber("")
+      setAppointmentSlot("AM")
     } finally {
       setIsUpdating(false)
     }
@@ -451,7 +455,10 @@ export default function SupportSalesPage() {
                         <div className="text-sm">
                           <p>{new Date(sale.createdAt).toLocaleDateString("es-AR")}</p>
                           {sale.appointedDate && sale.status === "appointed" && (
-                            <p className="text-xs text-blue-400">Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}</p>
+                            <p className="text-xs text-blue-400">
+                              Turno: {new Date(sale.appointedDate).toLocaleDateString("es-AR")}
+                              {sale.appointmentSlot && ` (${sale.appointmentSlot})`}
+                            </p>
                           )}
                           {sale.completedDate && sale.status === "completed" && (
                             <p className="text-xs text-green-400">Activ: {new Date(sale.completedDate).toLocaleDateString("es-AR")}</p>
@@ -828,19 +835,6 @@ export default function SupportSalesPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Costo de Anuncio (informativo)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    type="number"
-                    value={costsData.adCost}
-                    onChange={(e) => setCostsData(prev => ({ ...prev, adCost: e.target.value }))}
-                    placeholder="0"
-                    className="bg-secondary/50 pl-8"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Comision Pagada al Vendedor</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
@@ -927,6 +921,41 @@ export default function SupportSalesPage() {
                       ? "La venta se mostrara en el mes de esta fecha para el computo de comisiones."
                       : "La comision se imputara en el mes de esta fecha de activacion."}
                   </p>
+                </div>
+              )}
+
+              {/* Selector de horario para TURNADA */}
+              {newStatus === "appointed" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Horario del Turno *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAppointmentSlot("AM")}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        appointmentSlot === "AM" 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="font-medium">AM</div>
+                      <div className="text-xs">8:30 a 13:30</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAppointmentSlot("PM")}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        appointmentSlot === "PM" 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="font-medium">PM</div>
+                      <div className="text-xs">13:30 a 18:30</div>
+                    </button>
+                  </div>
                 </div>
               )}
 

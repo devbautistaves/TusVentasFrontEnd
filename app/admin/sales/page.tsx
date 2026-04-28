@@ -841,19 +841,6 @@ function AdminSalesContent() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Costo de Anuncio (informativo - no se resta automaticamente)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    type="number"
-                    value={costsData.adCost}
-                    onChange={(e) => setCostsData(prev => ({ ...prev, adCost: e.target.value }))}
-                    placeholder="0"
-                    className="bg-secondary/50 pl-8"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Comision Pagada al Vendedor</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
