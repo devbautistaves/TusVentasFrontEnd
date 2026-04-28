@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
-import { DollarSign, TrendingUp, Download, Calendar, FileSpreadsheet, Edit2, Megaphone, Wrench } from "lucide-react"
+import { DollarSign, TrendingUp, Calendar, FileSpreadsheet, Edit2, Megaphone, Wrench, Printer } from "lucide-react"
 
 // Constantes de comision supervisor
 const SUPERVISOR_BASE_COMMISSION = 750000 // Importe base de comision
@@ -48,6 +48,7 @@ export default function SupervisorCommissionsPage() {
     sellerCommissionPaid: 0,
   })
   const [monthlyAdCost, setMonthlyAdCost] = useState(0)
+  const [isLiquidacionDialogOpen, setIsLiquidacionDialogOpen] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -259,6 +260,79 @@ export default function SupervisorCommissionsPage() {
     return labels[status] || status.toUpperCase()
   }
 
+  // Obtener datos de liquidacion
+  const getLiquidacionData = () => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+    
+    const userStr = localStorage.getItem("user")
+    const currentUser = userStr ? JSON.parse(userStr) : { name: "Supervisor" }
+
+    const salesData = commission.details.map((d, idx) => ({
+      index: idx + 1,
+      customerName: d.sale.customerInfo.name,
+      contractNumber: d.sale.contractNumber || "-",
+      createdAt: new Date(d.sale.createdAt).toLocaleDateString("es-AR"),
+      completedDate: d.sale.completedDate ? new Date(d.sale.completedDate).toLocaleDateString("es-AR") : "-",
+      commission: d.netCommission,
+    }))
+
+    return {
+      userName: currentUser.name,
+      monthName,
+      sales: salesData,
+      totalCommission: finalCommission,
+    }
+  }
+
+  // Imprimir como PDF
+  const handlePrintLiquidacion = () => {
+    const printContent = document.getElementById("liquidacion-print-content")
+    if (!printContent) return
+
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Liquidacion de Comisiones</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+          .header h1 { font-size: 20px; margin-bottom: 5px; }
+          .header p { font-size: 14px; color: #666; }
+          .info-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .info-item { font-size: 13px; }
+          .info-item strong { font-weight: 600; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; font-weight: 600; }
+          td { border: 1px solid #ddd; padding: 10px; font-size: 12px; }
+          tr:nth-child(even) { background-color: #fafafa; }
+          .total-section { margin-top: 30px; padding: 20px; border: 2px solid #333; text-align: right; }
+          .total-section h2 { font-size: 18px; }
+          .text-right { text-align: right; }
+          @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+      </html>
+    `)
+
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 250)
+  }
+
   // Exportar a CSV con diseño mejorado para Google Sheets
   const handleExportCSV = () => {
     const [year, month] = selectedMonth.split("-").map(Number)
@@ -369,7 +443,7 @@ export default function SupervisorCommissionsPage() {
     csvRows.push(``)
     csvRows.push(`COMISION FINAL (40%):,${formatCurrency(finalCommission)}`)
     csvRows.push(``)
-    csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+    csvRows.push(`══════════════════════════════════════════════════════════════════════════���`)
 
     // Agregar BOM para que Excel/Sheets detecte UTF-8
     const BOM = "\uFEFF"
@@ -435,12 +509,12 @@ export default function SupervisorCommissionsPage() {
               </SelectContent>
             </Select>
             <Button
-              onClick={handleExportCSV}
+              onClick={() => setIsLiquidacionDialogOpen(true)}
               variant="outline"
               className="gap-2"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              Exportar CSV
+              Ver Liquidacion
             </Button>
           </div>
         </div>
@@ -784,6 +858,99 @@ export default function SupervisorCommissionsPage() {
                 ) : (
                   "Guardar Costos"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Liquidacion */}
+        <Dialog open={isLiquidacionDialogOpen} onOpenChange={setIsLiquidacionDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-primary" />
+                Liquidacion de Comisiones
+              </DialogTitle>
+              <DialogDescription>
+                Detalle de comisiones para facturar
+              </DialogDescription>
+            </DialogHeader>
+            
+            {(() => {
+              const data = getLiquidacionData()
+              return (
+                <div id="liquidacion-print-content" className="space-y-6">
+                  {/* Header de la liquidacion */}
+                  <div className="header text-center border-b-2 border-foreground pb-4">
+                    <h1 className="text-xl font-bold">LIQUIDACION DE COMISIONES</h1>
+                    <p className="text-muted-foreground">SUPERVISOR</p>
+                  </div>
+
+                  {/* Info del usuario y periodo */}
+                  <div className="info-row flex justify-between text-sm">
+                    <div className="info-item">
+                      <strong>Nombre:</strong> {data.userName}
+                    </div>
+                    <div className="info-item">
+                      <strong>Periodo:</strong> {data.monthName.toUpperCase()}
+                    </div>
+                    <div className="info-item">
+                      <strong>Fecha de emision:</strong> {new Date().toLocaleDateString("es-AR")}
+                    </div>
+                  </div>
+
+                  {/* Tabla de ventas */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-secondary">
+                          <th className="p-3 text-left font-semibold border-b">#</th>
+                          <th className="p-3 text-left font-semibold border-b">Fecha de Venta</th>
+                          <th className="p-3 text-left font-semibold border-b">Nombre y Apellido</th>
+                          <th className="p-3 text-left font-semibold border-b">N de Contrato</th>
+                          <th className="p-3 text-left font-semibold border-b">Fecha de Activacion</th>
+                          <th className="p-3 text-right font-semibold border-b">Importe Comision</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.sales.length > 0 ? (
+                          data.sales.map((sale) => (
+                            <tr key={sale.index} className="border-b hover:bg-secondary/30">
+                              <td className="p-3">{sale.index}</td>
+                              <td className="p-3">{sale.createdAt}</td>
+                              <td className="p-3 font-medium">{sale.customerName}</td>
+                              <td className="p-3">{sale.contractNumber}</td>
+                              <td className="p-3">{sale.completedDate}</td>
+                              <td className="p-3 text-right font-medium text-green-600">{formatCurrency(sale.commission)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                              No hay ventas activadas en este periodo
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Total a facturar */}
+                  <div className="total-section border-2 border-foreground rounded-lg p-6 text-right bg-secondary/30">
+                    <p className="text-sm text-muted-foreground mb-2">TOTAL A FACTURAR</p>
+                    <h2 className="text-3xl font-bold text-primary">{formatCurrency(data.totalCommission)}</h2>
+                  </div>
+                </div>
+              )
+            })()}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsLiquidacionDialogOpen(false)}>
+                Cerrar
+              </Button>
+              <Button onClick={handlePrintLiquidacion} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Printer className="h-4 w-4" />
+                Descargar PDF
               </Button>
             </DialogFooter>
           </DialogContent>

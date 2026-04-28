@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, salesAPI, adCostsAPI, User, Sale, SupervisorAdCost as APIAdCost } from "@/lib/api"
-import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench } from "lucide-react"
+import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer } from "lucide-react"
 
 // Constantes
 const SUPERVISOR_BASE_COMMISSION = 750000
@@ -75,6 +75,9 @@ export default function AdminCommissionsPage() {
   const [adCostAmount, setAdCostAmount] = useState(0)
   const [isAdCostHistoryDialogOpen, setIsAdCostHistoryDialogOpen] = useState(false)
   const [isSavingAdCost, setIsSavingAdCost] = useState(false)
+  // Estado para el modal de liquidacion
+  const [isLiquidacionDialogOpen, setIsLiquidacionDialogOpen] = useState(false)
+  const [selectedUserForLiquidacion, setSelectedUserForLiquidacion] = useState<User | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -601,6 +604,122 @@ export default function AdminCommissionsPage() {
     return labels[status] || status.toUpperCase()
   }
 
+  // Abrir modal de liquidacion
+  const handleOpenLiquidacionDialog = (user: User) => {
+    setSelectedUserForLiquidacion(user)
+    setIsLiquidacionDialogOpen(true)
+  }
+
+  // Obtener datos de liquidacion para el usuario seleccionado
+  const getLiquidacionData = (user: User) => {
+    const allUserSales = getUserSales(user._id, user.role)
+    const completedUserSales = allUserSales.filter(s => s.status === "completed")
+    
+    const [year, month] = selectedMonth.split("-").map(Number)
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+
+    if (user.role === "supervisor") {
+      const supervisorAdCost = getSupervisorAdCostForMonth(user._id)
+      const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
+      const netAfterAdCost = netBeforePercentage - supervisorAdCost
+      const commissionFinal = calculateSupervisorCommission(user._id)
+
+      const salesData = completedUserSales.map((sale, idx) => {
+        const base = SUPERVISOR_BASE_COMMISSION
+        const inst = sale.installationCost || 0
+        const seller = sale.sellerCommissionPaid || 0
+        const net = base - inst - ADMIN_COST - seller
+        return {
+          index: idx + 1,
+          customerName: sale.customerInfo.name,
+          contractNumber: sale.contractNumber || "-",
+          createdAt: new Date(sale.createdAt).toLocaleDateString("es-AR"),
+          completedDate: sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-",
+          commission: net,
+        }
+      })
+
+      return {
+        userName: user.name,
+        monthName,
+        role: "supervisor",
+        sales: salesData,
+        totalCommission: commissionFinal,
+      }
+    } else {
+      // Vendedor
+      const activatedCount = completedUserSales.length
+      const perSale = getCommissionPerSale(activatedCount, user._id)
+      const netCommission = calculateSellerCommission(user._id)
+
+      const salesData = completedUserSales.map((sale, idx) => ({
+        index: idx + 1,
+        customerName: sale.customerInfo.name,
+        contractNumber: sale.contractNumber || "-",
+        createdAt: new Date(sale.createdAt).toLocaleDateString("es-AR"),
+        completedDate: sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-",
+        commission: perSale,
+      }))
+
+      return {
+        userName: user.name,
+        monthName,
+        role: "seller",
+        sales: salesData,
+        totalCommission: netCommission,
+      }
+    }
+  }
+
+  // Imprimir como PDF
+  const handlePrintLiquidacion = () => {
+    const printContent = document.getElementById("liquidacion-print-content")
+    if (!printContent) return
+
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Liquidacion de Comisiones</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+          .header h1 { font-size: 20px; margin-bottom: 5px; }
+          .header p { font-size: 14px; color: #666; }
+          .info-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .info-item { font-size: 13px; }
+          .info-item strong { font-weight: 600; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; font-weight: 600; }
+          td { border: 1px solid #ddd; padding: 10px; font-size: 12px; }
+          tr:nth-child(even) { background-color: #fafafa; }
+          .total-row { background-color: #e8e8e8 !important; font-weight: bold; }
+          .total-section { margin-top: 30px; padding: 20px; border: 2px solid #333; text-align: right; }
+          .total-section h2 { font-size: 18px; }
+          .text-right { text-align: right; }
+          @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+      </html>
+    `)
+
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 250)
+  }
+  
   // Exportar comisiones de un usuario con diseño mejorado para Google Sheets
   const handleExportUserCommissions = (user: User) => {
     const allUserSales = getUserSales(user._id, user.role)
@@ -758,7 +877,7 @@ export default function AdminCommissionsPage() {
       // SECCION: VENTAS CANCELADAS CON DESCUENTO
       const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
       csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-      csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+      csvRows.push(`────────────────��──────────────────────────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
       
       cancelledWithCost.forEach((sale, idx) => {
@@ -1242,20 +1361,20 @@ export default function AdminCommissionsPage() {
                               >
                                 <History className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleExportUserCommissions(user)}
-                                title="Exportar"
-                              >
-                                <FileSpreadsheet className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
+  <Button
+  variant="ghost"
+  size="icon"
+  onClick={() => handleOpenLiquidacionDialog(user)}
+  title="Ver Liquidacion"
+  >
+  <FileSpreadsheet className="h-4 w-4" />
+  </Button>
+  </div>
+  </td>
+  </tr>
+  )
+  })}
+  </tbody>
                 </table>
               </div>
             </CardContent>
@@ -1364,28 +1483,28 @@ export default function AdminCommissionsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenDetailDialog(user)}
-                              title="Ver detalle"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleExportUserCommissions(user)}
-                              title="Exportar"
-                            >
-                              <FileSpreadsheet className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {sellers.length === 0 && (
+  <Button
+  variant="ghost"
+  size="icon"
+  onClick={() => handleOpenDetailDialog(user)}
+  title="Ver detalle"
+  >
+  <Eye className="h-4 w-4" />
+  </Button>
+  <Button
+  variant="ghost"
+  size="icon"
+  onClick={() => handleOpenLiquidacionDialog(user)}
+  title="Ver Liquidacion"
+  >
+  <FileSpreadsheet className="h-4 w-4" />
+  </Button>
+  </div>
+  </td>
+  </tr>
+  )
+  })}
+  {sellers.length === 0 && (
                     <tr>
                       <td colSpan={10} className="py-8 text-center text-muted-foreground">
                         No hay vendedores registrados
@@ -1770,6 +1889,102 @@ export default function AdminCommissionsPage() {
                 setSelectedSupervisorForAdCost(null)
               }}>
                 Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Liquidacion */}
+        <Dialog open={isLiquidacionDialogOpen} onOpenChange={setIsLiquidacionDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-primary" />
+                Liquidacion de Comisiones
+              </DialogTitle>
+              <DialogDescription>
+                Detalle de comisiones para facturar
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedUserForLiquidacion && (() => {
+              const data = getLiquidacionData(selectedUserForLiquidacion)
+              return (
+                <div id="liquidacion-print-content" className="space-y-6">
+                  {/* Header de la liquidacion */}
+                  <div className="header text-center border-b-2 border-foreground pb-4">
+                    <h1 className="text-xl font-bold">LIQUIDACION DE COMISIONES</h1>
+                    <p className="text-muted-foreground">{data.role === "supervisor" ? "SUPERVISOR" : "VENDEDOR"}</p>
+                  </div>
+
+                  {/* Info del usuario y periodo */}
+                  <div className="info-row flex justify-between text-sm">
+                    <div className="info-item">
+                      <strong>Nombre:</strong> {data.userName}
+                    </div>
+                    <div className="info-item">
+                      <strong>Periodo:</strong> {data.monthName.toUpperCase()}
+                    </div>
+                    <div className="info-item">
+                      <strong>Fecha de emision:</strong> {new Date().toLocaleDateString("es-AR")}
+                    </div>
+                  </div>
+
+                  {/* Tabla de ventas */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-secondary">
+                          <th className="p-3 text-left font-semibold border-b">#</th>
+                          <th className="p-3 text-left font-semibold border-b">Fecha de Venta</th>
+                          <th className="p-3 text-left font-semibold border-b">Nombre y Apellido</th>
+                          <th className="p-3 text-left font-semibold border-b">N de Contrato</th>
+                          <th className="p-3 text-left font-semibold border-b">Fecha de Activacion</th>
+                          <th className="p-3 text-right font-semibold border-b">Importe Comision</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.sales.length > 0 ? (
+                          data.sales.map((sale) => (
+                            <tr key={sale.index} className="border-b hover:bg-secondary/30">
+                              <td className="p-3">{sale.index}</td>
+                              <td className="p-3">{sale.createdAt}</td>
+                              <td className="p-3 font-medium">{sale.customerName}</td>
+                              <td className="p-3">{sale.contractNumber}</td>
+                              <td className="p-3">{sale.completedDate}</td>
+                              <td className="p-3 text-right font-medium text-green-600">{formatCurrency(sale.commission)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                              No hay ventas activadas en este periodo
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Total a facturar */}
+                  <div className="total-section border-2 border-foreground rounded-lg p-6 text-right bg-secondary/30">
+                    <p className="text-sm text-muted-foreground mb-2">TOTAL A FACTURAR</p>
+                    <h2 className="text-3xl font-bold text-primary">{formatCurrency(data.totalCommission)}</h2>
+                  </div>
+                </div>
+              )
+            })()}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => {
+                setIsLiquidacionDialogOpen(false)
+                setSelectedUserForLiquidacion(null)
+              }}>
+                Cerrar
+              </Button>
+              <Button onClick={handlePrintLiquidacion} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Printer className="h-4 w-4" />
+                Descargar PDF
               </Button>
             </DialogFooter>
           </DialogContent>
