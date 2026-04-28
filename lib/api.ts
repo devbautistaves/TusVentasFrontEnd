@@ -462,6 +462,116 @@ export const chatAPI = {
     fetchAPI<{ success: boolean; room: ChatRoom }>(`/api/chat/private/${userId}`, { token }),
 }
 
+// Leads API - Sistema de embudo de ventas
+export const leadsAPI = {
+  // Obtener todos los leads (admin/supervisor)
+  getAll: (token: string, filters?: { status?: string; assignedTo?: string; source?: string; month?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.assignedTo) params.append("assignedTo", filters.assignedTo)
+    if (filters?.source) params.append("source", filters.source)
+    if (filters?.month) params.append("month", filters.month)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; leads: Lead[] }>(`/api/leads${query}`, { token })
+  },
+
+  // Obtener leads asignados al vendedor actual
+  getMyLeads: (token: string, filters?: { status?: string; source?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.source) params.append("source", filters.source)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; leads: Lead[] }>(`/api/leads/my${query}`, { token })
+  },
+
+  // Obtener un lead por ID
+  getById: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; lead: Lead }>(`/api/leads/${id}`, { token }),
+
+  // Crear un nuevo lead (admin/supervisor)
+  create: (token: string, data: CreateLeadData) =>
+    fetchAPI<{ success: boolean; message: string; lead: Lead }>("/api/leads", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  // Actualizar un lead (admin/supervisor)
+  update: (token: string, id: string, data: Partial<CreateLeadData> & { status?: LeadStatus; nextFollowUp?: string }) =>
+    fetchAPI<{ success: boolean; message: string; lead: Lead }>(`/api/leads/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  // Agregar interaccion/contacto al historial
+  addContact: (token: string, id: string, data: AddLeadContactData) =>
+    fetchAPI<{ success: boolean; message: string; lead: Lead }>(`/api/leads/${id}/contact`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  // Actualizar estado del lead
+  updateStatus: (token: string, id: string, status: LeadStatus, notes?: string) =>
+    fetchAPI<{ success: boolean; message: string; lead: Lead }>(`/api/leads/${id}/status`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ status, notes }),
+    }),
+
+  // Obtener datos para conversion a venta
+  getConversionData: (token: string, id: string) =>
+    fetchAPI<{
+      success: boolean
+      message: string
+      leadData: {
+        leadId: string
+        sellerId: string
+        customerInfo: {
+          name: string
+          phone: string
+          email: string
+          dni: string
+          address: Record<string, string>
+        }
+        interestedPlanId?: string
+        interestedPlanName?: string
+      }
+    }>(`/api/leads/${id}/convert`, { method: "POST", token }),
+
+  // Marcar lead como convertido
+  markConverted: (token: string, id: string, saleId: string) =>
+    fetchAPI<{ success: boolean; message: string; lead: Lead }>(`/api/leads/${id}/mark-converted`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ saleId }),
+    }),
+
+  // Eliminar lead (solo admin)
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; message: string }>(`/api/leads/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+
+  // Obtener estadisticas de leads
+  getStats: (token: string, filters?: { month?: string; assignedTo?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.assignedTo) params.append("assignedTo", filters.assignedTo)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{
+      success: boolean
+      stats: {
+        total: number
+        byStatus: Record<string, number>
+        conversionRate: number
+      }
+    }>(`/api/leads/stats/summary${query}`, { token })
+  },
+}
+
 // Types
 export interface User {
   _id: string
@@ -671,4 +781,81 @@ export interface SupervisorAdCost {
   updatedBy?: string | { _id: string; name: string }
   createdAt: string
   updatedAt: string
+}
+
+// Lead types
+export type LeadStatus = "nuevo" | "contactado" | "interesado" | "no_contesta" | "no_interesado" | "seguimiento" | "cerrado_ganado" | "cerrado_perdido"
+export type LeadSource = "facebook" | "instagram" | "google" | "referido" | "llamada_entrante" | "puerta_a_puerta" | "otro"
+export type LeadPriority = "baja" | "media" | "alta" | "urgente"
+export type ContactType = "llamada" | "whatsapp" | "email" | "visita" | "otro"
+export type ContactOutcome = "contactado" | "no_contesta" | "interesado" | "no_interesado" | "agendar_seguimiento" | "cerrar"
+
+export interface LeadContact {
+  _id?: string
+  type: ContactType
+  date: string
+  notes?: string
+  outcome: ContactOutcome
+  nextAction?: string
+  nextActionDate?: string
+  recordedBy?: string | { _id: string; name: string }
+}
+
+export interface Lead {
+  _id: string
+  name: string
+  phone: string
+  email?: string
+  dni?: string
+  address?: {
+    street?: string
+    number?: string
+    city?: string
+    province?: string
+    postalCode?: string
+  }
+  source: LeadSource
+  sourceDetail?: string
+  assignedTo: string | { _id: string; name: string; email?: string; phone?: string }
+  assignedBy: string | { _id: string; name: string }
+  assignedAt: string
+  status: LeadStatus
+  priority: LeadPriority
+  interestedPlanId?: string | { _id: string; name: string; price: number }
+  interestedPlanName?: string
+  contactHistory: LeadContact[]
+  nextFollowUp?: string
+  notes?: string
+  convertedToSaleId?: string
+  convertedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateLeadData {
+  name: string
+  phone: string
+  email?: string
+  dni?: string
+  address?: {
+    street?: string
+    number?: string
+    city?: string
+    province?: string
+    postalCode?: string
+  }
+  source?: LeadSource
+  sourceDetail?: string
+  assignedTo: string
+  priority?: LeadPriority
+  interestedPlanId?: string
+  notes?: string
+}
+
+export interface AddLeadContactData {
+  type: ContactType
+  notes?: string
+  outcome: ContactOutcome
+  nextAction?: string
+  nextActionDate?: string
 }

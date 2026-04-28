@@ -18,6 +18,7 @@ import {
   Megaphone,
   X,
   History,
+  Target,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -41,6 +42,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/admin/new-sale", label: "Nueva Venta", icon: TrendingUp },
+    { href: "/admin/leads", label: "Leads", icon: Target },
     { href: "/admin/history", label: "Historial", icon: History },
     { href: "/admin/users", label: "Usuarios", icon: Users },
     { href: "/admin/plans", label: "Planes", icon: Package },
@@ -54,6 +56,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
     { href: "/seller/sales", label: "Mis Ventas", icon: ShoppingCart },
     { href: "/seller/new-sale", label: "Nueva Venta", icon: TrendingUp },
+    { href: "/seller/leads", label: "Mis Leads", icon: Target },
     { href: "/seller/notifications", label: "Notificaciones", icon: Bell },
     { href: "/seller/marketing", label: "Marketing", icon: Folder },
     { href: "/seller/chat", label: "Chat", icon: MessageSquare },
@@ -63,6 +66,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/supervisor", label: "Dashboard", icon: LayoutDashboard },
     { href: "/supervisor/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/supervisor/new-sale", label: "Nueva Venta", icon: TrendingUp },
+    { href: "/supervisor/leads", label: "Leads", icon: Target },
     { href: "/supervisor/commissions", label: "Comisiones", icon: DollarSign },
     { href: "/supervisor/notifications", label: "Notificaciones", icon: Bell },
     { href: "/supervisor/chat", label: "Chat", icon: MessageSquare },
