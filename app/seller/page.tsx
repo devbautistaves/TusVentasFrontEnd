@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { dashboardAPI, salesAPI, usersAPI, DashboardStats, Sale } from "@/lib/api"
+import { dashboardAPI, salesAPI, usersAPI, leadsAPI, DashboardStats, Sale, Lead } from "@/lib/api"
 import { getCommissionPerSale, calculateTotalCommission } from "@/lib/commissions"
 import {
   DollarSign,
@@ -25,8 +25,8 @@ import {
   Clock,
   Calendar,
   AlertTriangle,
-  Wrench,
   TrendingDown,
+  UserPlus,
 } from "lucide-react"
 import {
   AreaChart,
@@ -47,6 +47,7 @@ interface UserProfile {
 export default function SellerDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [mySales, setMySales] = useState<Sale[]>([])
+  const [myLeads, setMyLeads] = useState<Lead[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -60,14 +61,16 @@ export default function SellerDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes, profileRes] = await Promise.all([
+        const [statsRes, salesRes, profileRes, leadsRes] = await Promise.all([
           dashboardAPI.getStats(token),
           salesAPI.getMySales(token),
           usersAPI.getProfile(token),
+          leadsAPI.getMyLeads(token),
         ])
         setStats(statsRes)
         setMySales(salesRes.sales)
         setUserProfile(profileRes.user as UserProfile)
+        setMyLeads(leadsRes.leads || [])
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -212,19 +215,19 @@ export default function SellerDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Costos de Instalacion */}
-          <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
+          {/* Leads Recibidos */}
+          <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Costos Instalacion</p>
-                  <p className="text-3xl font-bold text-red-400">-{formatCurrency(totalInstallationCosts)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Leads Recibidos</p>
+                  <p className="text-3xl font-bold text-blue-400">{myLeads.length}</p>
                   <p className="text-xs text-muted-foreground">
-                    Se descuentan siempre
+                    Leads asignados a ti
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                  <Wrench className="h-6 w-6 text-red-400" />
+                <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <UserPlus className="h-6 w-6 text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -338,40 +341,40 @@ export default function SellerDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Commission Summary */}
-          <Card className="border-border/50 bg-card/50">
-            <CardHeader>
-              <CardTitle>Detalle de Comision</CardTitle>
-              <CardDescription>Desglose de tu ganancia</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
-                  <span className="text-sm text-muted-foreground">Ventas activadas:</span>
-                  <span className="font-semibold text-foreground">{activatedCount}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
-                  <span className="text-sm text-muted-foreground">Comision por venta:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(commissionPerSale)}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10">
-                  <span className="text-sm text-muted-foreground">Comision bruta:</span>
-                  <span className="font-semibold text-green-400">{formatCurrency(totalCommission)}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
-                  <span className="text-sm text-muted-foreground">Costos instalacion:</span>
-                  <span className="font-semibold text-red-400">-{formatCurrency(totalInstallationCosts)}</span>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10">
-                    <span className="text-sm font-medium text-foreground">TOTAL NETO:</span>
-                    <span className={`font-bold text-lg ${netCommission >= 0 ? 'text-primary' : 'text-red-400'}`}>
-                      {formatCurrency(netCommission)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
+  {/* Commission Summary */}
+  <Card className="border-border/50 bg-card/50">
+  <CardHeader>
+  <CardTitle>Resumen</CardTitle>
+  <CardDescription>Tu actividad del mes</CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+  <div className="space-y-3">
+  <div className="flex justify-between items-center p-3 rounded-lg bg-blue-500/10">
+  <span className="text-sm text-muted-foreground">Leads recibidos:</span>
+  <span className="font-semibold text-blue-400">{myLeads.length}</span>
+  </div>
+  <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+  <span className="text-sm text-muted-foreground">Ventas activadas:</span>
+  <span className="font-semibold text-foreground">{activatedCount}</span>
+  </div>
+  <div className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+  <span className="text-sm text-muted-foreground">Comision por venta:</span>
+  <span className="font-semibold text-foreground">{formatCurrency(commissionPerSale)}</span>
+  </div>
+  <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10">
+  <span className="text-sm text-muted-foreground">Comision bruta:</span>
+  <span className="font-semibold text-green-400">{formatCurrency(totalCommission)}</span>
+  </div>
+  <div className="border-t border-border pt-3">
+  <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10">
+  <span className="text-sm font-medium text-foreground">COMISION TOTAL:</span>
+  <span className="font-bold text-lg text-primary">
+  {formatCurrency(totalCommission)}
+  </span>
+  </div>
+  </div>
+  </div>
+  </CardContent>
           </Card>
         </div>
 

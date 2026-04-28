@@ -29,6 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Heartbeat para actualizar actividad cada 30 segundos
+  useEffect(() => {
+    if (!token) return
+
+    const sendHeartbeat = async () => {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/heartbeat`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      } catch (error) {
+        // Silently fail - no need to log heartbeat errors
+      }
+    }
+
+    // Send initial heartbeat
+    sendHeartbeat()
+
+    // Set up interval for periodic heartbeats
+    const interval = setInterval(sendHeartbeat, 30000) // Every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [token])
+
   const fetchUser = async (authToken: string) => {
     try {
       const response = await usersAPI.getProfile(authToken)
@@ -49,7 +73,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(response.user)
   }
 
-  const logout = () => {
+  const logout = async () => {
+    // Notify backend about logout
+    if (token) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      } catch (error) {
+        // Silently fail
+      }
+    }
     localStorage.removeItem("token")
     setToken(null)
     setUser(null)

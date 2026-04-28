@@ -63,6 +63,9 @@ const STATUS_COLORS: Record<string, string> = {
 interface OnlineUser extends User {
   lastActivity?: string
   sessionStart?: string
+  status?: "online" | "idle" | "offline"
+  minutesSinceActivity?: number
+  minutesOnline?: number
 }
 
 export default function AdminDashboardPage() {
@@ -116,7 +119,6 @@ export default function AdminDashboardPage() {
   }, [])
 
   const fetchOnlineUsers = async (token: string, usersList?: User[]) => {
-    const users = usersList || allUsers
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/online-users`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -125,46 +127,53 @@ export default function AdminDashboardPage() {
         const data = await response.json()
         setOnlineUsers(data.users || [])
       } else {
-        // Fallback: Use active users from the users list with simulated session times
-        // This will be replaced when the backend implements the online-users endpoint
-        const activeUsers = users
-          .filter(u => u.isActive && u.role !== "admin")
-          .slice(0, 8) // Show up to 8 users
-          .map(u => ({
-            ...u,
-            sessionStart: new Date(Date.now() - Math.random() * 3600000).toISOString(), // Random time within last hour
-          }))
-        setOnlineUsers(activeUsers)
+        setOnlineUsers([])
       }
     } catch (error) {
       console.error("Error fetching online users:", error)
-      // Fallback to active users
-      const activeUsers = users
-        .filter(u => u.isActive && u.role !== "admin")
-        .slice(0, 8)
-        .map(u => ({
-          ...u,
-          sessionStart: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        }))
-      setOnlineUsers(activeUsers)
+      setOnlineUsers([])
     }
   }
 
-  // Calculate time online
-  const formatTimeOnline = (sessionStart: string | undefined) => {
-    if (!sessionStart) return "Recien conectado"
-    
-    const start = new Date(sessionStart)
-    const now = new Date()
-    const diffMs = now.getTime() - start.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const remainingMins = diffMins % 60
-    
-    if (diffHours > 0) {
-      return `${diffHours}h ${remainingMins}m`
+  // Get status color and icon
+  const getStatusInfo = (status: string | undefined) => {
+    switch (status) {
+      case "online":
+        return { color: "text-green-400", bgColor: "bg-green-400", label: "En linea" }
+      case "idle":
+        return { color: "text-amber-400", bgColor: "bg-amber-400", label: "Sin actividad" }
+      default:
+        return { color: "text-gray-400", bgColor: "bg-gray-400", label: "Desconectado" }
     }
-    return `${diffMins}m`
+  }
+
+  // Format time display
+  const formatTimeDisplay = (user: OnlineUser) => {
+    if (user.status === "online") {
+      // Mostrar tiempo conectado
+      if (user.minutesOnline !== undefined && user.minutesOnline !== null) {
+        const hours = Math.floor(user.minutesOnline / 60)
+        const mins = user.minutesOnline % 60
+        if (hours > 0) return `${hours}h ${mins}m conectado`
+        return `${mins}m conectado`
+      }
+      return "En linea"
+    } else if (user.status === "idle") {
+      // Mostrar tiempo sin actividad
+      if (user.minutesSinceActivity !== undefined) {
+        return `${user.minutesSinceActivity}m sin actividad`
+      }
+      return "Sin actividad"
+    } else {
+      // Mostrar tiempo desconectado
+      if (user.minutesSinceActivity !== undefined) {
+        const hours = Math.floor(user.minutesSinceActivity / 60)
+        const mins = user.minutesSinceActivity % 60
+        if (hours > 0) return `${hours}h ${mins}m desconectado`
+        return `${mins}m desconectado`
+      }
+      return "Desconectado"
+    }
   }
 
   const getRoleLabel = (role: string) => {
@@ -642,8 +651,10 @@ export default function AdminDashboardPage() {
                     <Wifi className="h-4 w-4 text-green-400" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">Usuarios En Linea</CardTitle>
-                    <CardDescription className="text-xs">{onlineUsers.length} conectados ahora</CardDescription>
+                    <CardTitle className="text-base">Vendedores En Linea</CardTitle>
+                    <CardDescription className="text-xs">
+                      {onlineUsers.filter(u => u.status === "online").length} activos, {onlineUsers.filter(u => u.status === "idle").length} inactivos
+                    </CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -653,33 +664,36 @@ export default function AdminDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2">
                 {onlineUsers.length > 0 ? (
-                  onlineUsers.map((user) => (
-                    <div
-                      key={user._id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="relative">
-                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-medium text-primary">
-                              {user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                            </span>
+                  onlineUsers.map((user) => {
+                    const statusInfo = getStatusInfo(user.status)
+                    return (
+                      <div
+                        key={user._id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="relative">
+                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-medium text-primary">
+                                {user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                              </span>
+                            </div>
+                            <Circle className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${statusInfo.color} border-2 border-card rounded-full`} />
                           </div>
-                          <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-green-400 text-green-400 border-2 border-card rounded-full" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                            <p className={`text-xs ${getRoleColor(user.role)}`}>{getRoleLabel(user.role)}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                          <p className={`text-xs ${getRoleColor(user.role)}`}>{getRoleLabel(user.role)}</p>
+                        <div className="text-right flex-shrink-0 ml-2">
+                          <p className={`text-xs ${statusInfo.color}`}>{statusInfo.label}</p>
+                          <p className={`text-xs font-medium ${statusInfo.color}`}>{formatTimeDisplay(user)}</p>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="text-xs text-muted-foreground">Online</p>
-                        <p className="text-xs font-medium text-green-400">{formatTimeOnline(user.sessionStart)}</p>
-                      </div>
-                    </div>
-                  ))
+                    )
+                  })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <WifiOff className="h-8 w-8 text-muted-foreground/50 mb-2" />
@@ -690,14 +704,18 @@ export default function AdminDashboardPage() {
               </div>
               {onlineUsers.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border/50">
-                  <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="p-2 rounded-lg bg-green-500/10">
-                      <p className="text-lg font-bold text-green-400">{onlineUsers.filter(u => u.role === "seller").length}</p>
-                      <p className="text-xs text-muted-foreground">Vendedores</p>
+                      <p className="text-lg font-bold text-green-400">{onlineUsers.filter(u => u.status === "online").length}</p>
+                      <p className="text-xs text-muted-foreground">En linea</p>
                     </div>
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                      <p className="text-lg font-bold text-blue-400">{onlineUsers.filter(u => u.role === "supervisor").length}</p>
-                      <p className="text-xs text-muted-foreground">Supervisores</p>
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                      <p className="text-lg font-bold text-amber-400">{onlineUsers.filter(u => u.status === "idle").length}</p>
+                      <p className="text-xs text-muted-foreground">Sin actividad</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-gray-500/10">
+                      <p className="text-lg font-bold text-gray-400">{onlineUsers.filter(u => u.status === "offline").length}</p>
+                      <p className="text-xs text-muted-foreground">Desconectados</p>
                     </div>
                   </div>
                 </div>
