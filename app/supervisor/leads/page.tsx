@@ -254,14 +254,39 @@ export default function SupervisorLeadsPage() {
     if (!token) return
 
     try {
+      // Limpiar datos antes de enviar - no enviar strings vacios como ObjectIds
+      const cleanedData: CreateLeadData & { notes?: string } = {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        assignedTo: formData.assignedTo,
+      }
+      
+      // Solo agregar campos opcionales si tienen valor
+      if (formData.email?.trim()) cleanedData.email = formData.email.trim()
+      if (formData.dni?.trim()) cleanedData.dni = formData.dni.trim()
+      if (formData.source) cleanedData.source = formData.source
+      if (formData.sourceDetail?.trim()) cleanedData.sourceDetail = formData.sourceDetail.trim()
+      if (formData.priority) cleanedData.priority = formData.priority
+      if (formData.notes?.trim()) cleanedData.notes = formData.notes.trim()
+      
+      // Solo agregar interestedPlanId si tiene un valor valido (no vacio)
+      if (formData.interestedPlanId && formData.interestedPlanId.trim() !== "") {
+        cleanedData.interestedPlanId = formData.interestedPlanId
+      }
+      
+      // Solo agregar address si tiene al menos un campo con valor
+      if (formData.address && Object.values(formData.address).some(v => v && v.trim())) {
+        cleanedData.address = formData.address
+      }
+
       if (selectedLead) {
-        await leadsAPI.update(token, selectedLead._id, formData)
+        await leadsAPI.update(token, selectedLead._id, cleanedData)
         toast({
           title: "Lead actualizado",
           description: "El lead se ha actualizado correctamente",
         })
       } else {
-        await leadsAPI.create(token, formData)
+        await leadsAPI.create(token, cleanedData)
         toast({
           title: "Lead creado",
           description: "El lead se ha creado correctamente",
