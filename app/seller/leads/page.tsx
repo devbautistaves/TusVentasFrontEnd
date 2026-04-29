@@ -280,7 +280,7 @@ export default function SellerLeadsPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout role="seller">
+      <DashboardLayout requiredRole="seller">
         <div className="flex items-center justify-center h-96">
           <Spinner className="h-8 w-8" />
         </div>
@@ -289,7 +289,7 @@ export default function SellerLeadsPage() {
   }
 
   return (
-    <DashboardLayout role="seller">
+    <DashboardLayout requiredRole="seller">
       <div className="space-y-6">
         {/* Header */}
         <div>

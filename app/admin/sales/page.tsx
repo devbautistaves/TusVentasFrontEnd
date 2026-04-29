@@ -811,7 +811,7 @@ function AdminSalesContent() {
                                 try {
                                   await salesAPI.deleteAttachment(token, selectedSale._id, attachment._id)
                                   toast({ title: "Archivo eliminado" })
-                                  fetchData()
+                                  fetchSales()
                                 } catch {
                                   toast({ title: "Error al eliminar", variant: "destructive" })
                                 }

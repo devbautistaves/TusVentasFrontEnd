@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
-    companyId: currentCompany.id as "prosegur" | "tupaginaya",
+    companyId: "prosegur" as "prosegur" | "tupaginaya",
     name: "",
     email: "",
     password: "",
@@ -66,6 +66,11 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers()
+  }, [currentCompany.id])
+
+  // Sync formData.companyId when currentCompany changes
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, companyId: currentCompany.id as "prosegur" | "tupaginaya" }))
   }, [currentCompany.id])
 
   useEffect(() => {
@@ -90,7 +95,8 @@ export default function AdminUsersPage() {
     let filtered = [...users]
 
     // Filtrar por empresa actual - solo mostrar usuarios de esta empresa
-    filtered = filtered.filter((user) => user.companyId === currentCompany.id)
+    // Si el usuario no tiene companyId asignado, mostrar en prosegur por defecto
+    filtered = filtered.filter((user) => (user.companyId || "prosegur") === currentCompany.id)
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -430,11 +436,11 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          user.companyId === "prosegur" 
+                          (user.companyId || "prosegur") === "prosegur" 
                             ? "bg-blue-500/20 text-blue-400" 
                             : "bg-green-500/20 text-green-400"
                         }`}>
-                          {user.companyId === "prosegur" ? "Prosegur" : "TuPaginaYa"}
+                          {(user.companyId || "prosegur") === "prosegur" ? "Prosegur" : "TuPaginaYa"}
                         </span>
                       </td>
                       <td className="py-3 px-4">

@@ -367,7 +367,7 @@ export default function AdminLeadsPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout role="admin">
+      <DashboardLayout requiredRole="admin">
         <div className="flex items-center justify-center h-96">
           <Spinner className="h-8 w-8" />
         </div>
@@ -376,7 +376,7 @@ export default function AdminLeadsPage() {
   }
 
   return (
-    <DashboardLayout role="admin">
+    <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

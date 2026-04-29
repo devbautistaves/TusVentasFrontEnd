@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { salesAPI, Sale } from "@/lib/api"
-import { Search, Filter, Eye, Plus, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText } from "lucide-react"
+import { Search, Filter, Eye, Plus, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Clock } from "lucide-react"
 
 export default function SellerSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])

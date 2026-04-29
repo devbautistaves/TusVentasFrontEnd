@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
-import { DollarSign, TrendingUp, Calendar, FileSpreadsheet, Edit2, Megaphone, Wrench, Printer } from "lucide-react"
+import { DollarSign, TrendingUp, Calendar, FileSpreadsheet, Edit2, Megaphone, Wrench, Printer, Download } from "lucide-react"
 
 // Constantes de comision supervisor
 const SUPERVISOR_BASE_COMMISSION = 750000 // Importe base de comision
@@ -234,7 +234,7 @@ export default function SupervisorCommissionsPage() {
         description: "Los costos de la venta se han actualizado correctamente",
       })
       setIsCostsDialogOpen(false)
-      fetchSales()
+      fetchData()
     } catch (error) {
       toast({
         title: "Error",
@@ -404,7 +404,7 @@ export default function SupervisorCommissionsPage() {
     // SECCION: VENTAS CANCELADAS CON DESCUENTO
     const cancelledWithCost = cancelledSales.filter(s => s.installationCost && s.installationCost > 0)
     csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-    csvRows.push(`───────────────────────────────────────────────────────────────────────────`)
+    csvRows.push(`────────────────────────────────────────────────────────────���──────────────`)
     csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
     
     cancelledWithCost.forEach((sale, idx) => {
@@ -716,7 +716,7 @@ export default function SupervisorCommissionsPage() {
                         Comision (40%):
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-foreground">
-                        {formatCurrency(commission.commissionBeforeAdCost)}
+                        {formatCurrency(commission.totalBeforePercentage * SUPERVISOR_PERCENTAGE)}
                       </td>
                       <td></td>
                     </tr>

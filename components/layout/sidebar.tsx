@@ -132,7 +132,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
 
   const getLinks = () => {
     if (role === "admin") {
-      return isTuPaginaYa ? tupaginayaAdminLinks : tusventasAdminLinks
+      return isTuPaginaYa ? tupaginayaAdminLinks : prosegurAdminLinks
     }
     if (role === "supervisor") {
       return isTuPaginaYa ? tupaginayaSupervisorLinks : tusventasSupervisorLinks
@@ -140,7 +140,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     if (role === "support") {
       return supportLinks
     }
-    return isTuPaginaYa ? tupaginayaSellerLinks : tusventasSellerLinks
+    return isTuPaginaYa ? tupaginayaSellerLinks : prosegurSellerLinks
   }
 
   const links = getLinks()

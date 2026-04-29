@@ -19,10 +19,9 @@ function getStoredCompanyId(): string {
 async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { token, companyId, ...fetchOptions } = options
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Company-ID": companyId || getStoredCompanyId(),
-    ...(options.headers || {}),
   }
 
   if (token) {
@@ -191,7 +190,7 @@ export const salesAPI = {
     const formData = new FormData()
     formData.append("file", file)
     
-    const response = await fetch(`${API_BASE_URL}/api/sales/${saleId}/attachments`, {
+    const response = await fetch(`${API_URL}/api/sales/${saleId}/attachments`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -632,7 +631,7 @@ export const leadsAPI = {
 // Types
 export interface User {
   _id: string
-  companyId: "prosegur" | "tupaginaya"
+  companyId?: "prosegur" | "tupaginaya"
   name: string
   email: string
   phone: string
