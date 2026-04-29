@@ -25,9 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, salesAPI, adCostsAPI, User, Sale, SupervisorAdCost as APIAdCost } from "@/lib/api"
-import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle, Download } from "lucide-react"
-import html2canvas from "html2canvas"
-import jsPDF from "jspdf"
+import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle } from "lucide-react"
 
 // Constantes
 const SUPERVISOR_BASE_COMMISSION = 750000
@@ -846,75 +844,148 @@ export default function AdminCommissionsPage() {
     }
   }
 
-  // Estado para descarga PDF
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-
-  // Descargar como PDF (screenshot del modal)
-  const handleDownloadPDF = async () => {
+  // Imprimir como PDF
+  const handlePrintLiquidacion = () => {
     const printContent = document.getElementById("liquidacion-print-content")
-    if (!printContent || !selectedUserForLiquidacion) return
+    if (!printContent) return
 
-    setIsGeneratingPDF(true)
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
 
-    try {
-      // Capturar el contenido como imagen
-      const canvas = await html2canvas(printContent, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#0f172a",
-        logging: false,
-      })
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Liquidacion de Comisiones</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 8mm; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            font-size: 9px;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 4px; 
+            border-bottom: 1px solid #f59e0b; 
+            padding-bottom: 3px;
+          }
+          .header h1 { 
+            font-size: 14px; 
+            margin-bottom: 1px; 
+            color: #f8fafc;
+          }
+          .header p { 
+            font-size: 8px; 
+            color: #94a3b8;
+            text-transform: uppercase;
+          }
+          .info-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 4px;
+            padding: 3px 8px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 3px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+          }
+          .info-item { font-size: 7px; color: #cbd5e1; }
+          .info-item strong { color: #f8fafc; font-weight: 600; }
+          h3 { 
+            font-size: 8px; 
+            margin-bottom: 2px; 
+            display: flex; 
+            align-items: center; 
+            gap: 2px;
+            color: #f8fafc;
+          }
+          .flex { display: flex; }
+          .items-center { align-items: center; }
+          .gap-2 { gap: 2px; }
+          table { 
+            width: 100%; 
+            border-collapse: collapse;
+            margin: 3px 0;
+          }
+          th { 
+            background: #334155;
+            padding: 2px 4px; 
+            text-align: left; 
+            font-size: 7px; 
+            font-weight: 600;
+            color: #e2e8f0;
+            border-bottom: 1px solid #475569;
+            text-transform: uppercase;
+          }
+          td { 
+            padding: 2px 4px; 
+            font-size: 7px;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+            background: rgba(30, 41, 59, 0.6);
+            color: #cbd5e1;
+          }
+          tfoot td, tfoot th {
+            background: rgba(34, 197, 94, 0.15) !important;
+            border-top: 1px solid rgba(34, 197, 94, 0.4);
+            font-weight: 700;
+            padding: 2px 4px;
+          }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
+          .text-red-400 { color: #f87171 !important; }
+          .text-green-400 { color: #4ade80 !important; }
+          .font-medium { font-weight: 500; }
+          .font-bold { font-weight: 700; }
+          .font-semibold { font-weight: 600; }
+          .border { border: 1px solid rgba(148, 163, 184, 0.3); }
+          .rounded-lg { border-radius: 3px; }
+          .overflow-hidden { overflow: hidden; }
+          .p-3 { padding: 4px; }
+          .p-6 { padding: 6px; }
+          .mb-2 { margin-bottom: 2px; }
+          .space-y-6 > * + * { margin-top: 4px; }
+          .text-sm { font-size: 7px; }
+          .text-xs { font-size: 6px; }
+          .text-muted-foreground { color: #94a3b8; }
+          .total-section { 
+            margin-top: 6px; 
+            padding: 6px 10px; 
+            border: 2px solid #f59e0b; 
+            border-radius: 4px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+          }
+          .total-section h2 { 
+            font-size: 16px; 
+            font-weight: 800;
+            color: #f59e0b;
+          }
+          .text-3xl { font-size: 16px; }
+          .text-primary { color: #f59e0b; }
+          svg { display: none; }
+          @media print {
+            body { 
+              print-color-adjust: exact; 
+              -webkit-print-color-adjust: exact;
+              background: #0f172a !important;
+            }
+          }
+          @page { size: A4 landscape; margin: 3mm; }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+      </html>
+    `)
 
-      // Crear PDF en formato landscape
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
-      })
-
-      const imgWidth = 297 // A4 landscape width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-      // Si la imagen es mas alta que la pagina, escalar para que quepa
-      const pageHeight = 210 // A4 landscape height in mm
-      let finalWidth = imgWidth
-      let finalHeight = imgHeight
-
-      if (imgHeight > pageHeight - 10) {
-        const ratio = (pageHeight - 10) / imgHeight
-        finalWidth = imgWidth * ratio
-        finalHeight = pageHeight - 10
-      }
-
-      // Centrar la imagen en la pagina
-      const xOffset = (297 - finalWidth) / 2
-      const yOffset = (210 - finalHeight) / 2
-
-      const imgData = canvas.toDataURL("image/png")
-      pdf.addImage(imgData, "PNG", xOffset, yOffset, finalWidth, finalHeight)
-
-      // Nombre del archivo
-      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-      const monthName = monthNames[selectedMonth - 1]
-      const fileName = `Liquidacion_${selectedUserForLiquidacion.name.replace(/\s+/g, "_")}_${monthName}_${selectedYear}.pdf`
-
-      pdf.save(fileName)
-
-      toast({
-        title: "PDF descargado",
-        description: `Liquidacion de ${selectedUserForLiquidacion.name} descargada correctamente`,
-      })
-    } catch (error) {
-      console.error("Error generating PDF:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo generar el PDF",
-        variant: "destructive",
-      })
-    } finally {
-      setIsGeneratingPDF(false)
-    }
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 250)
   }
   
   // Exportar comisiones de un usuario con diseño mejorado para Google Sheets
@@ -2307,14 +2378,10 @@ export default function AdminCommissionsPage() {
               }}>
                 Cerrar
               </Button>
-<Button onClick={handleDownloadPDF} disabled={isGeneratingPDF} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-  {isGeneratingPDF ? (
-    <Spinner className="h-4 w-4" />
-  ) : (
-    <Download className="h-4 w-4" />
-  )}
-  {isGeneratingPDF ? "Generando..." : "Descargar PDF"}
-  </Button>
+              <Button onClick={handlePrintLiquidacion} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Printer className="h-4 w-4" />
+                Descargar PDF
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
