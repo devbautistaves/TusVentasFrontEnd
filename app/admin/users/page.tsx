@@ -34,9 +34,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, User } from "@/lib/api"
-import { Search, Plus, Edit2, Trash2, UserCheck, UserX, Shield, Users as UsersIcon } from "lucide-react"
+import { useCompany } from "@/lib/company-context"
+import { Search, Plus, Edit2, Trash2, UserCheck, UserX, Shield, Users as UsersIcon, Building2 } from "lucide-react"
 
 export default function AdminUsersPage() {
+  const { currentCompany } = useCompany()
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -63,7 +65,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, [currentCompany.id])
 
   useEffect(() => {
     filterUsers()
@@ -245,9 +247,10 @@ export default function AdminUsersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Usuarios</h1>
-            <p className="text-muted-foreground">
-              Gestiona los usuarios del sistema
-            </p>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Building2 className="h-4 w-4" />
+              <span>Empresa: {currentCompany.name}</span>
+            </div>
           </div>
           <Button
             onClick={() => handleOpenDialog()}

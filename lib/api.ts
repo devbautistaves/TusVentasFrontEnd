@@ -2,13 +2,26 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaw
 
 interface FetchOptions extends RequestInit {
   token?: string
+  companyId?: string
+}
+
+// Funcion para obtener el companyId guardado
+// Default es "prosegur" (empresa original del Grupo JV)
+function getStoredCompanyId(): string {
+  if (typeof window !== "undefined") {
+    const companyId = localStorage.getItem("selectedCompanyId") || "prosegur"
+    // Compatibilidad: si hay guardado "tusventas" lo tratamos como "prosegur"
+    return companyId === "tusventas" ? "prosegur" : companyId
+  }
+  return "prosegur"
 }
 
 async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-  const { token, ...fetchOptions } = options
+  const { token, companyId, ...fetchOptions } = options
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
+    "X-Company-ID": companyId || getStoredCompanyId(),
     ...(options.headers || {}),
   }
 
@@ -920,4 +933,231 @@ export interface AddLeadContactData {
   outcome: ContactOutcome
   nextAction?: string
   nextActionDate?: string
+}
+
+// ========================================
+// TUPAGINAYA - Tipos e Interfaces
+// ========================================
+
+export type ClientStatus = "demo_pendiente" | "demo_enviada" | "web_activada" | "web_pausada" | "cliente_baja"
+export type WebType = "landing" | "ecommerce" | "catalogo" | "institucional" | "blog" | "otro"
+export type PaymentMethod = "efectivo" | "transferencia" | "mercadopago" | "tarjeta" | "otro"
+export type PaymentStatus = "pendiente" | "pagado" | "vencido" | "anulado"
+export type TransactionType = "ingreso" | "egreso"
+export type LiquidationStatus = "pendiente" | "pagado" | "anulado"
+
+export interface Client {
+  _id: string
+  companyId: string
+  name: string
+  email: string
+  phone: string
+  dni?: string
+  businessName?: string
+  businessType?: string
+  domain?: string
+  demoUrl?: string
+  liveUrl?: string
+  webType: WebType
+  hostingPlan?: string
+  status: ClientStatus
+  activationDate?: string
+  cancellationDate?: string
+  cancellationReason?: string
+  monthlyPrice: number
+  setupPrice: number
+  billingDay: number
+  sellerId?: string | { _id: string; name: string; email?: string }
+  saleId?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateClientData {
+  name: string
+  email: string
+  phone: string
+  dni?: string
+  businessName?: string
+  businessType?: string
+  domain?: string
+  demoUrl?: string
+  webType?: WebType
+  hostingPlan?: string
+  monthlyPrice?: number
+  setupPrice?: number
+  billingDay?: number
+  sellerId?: string
+  notes?: string
+}
+
+export interface Payment {
+  _id: string
+  companyId: string
+  clientId: string | Client
+  amount: number
+  period: string
+  paymentDate: string
+  paymentMethod: PaymentMethod
+  status: PaymentStatus
+  notes?: string
+  recordedBy?: string | { _id: string; name: string }
+  createdAt: string
+}
+
+export interface Transaction {
+  _id: string
+  companyId: string
+  type: TransactionType
+  category: string
+  amount: number
+  description: string
+  date: string
+  clientId?: string | { _id: string; name: string; businessName?: string }
+  paymentId?: string
+  recordedBy: string | { _id: string; name: string }
+  notes?: string
+  createdAt: string
+}
+
+export interface Liquidation {
+  _id: string
+  companyId: string
+  userId: string | { _id: string; name: string; email?: string }
+  period: string
+  totalAmount: number
+  details: Array<{
+    saleId?: string
+    amount: number
+    description: string
+  }>
+  status: LiquidationStatus
+  paidAt?: string
+  paidBy?: string | { _id: string; name: string }
+  paymentMethod?: PaymentMethod
+  notes?: string
+  createdBy: string | { _id: string; name: string }
+  createdAt: string
+}
+
+export interface CollectionItem {
+  client: Client
+  daysOverdue: number
+  lastBillingDate: string
+  amountDue: number
+}
+
+// ========================================
+// TUPAGINAYA - APIs
+// ========================================
+
+// Clients API
+export const clientsAPI = {
+  getAll: (token: string, filters?: { status?: string; sellerId?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.sellerId) params.append("sellerId", filters.sellerId)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; clients: Client[] }>(`/api/clients${query}`, { token })
+  },
+
+  getById: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; client: Client }>(`/api/clients/${id}`, { token }),
+
+  create: (token: string, data: CreateClientData) =>
+    fetchAPI<{ success: boolean; client: Client }>("/api/clients", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  update: (token: string, id: string, data: Partial<Client>) =>
+    fetchAPI<{ success: boolean; client: Client }>(`/api/clients/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  getStats: (token: string) =>
+    fetchAPI<{ success: boolean; stats: { byStatus: Record<string, number>; totalActiveRevenue: number; total: number } }>("/api/clients/stats", { token }),
+
+  getPayments: (token: string, clientId: string) =>
+    fetchAPI<{ success: boolean; payments: Payment[] }>(`/api/clients/${clientId}/payments`, { token }),
+
+  addPayment: (token: string, clientId: string, data: { amount: number; period: string; paymentMethod?: string; paymentDate?: string; notes?: string }) =>
+    fetchAPI<{ success: boolean; payment: Payment }>(`/api/clients/${clientId}/payments`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+}
+
+// Collections API (Cobranzas)
+export const collectionsAPI = {
+  getAll: (token: string) =>
+    fetchAPI<{ success: boolean; collections: CollectionItem[] }>("/api/collections", { token }),
+
+  sendReminder: (token: string, clientId: string, type: "5_dias" | "15_dias" | "30_dias" | "manual") =>
+    fetchAPI<{ success: boolean; emailSent: boolean }>(`/api/collections/send-reminder/${clientId}`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ type }),
+    }),
+}
+
+// Transactions API
+export const transactionsAPI = {
+  getAll: (token: string, filters?: { type?: string; month?: string; category?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.type) params.append("type", filters.type)
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.category) params.append("category", filters.category)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; transactions: Transaction[] }>(`/api/transactions${query}`, { token })
+  },
+
+  create: (token: string, data: { type: TransactionType; category: string; amount: number; description: string; date?: string; clientId?: string; notes?: string }) =>
+    fetchAPI<{ success: boolean; transaction: Transaction }>("/api/transactions", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  getSummary: (token: string, month?: string) => {
+    const query = month ? `?month=${month}` : ""
+    return fetchAPI<{ success: boolean; summary: { ingresos: number; egresos: number; balance: number } }>(`/api/transactions/summary${query}`, { token })
+  },
+}
+
+// Liquidations API
+export const liquidationsAPI = {
+  getAll: (token: string, filters?: { userId?: string; period?: string; status?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.userId) params.append("userId", filters.userId)
+    if (filters?.period) params.append("period", filters.period)
+    if (filters?.status) params.append("status", filters.status)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; liquidations: Liquidation[] }>(`/api/liquidations${query}`, { token })
+  },
+
+  create: (token: string, data: { userId: string; period: string; totalAmount: number; details?: Array<{ saleId?: string; amount: number; description: string }>; notes?: string }) =>
+    fetchAPI<{ success: boolean; liquidation: Liquidation }>("/api/liquidations", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  pay: (token: string, id: string, data: { paymentMethod: string; notes?: string }) =>
+    fetchAPI<{ success: boolean; liquidation: Liquidation }>(`/api/liquidations/${id}/pay`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+}
+
+// Companies API
+export const companiesAPI = {
+  getAll: (token: string) =>
+    fetchAPI<{ success: boolean; companies: Array<{ id: string; name: string; displayName: string; isActive: boolean }> }>("/api/companies", { token }),
 }
