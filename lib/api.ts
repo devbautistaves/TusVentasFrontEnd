@@ -170,7 +170,7 @@ export const salesAPI = {
     }),
 
   // Marcar venta como baja (usa el endpoint de update general)
-  markAsBaja: (token: string, id: string, bajaData: { bajaDate: string; bajaMonthsLimit: number; bajaReason?: string }) =>
+  markAsBaja: (token: string, id: string, bajaData: { bajaDate: string; bajaMonthsLimit: number; bajaReason?: string; bajaAmount?: number }) =>
     fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}`, {
       method: "PUT",
       token,
@@ -182,7 +182,7 @@ export const salesAPI = {
     fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}`, {
       method: "PUT",
       token,
-      body: JSON.stringify({ isBaja: false, bajaDate: null, bajaMonthsLimit: null, bajaReason: null }),
+      body: JSON.stringify({ isBaja: false, bajaDate: null, bajaMonthsLimit: null, bajaReason: null, bajaAmount: null }),
     }),
 
   // Subir archivo adjunto de instalacion
@@ -701,6 +701,7 @@ export interface Sale {
   bajaDate?: string
   bajaMonthsLimit?: number // Meses antes de los cuales se considera baja con descuento (ej: 6 meses)
   bajaReason?: string
+  bajaAmount?: number // Importe personalizado a descontar del neto
   // Archivos adjuntos de instalacion
   installationAttachments?: InstallationAttachment[]
   createdAt: string

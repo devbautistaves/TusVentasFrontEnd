@@ -130,8 +130,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [canSwitchCompany, setCanSwitchCompany] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Funcion para actualizar las empresas basado en el usuario
-  const updateCompaniesForUser = () => {
+  useEffect(() => {
+    // Obtener datos del usuario desde localStorage
     const userDataString = localStorage.getItem("user")
     let userRole: string | undefined
     let userCompanyId: string | undefined
@@ -163,6 +163,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       if (assignedCompany) {
         setCurrentCompany(assignedCompany)
         localStorage.setItem(STORAGE_KEY, assignedCompany.id)
+        setIsLoading(false)
         return
       }
     }
@@ -172,6 +173,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const company = companies.find((c) => c.id === savedCompanyId)
       if (company) {
         setCurrentCompany(company)
+        setIsLoading(false)
         return
       }
     }
@@ -181,22 +183,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setCurrentCompany(companies[0])
       localStorage.setItem(STORAGE_KEY, companies[0].id)
     }
-  }
-
-  useEffect(() => {
-    // Inicializar con datos del usuario
-    updateCompaniesForUser()
+    
     setIsLoading(false)
-
-    // Escuchar cambios en localStorage (cuando el usuario hace login)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "user") {
-        updateCompaniesForUser()
-      }
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
   const switchCompany = (companyId: string) => {

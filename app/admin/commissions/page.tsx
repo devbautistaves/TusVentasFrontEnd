@@ -88,6 +88,7 @@ export default function AdminCommissionsPage() {
     bajaDate: "",
     bajaMonthsLimit: 6,
     bajaReason: "",
+    bajaAmount: 0,
   })
   const [isSavingBaja, setIsSavingBaja] = useState(false)
   const { toast } = useToast()
@@ -686,7 +687,13 @@ export default function AdminCommissionsPage() {
     
     if (userRole === "supervisor") {
       // Para supervisor: descontar el neto que recibio por esa venta * 40%
+      // O usar bajaAmount si esta definido
       return bajas.reduce((total, sale) => {
+        // Si hay un importe personalizado de baja, usar ese directamente
+        if (sale.bajaAmount && sale.bajaAmount > 0) {
+          return total + sale.bajaAmount
+        }
+        // Sino, calcular el descuento basado en la comision que recibio
         const baseCommission = SUPERVISOR_BASE_COMMISSION
         const sellerCommission = sale.sellerCommissionPaid || 0
         const installationCost = sale.installationCost || 0
@@ -695,10 +702,14 @@ export default function AdminCommissionsPage() {
       }, 0)
     } else {
       // Para vendedor: descontar la comision que recibio
-      // Obtenemos la cantidad de ventas del mes original para determinar el tier
+      // O usar bajaAmount si esta definido
       const bajas = getBajasForMonth(userId, userRole)
       return bajas.reduce((total, sale) => {
-        // Usar la comision que tenia guardada si existe, sino usar tier actual
+        // Si hay un importe personalizado de baja, usar ese directamente
+        if (sale.bajaAmount && sale.bajaAmount > 0) {
+          return total + sale.bajaAmount
+        }
+        // Sino, usar la comision que tenia guardada o calcular con tier
         const perSale = sale.sellerCommissionPaid || getCommissionPerSale(1, userId)
         return total + perSale
       }, 0)
@@ -713,6 +724,7 @@ export default function AdminCommissionsPage() {
       bajaDate: new Date().toISOString().split("T")[0],
       bajaMonthsLimit: 6,
       bajaReason: "",
+      bajaAmount: 0,
     })
     setIsBajaDialogOpen(true)
   }
@@ -737,6 +749,7 @@ export default function AdminCommissionsPage() {
         bajaDate: bajaForm.bajaDate,
         bajaMonthsLimit: bajaForm.bajaMonthsLimit,
         bajaReason: bajaForm.bajaReason,
+        bajaAmount: bajaForm.bajaAmount || 0,
       })
 
       toast({
@@ -2420,16 +2433,34 @@ export default function AdminCommissionsPage() {
                           </Select>
                         </Field>
                       </div>
-                      <Field>
-                        <FieldLabel>Motivo de la baja</FieldLabel>
-                        <Input
-                          type="text"
-                          value={bajaForm.bajaReason}
-                          onChange={(e) => setBajaForm(prev => ({ ...prev, bajaReason: e.target.value }))}
-                          className="bg-secondary/50"
-                          placeholder="Ej: Baja anticipada, Cliente insatisfecho, etc."
-                        />
-                      </Field>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field>
+                          <FieldLabel>Motivo de la baja</FieldLabel>
+                          <Input
+                            type="text"
+                            value={bajaForm.bajaReason}
+                            onChange={(e) => setBajaForm(prev => ({ ...prev, bajaReason: e.target.value }))}
+                            className="bg-secondary/50"
+                            placeholder="Ej: Baja anticipada, Cliente insatisfecho, etc."
+                          />
+                        </Field>
+                        <Field>
+                          <FieldLabel>Importe a descontar</FieldLabel>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <Input
+                              type="number"
+                              value={bajaForm.bajaAmount || ""}
+                              onChange={(e) => setBajaForm(prev => ({ ...prev, bajaAmount: Number(e.target.value) || 0 }))}
+                              className="bg-secondary/50 pl-8"
+                              placeholder="0"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Este importe se descontara del neto a cobrar
+                          </p>
+                        </Field>
+                      </div>
                     </FieldGroup>
                   )}
 
@@ -2455,6 +2486,11 @@ export default function AdminCommissionsPage() {
                                 {baja.bajaReason && (
                                   <p className="text-xs text-red-400/80 mt-1">{baja.bajaReason}</p>
                                 )}
+                                {baja.bajaAmount && baja.bajaAmount > 0 && (
+                                  <p className="text-xs text-red-400 font-medium mt-1">
+                                    Descuento: {formatCurrency(baja.bajaAmount)}
+                                  </p>
+                                )}
                               </div>
                               <Button
                                 variant="ghost"
@@ -2479,7 +2515,7 @@ export default function AdminCommissionsPage() {
               <Button variant="outline" onClick={() => {
                 setIsBajaDialogOpen(false)
                 setSelectedUserForBaja(null)
-                setBajaForm({ saleId: "", bajaDate: "", bajaMonthsLimit: 6, bajaReason: "" })
+                setBajaForm({ saleId: "", bajaDate: "", bajaMonthsLimit: 6, bajaReason: "", bajaAmount: 0 })
               }}>
                 Cancelar
               </Button>

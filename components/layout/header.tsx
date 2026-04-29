@@ -32,7 +32,6 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
   const handleLogout = () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
-    localStorage.removeItem("selectedCompanyId")
     router.push("/login")
   }
 
