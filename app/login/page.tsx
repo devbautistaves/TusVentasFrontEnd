@@ -27,6 +27,22 @@ export default function LoginPage() {
       localStorage.setItem("token", response.token)
       localStorage.setItem("user", JSON.stringify(response.user))
       
+      // Configurar la empresa seleccionada basada en el companyId del usuario
+      // Para vendedores/supervisores, forzar su empresa asignada
+      // Para admin/support, mantener la empresa guardada o usar la del usuario
+      const userRole = response.user.role
+      const userCompanyId = response.user.companyId
+      
+      if (userRole === "seller" || userRole === "supervisor") {
+        // Forzar la empresa asignada para vendedores/supervisores
+        if (userCompanyId) {
+          localStorage.setItem("selectedCompanyId", userCompanyId)
+        }
+      } else if (!localStorage.getItem("selectedCompanyId") && userCompanyId) {
+        // Para admin/support, si no hay empresa guardada, usar la del usuario
+        localStorage.setItem("selectedCompanyId", userCompanyId)
+      }
+      
       toast({
         title: "Bienvenido",
         description: `Hola ${response.user.name}!`,

@@ -95,30 +95,117 @@ interface CompanyContextType {
   isLoading: boolean
   getStatusLabel: (statusId: string) => string
   getStatusColor: (statusId: string) => string
+  canSwitchCompany: boolean
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
 
 const STORAGE_KEY = "selectedCompanyId"
 
+// Helper para obtener las empresas disponibles segun el rol y companyId del usuario
+function getAvailableCompanies(userRole?: string, userCompanyId?: string): Company[] {
+  const activeCompanies = COMPANIES.filter((c) => c.isActive)
+  
+  // Admin y support pueden ver todas las empresas activas
+  if (userRole === "admin" || userRole === "support") {
+    return activeCompanies
+  }
+  
+  // Vendedores y supervisores solo pueden ver su empresa asignada
+  if (userCompanyId) {
+    const assignedCompany = activeCompanies.find((c) => c.id === userCompanyId)
+    if (assignedCompany) {
+      return [assignedCompany]
+    }
+  }
+  
+  // Si no hay empresa asignada, default a prosegur (compatibilidad)
+  const defaultCompany = activeCompanies.find((c) => c.id === "prosegur")
+  return defaultCompany ? [defaultCompany] : activeCompanies.slice(0, 1)
+}
+
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [currentCompany, setCurrentCompany] = useState<Company>(COMPANIES[0])
+  const [availableCompanies, setAvailableCompanies] = useState<Company[]>(COMPANIES.filter((c) => c.isActive))
+  const [canSwitchCompany, setCanSwitchCompany] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    // Cargar empresa guardada
-    const savedCompanyId = localStorage.getItem(STORAGE_KEY)
-    if (savedCompanyId) {
-      const company = COMPANIES.find((c) => c.id === savedCompanyId)
-      if (company && company.isActive) {
-        setCurrentCompany(company)
+  // Funcion para actualizar las empresas basado en el usuario
+  const updateCompaniesForUser = () => {
+    const userDataString = localStorage.getItem("user")
+    let userRole: string | undefined
+    let userCompanyId: string | undefined
+    
+    if (userDataString) {
+      try {
+        const userData = JSON.parse(userDataString)
+        userRole = userData.role
+        userCompanyId = userData.companyId
+      } catch {
+        // Error parsing user data
       }
     }
+    
+    // Calcular empresas disponibles segun rol y companyId
+    const companies = getAvailableCompanies(userRole, userCompanyId)
+    setAvailableCompanies(companies)
+    
+    // Verificar si el usuario puede cambiar de empresa
+    const canSwitch = userRole === "admin" || userRole === "support"
+    setCanSwitchCompany(canSwitch)
+    
+    // Cargar empresa guardada o usar la empresa asignada
+    const savedCompanyId = localStorage.getItem(STORAGE_KEY)
+    
+    // Priorizar la empresa asignada para vendedores/supervisores
+    if (!canSwitch && userCompanyId) {
+      const assignedCompany = companies.find((c) => c.id === userCompanyId)
+      if (assignedCompany) {
+        setCurrentCompany(assignedCompany)
+        localStorage.setItem(STORAGE_KEY, assignedCompany.id)
+        return
+      }
+    }
+    
+    // Para admin/support, usar la empresa guardada si es valida
+    if (savedCompanyId) {
+      const company = companies.find((c) => c.id === savedCompanyId)
+      if (company) {
+        setCurrentCompany(company)
+        return
+      }
+    }
+    
+    // Default: primera empresa disponible
+    if (companies.length > 0) {
+      setCurrentCompany(companies[0])
+      localStorage.setItem(STORAGE_KEY, companies[0].id)
+    }
+  }
+
+  useEffect(() => {
+    // Inicializar con datos del usuario
+    updateCompaniesForUser()
     setIsLoading(false)
+
+    // Escuchar cambios en localStorage (cuando el usuario hace login)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "user") {
+        updateCompaniesForUser()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
   const switchCompany = (companyId: string) => {
-    const company = COMPANIES.find((c) => c.id === companyId)
+    // Solo permitir cambio si el usuario puede hacerlo
+    if (!canSwitchCompany) {
+      return
+    }
+    
+    const company = availableCompanies.find((c) => c.id === companyId)
     if (company && company.isActive) {
       setCurrentCompany(company)
       localStorage.setItem(STORAGE_KEY, companyId)
@@ -141,11 +228,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     <CompanyContext.Provider
       value={{
         currentCompany,
-        companies: COMPANIES.filter((c) => c.isActive),
+        companies: availableCompanies,
         switchCompany,
         isLoading,
         getStatusLabel,
         getStatusColor,
+        canSwitchCompany,
       }}
     >
       {children}

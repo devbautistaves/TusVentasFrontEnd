@@ -13,7 +13,22 @@ import {
 import { useCompany } from "@/lib/company-context"
 
 export function CompanySelector() {
-  const { currentCompany, companies, switchCompany } = useCompany()
+  const { currentCompany, companies, switchCompany, canSwitchCompany } = useCompany()
+
+  // Si el usuario no puede cambiar de empresa, mostrar solo el indicador sin dropdown
+  if (!canSwitchCompany || companies.length <= 1) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border/50 bg-secondary/30">
+        <div
+          className="h-6 w-6 rounded flex items-center justify-center"
+          style={{ backgroundColor: currentCompany.primaryColor }}
+        >
+          <Building2 className="h-4 w-4 text-white" />
+        </div>
+        <span className="hidden sm:inline font-medium text-sm">{currentCompany.name}</span>
+      </div>
+    )
+  }
 
   return (
     <DropdownMenu>
