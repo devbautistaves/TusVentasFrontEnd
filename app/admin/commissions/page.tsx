@@ -861,82 +861,79 @@ export default function AdminCommissionsPage() {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            padding: 30px; 
+            padding: 8mm; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #e2e8f0;
-            min-height: 100vh;
+            font-size: 9px;
           }
           .header { 
             text-align: center; 
-            margin-bottom: 30px; 
-            border-bottom: 3px solid #f59e0b; 
-            padding-bottom: 20px;
+            margin-bottom: 8px; 
+            border-bottom: 2px solid #f59e0b; 
+            padding-bottom: 6px;
           }
           .header h1 { 
-            font-size: 24px; 
-            margin-bottom: 8px; 
+            font-size: 16px; 
+            margin-bottom: 2px; 
             color: #f8fafc;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
           }
           .header p { 
-            font-size: 14px; 
+            font-size: 10px; 
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
           }
           .info-row { 
             display: flex; 
             justify-content: space-between; 
-            margin-bottom: 25px;
-            padding: 15px 20px;
+            margin-bottom: 8px;
+            padding: 6px 10px;
             background: rgba(30, 41, 59, 0.8);
-            border-radius: 10px;
+            border-radius: 4px;
             border: 1px solid rgba(148, 163, 184, 0.2);
           }
-          .info-item { font-size: 13px; color: #cbd5e1; }
+          .info-item { font-size: 9px; color: #cbd5e1; }
           .info-item strong { color: #f8fafc; font-weight: 600; }
           h3 { 
-            font-size: 14px; 
-            margin-bottom: 12px; 
+            font-size: 10px; 
+            margin-bottom: 4px; 
             display: flex; 
             align-items: center; 
-            gap: 8px;
+            gap: 4px;
             color: #f8fafc;
           }
           .flex { display: flex; }
           .items-center { align-items: center; }
-          .gap-2 { gap: 8px; }
+          .gap-2 { gap: 4px; }
           table { 
             width: 100%; 
-            border-collapse: separate;
-            border-spacing: 0;
-            margin: 15px 0;
-            border-radius: 10px;
+            border-collapse: collapse;
+            margin: 6px 0;
+            border-radius: 4px;
             overflow: hidden;
           }
           th { 
-            background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-            padding: 14px 12px; 
+            background: #334155;
+            padding: 4px 6px; 
             text-align: left; 
-            font-size: 12px; 
+            font-size: 8px; 
             font-weight: 600;
             color: #e2e8f0;
-            border-bottom: 2px solid #475569;
+            border-bottom: 1px solid #475569;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
           }
           td { 
-            padding: 12px; 
-            font-size: 12px;
-            border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+            padding: 3px 6px; 
+            font-size: 8px;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.3);
             background: rgba(30, 41, 59, 0.6);
             color: #cbd5e1;
           }
-          tr:hover td { background: rgba(51, 65, 85, 0.8); }
           tfoot td, tfoot th {
             background: rgba(34, 197, 94, 0.15) !important;
-            border-top: 2px solid rgba(34, 197, 94, 0.4);
+            border-top: 1px solid rgba(34, 197, 94, 0.4);
             font-weight: 700;
+            padding: 4px 6px;
           }
           .text-right { text-align: right; }
           .text-left { text-align: left; }
@@ -946,27 +943,28 @@ export default function AdminCommissionsPage() {
           .font-bold { font-weight: 700; }
           .font-semibold { font-weight: 600; }
           .border { border: 1px solid rgba(148, 163, 184, 0.3); }
-          .rounded-lg { border-radius: 10px; }
+          .rounded-lg { border-radius: 4px; }
           .overflow-hidden { overflow: hidden; }
-          .p-3, .p-6 { padding: 12px; }
-          .mb-2 { margin-bottom: 8px; }
-          .space-y-6 > * + * { margin-top: 24px; }
-          .text-sm { font-size: 13px; }
-          .text-xs { font-size: 11px; }
+          .p-3 { padding: 6px; }
+          .p-6 { padding: 10px; }
+          .mb-2 { margin-bottom: 4px; }
+          .space-y-6 > * + * { margin-top: 8px; }
+          .text-sm { font-size: 9px; }
+          .text-xs { font-size: 8px; }
           .text-muted-foreground { color: #94a3b8; }
           .total-section { 
-            margin-top: 30px; 
-            padding: 25px; 
-            border: 3px solid #f59e0b; 
-            border-radius: 15px;
+            margin-top: 10px; 
+            padding: 10px 15px; 
+            border: 2px solid #f59e0b; 
+            border-radius: 6px;
             background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
           }
           .total-section h2 { 
-            font-size: 32px; 
+            font-size: 20px; 
             font-weight: 800;
             color: #f59e0b;
           }
-          .text-3xl { font-size: 32px; }
+          .text-3xl { font-size: 20px; }
           .text-primary { color: #f59e0b; }
           svg { display: none; }
           @media print {
@@ -976,7 +974,7 @@ export default function AdminCommissionsPage() {
               background: #0f172a !important;
             }
           }
-          @page { size: A4 landscape; margin: 15mm; }
+          @page { size: A4 landscape; margin: 5mm; }
         </style>
       </head>
       <body>
@@ -1179,7 +1177,7 @@ export default function AdminCommissionsPage() {
       }
       
       // RESUMEN FINAL
-      csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
+      csvRows.push(`════════════��══════════════════════════════════════════════════════════════`)
       csvRows.push(`RESUMEN DE LIQUIDACION`)
       csvRows.push(`═══════════════════════════════════════════════════════════════════════════`)
       csvRows.push(``)
