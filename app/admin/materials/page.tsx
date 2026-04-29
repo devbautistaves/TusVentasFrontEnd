@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useCompany } from "@/lib/company-context"
-import { DashboardLayout } from "@/components/layout/dashboard-layout"
 
 // Datos de ejemplo - En produccion vendrian del backend
 const MATERIALS = {
@@ -123,12 +122,11 @@ export default function MaterialsPage() {
   }
 
   return (
-    <DashboardLayout requiredRole="admin">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Material Grafico</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Material Grafico</h1>
           <p className="text-muted-foreground">
             Recursos de marketing para {currentCompany.name}
           </p>
@@ -229,7 +227,6 @@ export default function MaterialsPage() {
           )}
         </CardContent>
       </Card>
-      </div>
-    </DashboardLayout>
+    </div>
   )
 }

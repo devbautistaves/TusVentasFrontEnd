@@ -49,6 +49,8 @@ import {
   Cell,
   Legend,
 } from "recharts"
+import { useCompany } from "@/lib/company-context"
+import { clientsAPI, transactionsAPI, collectionsAPI, Client, CollectionItem } from "@/lib/api"
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#eab308",
@@ -69,6 +71,7 @@ interface OnlineUser extends User {
 }
 
 export default function AdminDashboardPage() {
+  const { currentCompany } = useCompany()
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [allSales, setAllSales] = useState<Sale[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
@@ -79,6 +82,11 @@ export default function AdminDashboardPage() {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
+  
+  // Estados para TuPaginaYa
+  const [clientStats, setClientStats] = useState<{ byStatus: Record<string, number>; totalActiveRevenue: number; total: number } | null>(null)
+  const [financeSummary, setFinanceSummary] = useState<{ ingresos: number; egresos: number; balance: number } | null>(null)
+  const [collections, setCollections] = useState<CollectionItem[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,20 +94,35 @@ export default function AdminDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes, usersRes, adCostsRes] = await Promise.all([
-          dashboardAPI.getAdminStats(token),
-          salesAPI.getAdminSales(token),
-          usersAPI.getAll(token),
-          adCostsAPI.getAll(token),
-        ])
-        setStats(statsRes)
-        setAllSales(salesRes.sales || [])
+        // Cargar datos comunes
+        const usersRes = await usersAPI.getAll(token)
         const users = usersRes.users || []
         setAllUsers(users)
-        setSupervisorAdCosts(adCostsRes.adCosts || [])
         
-        // Fetch online users from API
-        fetchOnlineUsers(token, users)
+        if (currentCompany.id === "tupaginaya") {
+          // Cargar datos de TuPaginaYa
+          const [clientStatsRes, summaryRes, collectionsRes] = await Promise.all([
+            clientsAPI.getStats(token),
+            transactionsAPI.getSummary(token, selectedMonth),
+            collectionsAPI.getAll(token),
+          ])
+          setClientStats(clientStatsRes.stats)
+          setFinanceSummary(summaryRes.summary)
+          setCollections(collectionsRes.collections)
+        } else {
+          // Cargar datos de TusVentas (actual)
+          const [statsRes, salesRes, adCostsRes] = await Promise.all([
+            dashboardAPI.getAdminStats(token),
+            salesAPI.getAdminSales(token),
+            adCostsAPI.getAll(token),
+          ])
+          setStats(statsRes)
+          setAllSales(salesRes.sales || [])
+          setSupervisorAdCosts(adCostsRes.adCosts || [])
+          
+          // Fetch online users from API
+          fetchOnlineUsers(token, users)
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -109,14 +132,19 @@ export default function AdminDashboardPage() {
 
     fetchData()
     
-    // Refresh online users every 30 seconds
-    const interval = setInterval(() => {
-      const token = localStorage.getItem("token")
-      if (token) fetchOnlineUsers(token)
-    }, 30000)
+    // Refresh online users every 30 seconds (solo para TusVentas)
+    let interval: NodeJS.Timeout | null = null
+    if (currentCompany.id === "tusventas") {
+      interval = setInterval(() => {
+        const token = localStorage.getItem("token")
+        if (token) fetchOnlineUsers(token)
+      }, 30000)
+    }
     
-    return () => clearInterval(interval)
-  }, [])
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [currentCompany.id, selectedMonth])
 
   const fetchOnlineUsers = async (token: string, usersList?: User[]) => {
     try {
@@ -381,6 +409,195 @@ export default function AdminDashboardPage() {
     )
   }
 
+  // Dashboard de TuPaginaYa
+  if (currentCompany.id === "tupaginaya") {
+    const criticalCollections = collections.filter(c => c.daysOverdue >= 30).length
+    const urgentCollections = collections.filter(c => c.daysOverdue >= 15 && c.daysOverdue < 30).length
+    
+    return (
+      <DashboardLayout requiredRole="admin">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Dashboard TuPaginaYa</h1>
+              <p className="text-muted-foreground">Gestion de paginas web</p>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/admin/clients">
+                <Button variant="outline" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Ver Clientes
+                </Button>
+              </Link>
+              <Link href="/admin/collections">
+                <Button className="gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Cobranzas
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Total Clientes</p>
+                    <p className="text-4xl font-bold text-foreground">{clientStats?.total || 0}</p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {clientStats?.byStatus?.web_activada || 0} webs activas
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-blue-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Ingreso Mensual</p>
+                    <p className="text-4xl font-bold text-green-400">{formatCurrency(clientStats?.totalActiveRevenue || 0)}</p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      De clientes activos
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                    <Banknote className="h-6 w-6 text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Demos Pendientes</p>
+                    <p className="text-4xl font-bold text-amber-400">
+                      {(clientStats?.byStatus?.demo_pendiente || 0) + (clientStats?.byStatus?.demo_enviada || 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Por activar
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-amber-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={`${(criticalCollections + urgentCollections) > 0 ? "border-red-500/30 bg-gradient-to-br from-red-500/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10"} via-card to-card`}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Cobranzas Urgentes</p>
+                    <p className={`text-4xl font-bold ${(criticalCollections + urgentCollections) > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                      {criticalCollections + urgentCollections}
+                    </p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {criticalCollections} criticos (+30 dias)
+                    </p>
+                  </div>
+                  <div className={`h-12 w-12 rounded-xl ${(criticalCollections + urgentCollections) > 0 ? "bg-red-500/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
+                    <AlertTriangle className={`h-6 w-6 ${(criticalCollections + urgentCollections) > 0 ? "text-red-400" : "text-emerald-400"}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Finance Summary */}
+          {financeSummary && (
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="border-emerald-500/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-emerald-500 flex items-center gap-2">
+                    <ArrowUpRight className="h-4 w-4" />
+                    Ingresos del Mes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-emerald-400">{formatCurrency(financeSummary.ingresos)}</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-red-500/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-red-500 flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4" />
+                    Egresos del Mes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-red-400">{formatCurrency(financeSummary.egresos)}</p>
+                </CardContent>
+              </Card>
+              
+              <Card className={financeSummary.balance >= 0 ? "border-blue-500/30" : "border-orange-500/30"}>
+                <CardHeader className="pb-2">
+                  <CardTitle className={`text-sm flex items-center gap-2 ${financeSummary.balance >= 0 ? "text-blue-500" : "text-orange-500"}`}>
+                    <DollarSign className="h-4 w-4" />
+                    Balance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className={`text-3xl font-bold ${financeSummary.balance >= 0 ? "text-blue-400" : "text-orange-400"}`}>
+                    {formatCurrency(financeSummary.balance)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Acciones Rapidas</CardTitle>
+              <CardDescription>Accede a las funciones principales</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Link href="/admin/clients">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <Users className="h-6 w-6" />
+                    <span>Gestionar Clientes</span>
+                  </Button>
+                </Link>
+                <Link href="/admin/collections">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <DollarSign className="h-6 w-6" />
+                    <span>Panel de Cobranzas</span>
+                  </Button>
+                </Link>
+                <Link href="/admin/transactions">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <Banknote className="h-6 w-6" />
+                    <span>Ingresos/Egresos</span>
+                  </Button>
+                </Link>
+                <Link href="/admin/liquidations">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <UserCheck className="h-6 w-6" />
+                    <span>Liquidaciones</span>
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Dashboard de TusVentas (original)
   return (
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
