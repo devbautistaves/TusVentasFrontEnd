@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
+import { useMaintenanceMode } from "@/hooks/use-maintenance"
 import { usersAPI, User } from "@/lib/api"
-import { User as UserIcon, Mail, Phone, MapPin, Shield, Lock, Eye, EyeOff } from "lucide-react"
+import { User as UserIcon, Mail, Phone, MapPin, Shield, Lock, Eye, EyeOff, AlertTriangle, Wrench } from "lucide-react"
 
 export default function AdminSettingsPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -20,6 +22,7 @@ export default function AdminSettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { toast } = useToast()
+  const { isMaintenanceMode, toggleMaintenanceMode } = useMaintenanceMode()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -186,6 +189,58 @@ export default function AdminSettingsPage() {
             Administra tu perfil de administrador
           </p>
         </div>
+
+        {/* Maintenance Mode Card */}
+        <Card className={`border-2 transition-colors ${isMaintenanceMode ? "border-red-500/50 bg-red-500/5" : "border-border/50 bg-card/50"}`}>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <AlertTriangle className={`h-5 w-5 ${isMaintenanceMode ? "text-red-400" : "text-muted-foreground"}`} />
+              Modo Mantenimiento
+            </CardTitle>
+            <CardDescription>
+              Activa el modo mantenimiento para bloquear el acceso a todos los usuarios excepto administradores
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border/50">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isMaintenanceMode ? "bg-red-500/20" : "bg-muted/50"}`}>
+                  <Wrench className={`h-5 w-5 ${isMaintenanceMode ? "text-red-400" : "text-muted-foreground"}`} />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">
+                    {isMaintenanceMode ? "Mantenimiento ACTIVO" : "Sistema operativo"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {isMaintenanceMode 
+                      ? "Los usuarios veran una pagina de mantenimiento" 
+                      : "Todos los usuarios pueden acceder normalmente"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isMaintenanceMode}
+                onCheckedChange={(checked) => {
+                  toggleMaintenanceMode(checked)
+                  toast({
+                    title: checked ? "Modo mantenimiento activado" : "Modo mantenimiento desactivado",
+                    description: checked 
+                      ? "Los usuarios ahora veran la pagina de mantenimiento" 
+                      : "El sistema esta disponible para todos los usuarios",
+                  })
+                }}
+              />
+            </div>
+            {isMaintenanceMode && (
+              <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                <p className="text-sm text-red-400 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  ATENCION: El sistema esta en modo mantenimiento. Solo los administradores pueden acceder.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Admin Badge */}
         <Card className="border-purple-500/30 bg-purple-500/5">

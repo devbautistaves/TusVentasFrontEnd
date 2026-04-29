@@ -268,13 +268,17 @@ export default function SupervisorCommissionsPage() {
     const userStr = localStorage.getItem("user")
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Supervisor" }
 
+    // Distribuir el total proporcionalmente entre las ventas
+    const salesCount = commission.details.length
+    const commissionPerSale = salesCount > 0 ? finalCommission / salesCount : 0
+
     const salesData = commission.details.map((d, idx) => ({
       index: idx + 1,
       customerName: d.sale.customerInfo.name,
       contractNumber: d.sale.contractNumber || "-",
       createdAt: new Date(d.sale.createdAt).toLocaleDateString("es-AR"),
       completedDate: d.sale.completedDate ? new Date(d.sale.completedDate).toLocaleDateString("es-AR") : "-",
-      commission: d.netCommission,
+      finalCommission: commissionPerSale,
     }))
 
     return {
@@ -300,23 +304,48 @@ export default function SupervisorCommissionsPage() {
         <title>Liquidacion de Comisiones</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
-          .header h1 { font-size: 20px; margin-bottom: 5px; }
-          .header p { font-size: 14px; color: #666; }
-          .info-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .info-item { font-size: 13px; }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; font-size: 11px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .header h1 { font-size: 18px; margin-bottom: 5px; }
+          .header p { font-size: 12px; color: #666; }
+          .info-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 11px; }
+          .info-item { font-size: 11px; }
           .info-item strong { font-weight: 600; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; font-weight: 600; }
-          td { border: 1px solid #ddd; padding: 10px; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          th { background-color: #f0f0f0; border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 10px; font-weight: 600; }
+          td { border: 1px solid #ccc; padding: 6px; font-size: 10px; }
           tr:nth-child(even) { background-color: #fafafa; }
-          .total-section { margin-top: 30px; padding: 20px; border: 2px solid #333; text-align: right; }
-          .total-section h2 { font-size: 18px; }
           .text-right { text-align: right; }
+          .text-red-400 { color: #f87171; }
+          .text-green-400 { color: #4ade80; }
+          .font-medium { font-weight: 500; }
+          .font-bold { font-weight: 700; }
+          .border { border: 1px solid #ccc; }
+          .rounded-lg { border-radius: 8px; }
+          .p-4, .p-3 { padding: 12px; }
+          .bg-secondary\\/20 { background-color: #f5f5f5; }
+          .bg-card { background-color: #fff; border: 1px solid #eee; }
+          .grid { display: grid; }
+          .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+          .gap-4 { gap: 12px; }
+          .space-y-2 > * + * { margin-top: 8px; }
+          .mb-3 { margin-bottom: 12px; }
+          .mt-2 { margin-top: 8px; }
+          .mt-3 { margin-top: 12px; }
+          .pt-3 { padding-top: 12px; }
+          .border-t { border-top: 1px solid #ccc; }
+          .text-muted-foreground { color: #666; }
+          .text-lg { font-size: 14px; }
+          .total-section { margin-top: 20px; padding: 15px; border: 2px solid #333; text-align: right; background-color: #f8f8f8; }
+          .total-section h2 { font-size: 20px; font-weight: bold; }
+          .text-3xl { font-size: 22px; }
+          .text-primary { color: #f59e0b; }
           @media print {
             body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .text-red-400 { color: #dc2626 !important; }
+            .text-green-400 { color: #16a34a !important; }
           }
+          @page { size: landscape; margin: 10mm; }
         </style>
       </head>
       <body>
@@ -899,7 +928,7 @@ export default function SupervisorCommissionsPage() {
                     </div>
                   </div>
 
-                  {/* Tabla de ventas */}
+                  {/* Tabla de ventas simplificada */}
                   <div className="border rounded-lg overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
@@ -921,7 +950,7 @@ export default function SupervisorCommissionsPage() {
                               <td className="p-3 font-medium">{sale.customerName}</td>
                               <td className="p-3">{sale.contractNumber}</td>
                               <td className="p-3">{sale.completedDate}</td>
-                              <td className="p-3 text-right font-medium text-green-600">{formatCurrency(sale.commission)}</td>
+                              <td className="p-3 text-right font-medium text-green-400">{formatCurrency(sale.finalCommission)}</td>
                             </tr>
                           ))
                         ) : (
@@ -936,7 +965,7 @@ export default function SupervisorCommissionsPage() {
                   </div>
 
                   {/* Total a facturar */}
-                  <div className="total-section border-2 border-foreground rounded-lg p-6 text-right bg-secondary/30">
+                  <div className="total-section border-2 border-primary rounded-lg p-6 text-right bg-primary/10">
                     <p className="text-sm text-muted-foreground mb-2">TOTAL A FACTURAR</p>
                     <h2 className="text-3xl font-bold text-primary">{formatCurrency(data.totalCommission)}</h2>
                   </div>

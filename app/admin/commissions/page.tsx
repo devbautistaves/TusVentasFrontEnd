@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { usersAPI, salesAPI, adCostsAPI, User, Sale, SupervisorAdCost as APIAdCost } from "@/lib/api"
-import { DollarSign, TrendingUp, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer } from "lucide-react"
+import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle } from "lucide-react"
 
 // Constantes
 const SUPERVISOR_BASE_COMMISSION = 750000
@@ -78,6 +78,16 @@ export default function AdminCommissionsPage() {
   // Estado para el modal de liquidacion
   const [isLiquidacionDialogOpen, setIsLiquidacionDialogOpen] = useState(false)
   const [selectedUserForLiquidacion, setSelectedUserForLiquidacion] = useState<User | null>(null)
+  // Estado para el sistema de bajas
+  const [isBajaDialogOpen, setIsBajaDialogOpen] = useState(false)
+  const [selectedUserForBaja, setSelectedUserForBaja] = useState<User | null>(null)
+  const [bajaForm, setBajaForm] = useState({
+    saleId: "",
+    bajaDate: "",
+    bajaMonthsLimit: 6,
+    bajaReason: "",
+  })
+  const [isSavingBaja, setIsSavingBaja] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -610,64 +620,227 @@ export default function AdminCommissionsPage() {
     setIsLiquidacionDialogOpen(true)
   }
 
+  // ===== SISTEMA DE BAJAS =====
+  
+  // Obtener ventas completadas de meses anteriores (para poder marcar bajas)
+  const getPreviousMonthsCompletedSales = (userId: string, userRole: string) => {
+    const [currentYear, currentMonth] = selectedMonth.split("-").map(Number)
+    
+    return sales.filter(sale => {
+      // Solo ventas completadas
+      if (sale.status !== "completed") return false
+      
+      // Verificar que pertenece al usuario
+      const saleSellerIdStr = extractId(sale.sellerId)
+      const saleSupervisorIdStr = extractId(sale.supervisorId)
+      
+      const belongsToUser = userRole === "supervisor"
+        ? saleSellerIdStr === userId || saleSupervisorIdStr === userId
+        : saleSellerIdStr === userId
+      
+      if (!belongsToUser) return false
+      
+      // Verificar que es de un mes anterior
+      if (sale.completedDate) {
+        const completedDate = new Date(sale.completedDate)
+        const saleYear = completedDate.getFullYear()
+        const saleMonth = completedDate.getMonth() + 1
+        
+        // Es de un mes anterior si el ano es menor, o si es el mismo ano pero mes menor
+        return saleYear < currentYear || (saleYear === currentYear && saleMonth < currentMonth)
+      }
+      
+      return false
+    })
+  }
+
+  // Obtener bajas que se descuentan en el mes seleccionado
+  const getBajasForMonth = (userId: string, userRole: string) => {
+    const [year, month] = selectedMonth.split("-").map(Number)
+    
+    return sales.filter(sale => {
+      // Solo ventas con baja
+      if (!sale.isBaja || !sale.bajaDate) return false
+      
+      // Verificar que pertenece al usuario
+      const saleSellerIdStr = extractId(sale.sellerId)
+      const saleSupervisorIdStr = extractId(sale.supervisorId)
+      
+      const belongsToUser = userRole === "supervisor"
+        ? saleSellerIdStr === userId || saleSupervisorIdStr === userId
+        : saleSellerIdStr === userId
+      
+      if (!belongsToUser) return false
+      
+      // Verificar que la baja es de este mes
+      const bajaDate = new Date(sale.bajaDate)
+      return bajaDate.getMonth() + 1 === month && bajaDate.getFullYear() === year
+    })
+  }
+
+  // Calcular el monto a descontar por bajas
+  const calculateBajaDiscount = (userId: string, userRole: string) => {
+    const bajas = getBajasForMonth(userId, userRole)
+    
+    if (userRole === "supervisor") {
+      // Para supervisor: descontar el neto que recibio por esa venta * 40%
+      return bajas.reduce((total, sale) => {
+        const baseCommission = SUPERVISOR_BASE_COMMISSION
+        const sellerCommission = sale.sellerCommissionPaid || 0
+        const installationCost = sale.installationCost || 0
+        const netCommission = baseCommission - ADMIN_COST - sellerCommission - installationCost
+        return total + (netCommission * SUPERVISOR_PERCENTAGE)
+      }, 0)
+    } else {
+      // Para vendedor: descontar la comision que recibio
+      // Obtenemos la cantidad de ventas del mes original para determinar el tier
+      const bajas = getBajasForMonth(userId, userRole)
+      return bajas.reduce((total, sale) => {
+        // Usar la comision que tenia guardada si existe, sino usar tier actual
+        const perSale = sale.sellerCommissionPaid || getCommissionPerSale(1, userId)
+        return total + perSale
+      }, 0)
+    }
+  }
+
+  // Abrir modal para registrar baja
+  const handleOpenBajaDialog = (user: User) => {
+    setSelectedUserForBaja(user)
+    setBajaForm({
+      saleId: "",
+      bajaDate: new Date().toISOString().split("T")[0],
+      bajaMonthsLimit: 6,
+      bajaReason: "",
+    })
+    setIsBajaDialogOpen(true)
+  }
+
+  // Guardar baja
+  const handleSaveBaja = async () => {
+    if (!bajaForm.saleId || !bajaForm.bajaDate) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar una venta y fecha de baja",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    setIsSavingBaja(true)
+    try {
+      await salesAPI.markAsBaja(token, bajaForm.saleId, {
+        bajaDate: bajaForm.bajaDate,
+        bajaMonthsLimit: bajaForm.bajaMonthsLimit,
+        bajaReason: bajaForm.bajaReason,
+      })
+
+      toast({
+        title: "Baja registrada",
+        description: "La venta ha sido marcada como baja y se descontara de la liquidacion",
+      })
+
+      setIsBajaDialogOpen(false)
+      fetchData()
+    } catch (error) {
+      console.error("Error saving baja:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo registrar la baja",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingBaja(false)
+    }
+  }
+
+  // Quitar estado de baja
+  const handleRemoveBaja = async (saleId: string) => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      await salesAPI.removeBaja(token, saleId)
+      toast({
+        title: "Baja eliminada",
+        description: "La venta ya no esta marcada como baja",
+      })
+      fetchData()
+    } catch (error) {
+      console.error("Error removing baja:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la baja",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // ===== FIN SISTEMA DE BAJAS =====
+
   // Obtener datos de liquidacion para el usuario seleccionado
   const getLiquidacionData = (user: User) => {
     const allUserSales = getUserSales(user._id, user.role)
     const completedUserSales = allUserSales.filter(s => s.status === "completed")
+    const bajas = getBajasForMonth(user._id, user.role)
     
     const [year, month] = selectedMonth.split("-").map(Number)
     const monthName = new Date(year, month - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
 
+    // Calcular comision base y descuentos por separado
+    let baseCommission = 0
+    let bajaDiscount = 0
+
     if (user.role === "supervisor") {
-      const supervisorAdCost = getSupervisorAdCostForMonth(user._id)
-      const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
-      const netAfterAdCost = netBeforePercentage - supervisorAdCost
-      const commissionFinal = calculateSupervisorCommission(user._id)
-
-      const salesData = completedUserSales.map((sale, idx) => {
-        const base = SUPERVISOR_BASE_COMMISSION
-        const inst = sale.installationCost || 0
-        const seller = sale.sellerCommissionPaid || 0
-        const net = base - inst - ADMIN_COST - seller
-        return {
-          index: idx + 1,
-          customerName: sale.customerInfo.name,
-          contractNumber: sale.contractNumber || "-",
-          createdAt: new Date(sale.createdAt).toLocaleDateString("es-AR"),
-          completedDate: sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-",
-          commission: net,
-        }
-      })
-
-      return {
-        userName: user.name,
-        monthName,
-        role: "supervisor",
-        sales: salesData,
-        totalCommission: commissionFinal,
-      }
+      // Comision base antes de bajas
+      const grossCommission = calculateSupervisorCommission(user._id)
+      baseCommission = grossCommission
+      bajaDiscount = calculateBajaDiscount(user._id, user.role)
     } else {
-      // Vendedor
-      const activatedCount = completedUserSales.length
-      const perSale = getCommissionPerSale(activatedCount, user._id)
-      const netCommission = calculateSellerCommission(user._id)
+      const grossCommission = calculateSellerCommission(user._id)
+      baseCommission = grossCommission
+      bajaDiscount = calculateBajaDiscount(user._id, user.role)
+    }
+    
+    const totalFinal = Math.max(0, baseCommission - bajaDiscount)
+    
+    // Distribuir la comision base entre las ventas
+    const salesCount = completedUserSales.length
+    const commissionPerSale = salesCount > 0 ? baseCommission / salesCount : 0
 
-      const salesData = completedUserSales.map((sale, idx) => ({
-        index: idx + 1,
-        customerName: sale.customerInfo.name,
-        contractNumber: sale.contractNumber || "-",
-        createdAt: new Date(sale.createdAt).toLocaleDateString("es-AR"),
-        completedDate: sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-",
-        commission: perSale,
-      }))
+    const salesData = completedUserSales.map((sale, idx) => ({
+      index: idx + 1,
+      customerName: sale.customerInfo.name,
+      contractNumber: sale.contractNumber || "-",
+      createdAt: new Date(sale.createdAt).toLocaleDateString("es-AR"),
+      completedDate: sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-",
+      finalCommission: commissionPerSale,
+    }))
 
-      return {
-        userName: user.name,
-        monthName,
-        role: "seller",
-        sales: salesData,
-        totalCommission: netCommission,
-      }
+    // Datos de bajas para mostrar en la liquidacion
+    const bajasData = bajas.map((sale, idx) => ({
+      index: idx + 1,
+      customerName: sale.customerInfo.name,
+      contractNumber: sale.contractNumber || "-",
+      bajaDate: sale.bajaDate ? new Date(sale.bajaDate).toLocaleDateString("es-AR") : "-",
+      originalDate: sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-",
+      discount: user.role === "supervisor" 
+        ? ((SUPERVISOR_BASE_COMMISSION - ADMIN_COST - (sale.sellerCommissionPaid || 0) - (sale.installationCost || 0)) * SUPERVISOR_PERCENTAGE)
+        : (sale.sellerCommissionPaid || getCommissionPerSale(1, user._id)),
+      reason: sale.bajaReason || "Baja anticipada",
+    }))
+
+    return {
+      userName: user.name,
+      monthName,
+      role: user.role,
+      sales: salesData,
+      bajas: bajasData,
+      baseCommission,
+      bajaDiscount,
+      totalCommission: totalFinal,
     }
   }
 
@@ -686,24 +859,124 @@ export default function AdminCommissionsPage() {
         <title>Liquidacion de Comisiones</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
-          .header h1 { font-size: 20px; margin-bottom: 5px; }
-          .header p { font-size: 14px; color: #666; }
-          .info-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .info-item { font-size: 13px; }
-          .info-item strong { font-weight: 600; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; font-weight: 600; }
-          td { border: 1px solid #ddd; padding: 10px; font-size: 12px; }
-          tr:nth-child(even) { background-color: #fafafa; }
-          .total-row { background-color: #e8e8e8 !important; font-weight: bold; }
-          .total-section { margin-top: 30px; padding: 20px; border: 2px solid #333; text-align: right; }
-          .total-section h2 { font-size: 18px; }
-          .text-right { text-align: right; }
-          @media print {
-            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 30px; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
           }
+          .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 3px solid #f59e0b; 
+            padding-bottom: 20px;
+          }
+          .header h1 { 
+            font-size: 24px; 
+            margin-bottom: 8px; 
+            color: #f8fafc;
+            letter-spacing: 2px;
+          }
+          .header p { 
+            font-size: 14px; 
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .info-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 25px;
+            padding: 15px 20px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+          }
+          .info-item { font-size: 13px; color: #cbd5e1; }
+          .info-item strong { color: #f8fafc; font-weight: 600; }
+          h3 { 
+            font-size: 14px; 
+            margin-bottom: 12px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            color: #f8fafc;
+          }
+          .flex { display: flex; }
+          .items-center { align-items: center; }
+          .gap-2 { gap: 8px; }
+          table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 15px 0;
+            border-radius: 10px;
+            overflow: hidden;
+          }
+          th { 
+            background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+            padding: 14px 12px; 
+            text-align: left; 
+            font-size: 12px; 
+            font-weight: 600;
+            color: #e2e8f0;
+            border-bottom: 2px solid #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          td { 
+            padding: 12px; 
+            font-size: 12px;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+            background: rgba(30, 41, 59, 0.6);
+            color: #cbd5e1;
+          }
+          tr:hover td { background: rgba(51, 65, 85, 0.8); }
+          tfoot td, tfoot th {
+            background: rgba(34, 197, 94, 0.15) !important;
+            border-top: 2px solid rgba(34, 197, 94, 0.4);
+            font-weight: 700;
+          }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
+          .text-red-400 { color: #f87171 !important; }
+          .text-green-400 { color: #4ade80 !important; }
+          .font-medium { font-weight: 500; }
+          .font-bold { font-weight: 700; }
+          .font-semibold { font-weight: 600; }
+          .border { border: 1px solid rgba(148, 163, 184, 0.3); }
+          .rounded-lg { border-radius: 10px; }
+          .overflow-hidden { overflow: hidden; }
+          .p-3, .p-6 { padding: 12px; }
+          .mb-2 { margin-bottom: 8px; }
+          .space-y-6 > * + * { margin-top: 24px; }
+          .text-sm { font-size: 13px; }
+          .text-xs { font-size: 11px; }
+          .text-muted-foreground { color: #94a3b8; }
+          .total-section { 
+            margin-top: 30px; 
+            padding: 25px; 
+            border: 3px solid #f59e0b; 
+            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+          }
+          .total-section h2 { 
+            font-size: 32px; 
+            font-weight: 800;
+            color: #f59e0b;
+          }
+          .text-3xl { font-size: 32px; }
+          .text-primary { color: #f59e0b; }
+          svg { display: none; }
+          @media print {
+            body { 
+              print-color-adjust: exact; 
+              -webkit-print-color-adjust: exact;
+              background: #0f172a !important;
+            }
+          }
+          @page { size: A4 landscape; margin: 15mm; }
         </style>
       </head>
       <body>
@@ -1264,6 +1537,12 @@ export default function AdminCommissionsPage() {
                           Anuncio
                         </div>
                       </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <TrendingDown className="h-3 w-3" />
+                          Bajas
+                        </div>
+                      </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. (40%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                     </tr>
@@ -1273,7 +1552,9 @@ export default function AdminCommissionsPage() {
                       const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
                       const installationCost = getSupervisorInstallationCostForMonth(user._id)
                       const adCost = getSupervisorAdCostForMonth(user._id)
-                      const totalCommission = calculateSupervisorCommission(user._id)
+                      const supBajaDiscount = calculateBajaDiscount(user._id, user.role)
+                      const supBajas = getBajasForMonth(user._id, user.role)
+                      const totalCommission = Math.max(0, calculateSupervisorCommission(user._id) - supBajaDiscount)
 
                       return (
                         <tr
@@ -1336,6 +1617,20 @@ export default function AdminCommissionsPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
+                            {supBajaDiscount > 0 ? (
+                              <div>
+                                <span className="text-red-400 font-medium">
+                                  -{formatCurrency(supBajaDiscount)}
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  {supBajas.length} baja{supBajas.length !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">$0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
                             <span className="text-lg font-bold text-amber-400">
                               {formatCurrency(totalCommission)}
                             </span>
@@ -1361,14 +1656,23 @@ export default function AdminCommissionsPage() {
                               >
                                 <History className="h-4 w-4" />
                               </Button>
-  <Button
-  variant="ghost"
-  size="icon"
-  onClick={() => handleOpenLiquidacionDialog(user)}
-  title="Ver Liquidacion"
-  >
-  <FileSpreadsheet className="h-4 w-4" />
-  </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenBajaDialog(user)}
+                                title="Registrar Baja"
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              >
+                                <TrendingDown className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenLiquidacionDialog(user)}
+                                title="Ver Liquidacion"
+                              >
+                                <FileSpreadsheet className="h-4 w-4" />
+                              </Button>
   </div>
   </td>
   </tr>
@@ -1400,6 +1704,7 @@ export default function AdminCommissionsPage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Rango</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Bruta</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Desc. Inst.</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Desc. Bajas</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Neta</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                   </tr>
@@ -1411,7 +1716,9 @@ export default function AdminCommissionsPage() {
                       const isFixed = hasFixedCommission(user._id)
                     const grossCommission = getSellerGrossCommission(user._id)
                     const installationDiscounts = getSellerInstallationDiscounts(user._id)
-                    const netCommission = calculateSellerCommission(user._id)
+                    const bajaDiscount = calculateBajaDiscount(user._id, user.role)
+                    const bajas = getBajasForMonth(user._id, user.role)
+                    const netCommission = Math.max(0, calculateSellerCommission(user._id) - bajaDiscount)
                     const currentTier = tiers.find(
                       (t) => activatedSales >= t.minSales && activatedSales <= t.maxSales
                     )
@@ -1477,36 +1784,59 @@ export default function AdminCommissionsPage() {
                           )}
                         </td>
                         <td className="py-3 px-4">
+                          {bajaDiscount > 0 ? (
+                            <div>
+                              <span className="text-red-400 font-medium">
+                                -{formatCurrency(bajaDiscount)}
+                              </span>
+                              <p className="text-xs text-muted-foreground">
+                                {bajas.length} baja{bajas.length !== 1 ? "s" : ""}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">$0</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
                           <span className="text-lg font-bold text-primary">
                             {formatCurrency(netCommission)}
                           </span>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-  <Button
-  variant="ghost"
-  size="icon"
-  onClick={() => handleOpenDetailDialog(user)}
-  title="Ver detalle"
-  >
-  <Eye className="h-4 w-4" />
-  </Button>
-  <Button
-  variant="ghost"
-  size="icon"
-  onClick={() => handleOpenLiquidacionDialog(user)}
-  title="Ver Liquidacion"
-  >
-  <FileSpreadsheet className="h-4 w-4" />
-  </Button>
-  </div>
-  </td>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDetailDialog(user)}
+                              title="Ver detalle"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenBajaDialog(user)}
+                              title="Registrar Baja"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            >
+                              <TrendingDown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenLiquidacionDialog(user)}
+                              title="Ver Liquidacion"
+                            >
+                              <FileSpreadsheet className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
   </tr>
   )
   })}
   {sellers.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={11} className="py-8 text-center text-muted-foreground">
                         No hay vendedores registrados
                       </td>
                     </tr>
@@ -1909,6 +2239,7 @@ export default function AdminCommissionsPage() {
             
             {selectedUserForLiquidacion && (() => {
               const data = getLiquidacionData(selectedUserForLiquidacion)
+              
               return (
                 <div id="liquidacion-print-content" className="space-y-6">
                   {/* Header de la liquidacion */}
@@ -1931,45 +2262,115 @@ export default function AdminCommissionsPage() {
                   </div>
 
                   {/* Tabla de ventas */}
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-secondary">
-                          <th className="p-3 text-left font-semibold border-b">#</th>
-                          <th className="p-3 text-left font-semibold border-b">Fecha de Venta</th>
-                          <th className="p-3 text-left font-semibold border-b">Nombre y Apellido</th>
-                          <th className="p-3 text-left font-semibold border-b">N de Contrato</th>
-                          <th className="p-3 text-left font-semibold border-b">Fecha de Activacion</th>
-                          <th className="p-3 text-right font-semibold border-b">Importe Comision</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.sales.length > 0 ? (
-                          data.sales.map((sale) => (
-                            <tr key={sale.index} className="border-b hover:bg-secondary/30">
-                              <td className="p-3">{sale.index}</td>
-                              <td className="p-3">{sale.createdAt}</td>
-                              <td className="p-3 font-medium">{sale.customerName}</td>
-                              <td className="p-3">{sale.contractNumber}</td>
-                              <td className="p-3">{sale.completedDate}</td>
-                              <td className="p-3 text-right font-medium text-green-600">{formatCurrency(sale.commission)}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                              No hay ventas activadas en este periodo
-                            </td>
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-400" />
+                      VENTAS ACTIVADAS ({data.sales.length})
+                    </h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-secondary">
+                            <th className="p-3 text-left font-semibold border-b">#</th>
+                            <th className="p-3 text-left font-semibold border-b">Fecha de Venta</th>
+                            <th className="p-3 text-left font-semibold border-b">Nombre y Apellido</th>
+                            <th className="p-3 text-left font-semibold border-b">N de Contrato</th>
+                            <th className="p-3 text-left font-semibold border-b">Fecha de Activacion</th>
+                            <th className="p-3 text-right font-semibold border-b">Importe Comision</th>
                           </tr>
+                        </thead>
+                        <tbody>
+                          {data.sales.length > 0 ? (
+                            data.sales.map((sale: { index: number; createdAt: string; customerName: string; contractNumber: string; completedDate: string; finalCommission: number }) => (
+                              <tr key={sale.index} className="border-b hover:bg-secondary/30">
+                                <td className="p-3">{sale.index}</td>
+                                <td className="p-3">{sale.createdAt}</td>
+                                <td className="p-3 font-medium">{sale.customerName}</td>
+                                <td className="p-3">{sale.contractNumber}</td>
+                                <td className="p-3">{sale.completedDate}</td>
+                                <td className="p-3 text-right font-medium text-green-400">{formatCurrency(sale.finalCommission)}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                                No hay ventas activadas en este periodo
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                        {data.sales.length > 0 && (
+                          <tfoot>
+                            <tr className="bg-green-500/10 border-t-2 border-green-500/30">
+                              <td colSpan={5} className="p-3 text-right font-semibold">Subtotal Ventas:</td>
+                              <td className="p-3 text-right font-bold text-green-400">{formatCurrency(data.baseCommission)}</td>
+                            </tr>
+                          </tfoot>
                         )}
-                      </tbody>
-                    </table>
+                      </table>
+                    </div>
                   </div>
 
+                  {/* Tabla de bajas si las hay */}
+                  {data.bajas && data.bajas.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-red-400">
+                        <TrendingDown className="h-4 w-4" />
+                        DESCUENTOS POR BAJAS ({data.bajas.length})
+                      </h3>
+                      <div className="border border-red-500/30 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-red-500/10">
+                              <th className="p-3 text-left font-semibold border-b border-red-500/30">#</th>
+                              <th className="p-3 text-left font-semibold border-b border-red-500/30">Cliente</th>
+                              <th className="p-3 text-left font-semibold border-b border-red-500/30">N de Contrato</th>
+                              <th className="p-3 text-left font-semibold border-b border-red-500/30">Fecha Activacion</th>
+                              <th className="p-3 text-left font-semibold border-b border-red-500/30">Fecha Baja</th>
+                              <th className="p-3 text-left font-semibold border-b border-red-500/30">Motivo</th>
+                              <th className="p-3 text-right font-semibold border-b border-red-500/30">Descuento</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.bajas.map((baja: { index: number; customerName: string; contractNumber: string; originalDate: string; bajaDate: string; reason: string; discount: number }) => (
+                              <tr key={baja.index} className="border-b border-red-500/20 hover:bg-red-500/5">
+                                <td className="p-3">{baja.index}</td>
+                                <td className="p-3 font-medium">{baja.customerName}</td>
+                                <td className="p-3">{baja.contractNumber}</td>
+                                <td className="p-3">{baja.originalDate}</td>
+                                <td className="p-3">{baja.bajaDate}</td>
+                                <td className="p-3 text-xs">{baja.reason}</td>
+                                <td className="p-3 text-right font-medium text-red-400">-{formatCurrency(baja.discount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-red-500/10 border-t-2 border-red-500/30">
+                              <td colSpan={6} className="p-3 text-right font-semibold">Total Descuentos:</td>
+                              <td className="p-3 text-right font-bold text-red-400">-{formatCurrency(data.bajaDiscount)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Total a facturar */}
-                  <div className="total-section border-2 border-foreground rounded-lg p-6 text-right bg-secondary/30">
-                    <p className="text-sm text-muted-foreground mb-2">TOTAL A FACTURAR</p>
-                    <h2 className="text-3xl font-bold text-primary">{formatCurrency(data.totalCommission)}</h2>
+                  <div className="total-section border-2 border-primary rounded-lg p-6 bg-primary/10">
+                    <div className="flex justify-between items-center">
+                      <div className="text-left">
+                        {data.bajas && data.bajas.length > 0 && (
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>Subtotal: {formatCurrency(data.baseCommission)}</p>
+                            <p className="text-red-400">Descuentos: -{formatCurrency(data.bajaDiscount)}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground mb-2">TOTAL A FACTURAR</p>
+                        <h2 className="text-3xl font-bold text-primary">{formatCurrency(data.totalCommission)}</h2>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )
@@ -1985,6 +2386,190 @@ export default function AdminCommissionsPage() {
               <Button onClick={handlePrintLiquidacion} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                 <Printer className="h-4 w-4" />
                 Descargar PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Bajas */}
+        <Dialog open={isBajaDialogOpen} onOpenChange={setIsBajaDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-400">
+                <TrendingDown className="h-5 w-5" />
+                Registrar Baja - {selectedUserForBaja?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Seleccione una venta de meses anteriores para registrar como baja. El descuento se aplicara en la liquidacion del mes donde se registra la fecha de baja.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedUserForBaja && (() => {
+              const previousSales = getPreviousMonthsCompletedSales(selectedUserForBaja._id, selectedUserForBaja.role)
+                .filter(s => !s.isBaja) // Excluir ventas ya marcadas como baja
+
+              return (
+                <div className="space-y-6">
+                  {/* Ventas disponibles para baja */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Ventas de meses anteriores disponibles:</h4>
+                    {previousSales.length > 0 ? (
+                      <div className="border rounded-lg overflow-hidden max-h-[250px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0">
+                            <tr className="bg-secondary">
+                              <th className="p-2 text-left"></th>
+                              <th className="p-2 text-left">Cliente</th>
+                              <th className="p-2 text-left">Contrato</th>
+                              <th className="p-2 text-left">F. Activacion</th>
+                              <th className="p-2 text-left">Plan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {previousSales.map((sale) => (
+                              <tr 
+                                key={sale._id} 
+                                className={`border-b hover:bg-secondary/30 cursor-pointer transition-colors ${bajaForm.saleId === sale._id ? "bg-red-500/20" : ""}`}
+                                onClick={() => setBajaForm(prev => ({ ...prev, saleId: sale._id }))}
+                              >
+                                <td className="p-2">
+                                  <input
+                                    type="radio"
+                                    name="bajaSelection"
+                                    checked={bajaForm.saleId === sale._id}
+                                    onChange={() => setBajaForm(prev => ({ ...prev, saleId: sale._id }))}
+                                    className="accent-red-500"
+                                  />
+                                </td>
+                                <td className="p-2 font-medium">{sale.customerInfo.name}</td>
+                                <td className="p-2">{sale.contractNumber || "-"}</td>
+                                <td className="p-2">{sale.completedDate ? new Date(sale.completedDate).toLocaleDateString("es-AR") : "-"}</td>
+                                <td className="p-2 text-xs">{sale.planName}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground border rounded-lg bg-secondary/20">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No hay ventas de meses anteriores disponibles para registrar baja</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Formulario de baja */}
+                  {previousSales.length > 0 && (
+                    <FieldGroup className="border-t pt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field>
+                          <FieldLabel>Fecha de Baja *</FieldLabel>
+                          <Input
+                            type="date"
+                            value={bajaForm.bajaDate}
+                            onChange={(e) => setBajaForm(prev => ({ ...prev, bajaDate: e.target.value }))}
+                            className="bg-secondary/50"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            El descuento se aplicara en la liquidacion del mes de esta fecha
+                          </p>
+                        </Field>
+                        <Field>
+                          <FieldLabel>Meses limite para baja</FieldLabel>
+                          <Select
+                            value={String(bajaForm.bajaMonthsLimit)}
+                            onValueChange={(value) => setBajaForm(prev => ({ ...prev, bajaMonthsLimit: Number(value) }))}
+                          >
+                            <SelectTrigger className="bg-secondary/50">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="3">3 meses</SelectItem>
+                              <SelectItem value="6">6 meses</SelectItem>
+                              <SelectItem value="12">12 meses</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </div>
+                      <Field>
+                        <FieldLabel>Motivo de la baja</FieldLabel>
+                        <Input
+                          type="text"
+                          value={bajaForm.bajaReason}
+                          onChange={(e) => setBajaForm(prev => ({ ...prev, bajaReason: e.target.value }))}
+                          className="bg-secondary/50"
+                          placeholder="Ej: Baja anticipada, Cliente insatisfecho, etc."
+                        />
+                      </Field>
+                    </FieldGroup>
+                  )}
+
+                  {/* Bajas ya registradas en este mes */}
+                  {(() => {
+                    const currentBajas = getBajasForMonth(selectedUserForBaja._id, selectedUserForBaja.role)
+                    if (currentBajas.length === 0) return null
+
+                    return (
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-3 flex items-center gap-2 text-red-400">
+                          <XCircle className="h-4 w-4" />
+                          Bajas registradas en este mes ({currentBajas.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {currentBajas.map((baja) => (
+                            <div key={baja._id} className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                              <div>
+                                <p className="font-medium">{baja.customerInfo.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Contrato: {baja.contractNumber || "-"} | Baja: {baja.bajaDate ? new Date(baja.bajaDate).toLocaleDateString("es-AR") : "-"}
+                                </p>
+                                {baja.bajaReason && (
+                                  <p className="text-xs text-red-400/80 mt-1">{baja.bajaReason}</p>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveBaja(baja._id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Quitar
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )
+            })()}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => {
+                setIsBajaDialogOpen(false)
+                setSelectedUserForBaja(null)
+                setBajaForm({ saleId: "", bajaDate: "", bajaMonthsLimit: 6, bajaReason: "" })
+              }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveBaja}
+                disabled={isSavingBaja || !bajaForm.saleId || !bajaForm.bajaDate}
+                className="bg-red-500 text-white hover:bg-red-600"
+              >
+                {isSavingBaja ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <TrendingDown className="mr-2 h-4 w-4" />
+                    Registrar Baja
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

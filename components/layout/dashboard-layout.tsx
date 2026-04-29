@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "./sidebar"
 import { Header } from "./header"
 import { Spinner } from "@/components/ui/spinner"
 import { User, usersAPI } from "@/lib/api"
+import { getMaintenanceStatus } from "@/hooks/use-maintenance"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -17,49 +18,12 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("user")
-    router.push("/login")
-  }, [router])
-
-  // Validar token con el backend
-  const validateSession = useCallback(async (token: string, userData: string) => {
-    try {
-      const parsedUser = JSON.parse(userData) as User
-      
-      // Verificar token con el backend
-      const response = await usersAPI.getProfile(token)
-      
-      if (!response.user) {
-        handleLogout()
-        return
-      }
-
-      // Actualizar datos del usuario si cambiaron
-      localStorage.setItem("user", JSON.stringify(response.user))
-      
-      if (requiredRole && response.user.role !== requiredRole) {
-        const redirectPath = response.user.role === "admin" 
-          ? "/admin" 
-          : response.user.role === "supervisor" 
-            ? "/supervisor" 
-            : response.user.role === "support"
-              ? "/support"
-              : "/seller"
-        router.push(redirectPath)
-        return
-      }
-
-      setUser(response.user)
-    } catch {
-      // Token invalido o expirado
-      handleLogout()
-    } finally {
-      setIsLoading(false)
-    }
-  }, [requiredRole, router, handleLogout])
+  const requiredRoleRef = useRef(requiredRole)
+  
+  // Keep ref updated
+  useEffect(() => {
+    requiredRoleRef.current = requiredRole
+  }, [requiredRole])
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -70,18 +34,71 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       return
     }
 
-    validateSession(token, userData)
+    // Check maintenance mode for non-admin users
+    const checkMaintenanceMode = () => {
+      const isMaintenanceMode = getMaintenanceStatus()
+      if (isMaintenanceMode && requiredRoleRef.current !== "admin") {
+        router.replace("/maintenance")
+        return true
+      }
+      return false
+    }
 
-    // Listener para detectar logout en otras pestanas
+    if (checkMaintenanceMode()) return
+
+    // Validate session
+    const validateSession = async () => {
+      try {
+        const response = await usersAPI.getProfile(token)
+        
+        if (!response.user) {
+          localStorage.removeItem("token")
+          localStorage.removeItem("user")
+          router.push("/login")
+          return
+        }
+
+        // Update user data if changed
+        localStorage.setItem("user", JSON.stringify(response.user))
+        
+        const currentRequiredRole = requiredRoleRef.current
+        if (currentRequiredRole && response.user.role !== currentRequiredRole) {
+          const redirectPath = response.user.role === "admin" 
+            ? "/admin" 
+            : response.user.role === "supervisor" 
+              ? "/supervisor" 
+              : response.user.role === "support"
+                ? "/support"
+                : "/seller"
+          router.push(redirectPath)
+          return
+        }
+
+        setUser(response.user)
+      } catch {
+        localStorage.removeItem("token")
+        localStorage.removeItem("user")
+        router.push("/login")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    validateSession()
+
+    // Listener for logout in other tabs and maintenance mode changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "token" && !e.newValue) {
         router.push("/login")
+      }
+      if (e.key === "maintenance_mode_enabled") {
+        checkMaintenanceMode()
       }
     }
 
     window.addEventListener("storage", handleStorageChange)
     return () => window.removeEventListener("storage", handleStorageChange)
-  }, [router, validateSession])
+  }, [router])
 
   if (isLoading) {
     return (

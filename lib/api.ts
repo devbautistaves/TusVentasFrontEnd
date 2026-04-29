@@ -156,6 +156,22 @@ export const salesAPI = {
       token,
       body: JSON.stringify({ contractNumber }),
     }),
+
+  // Marcar venta como baja (usa el endpoint de update general)
+  markAsBaja: (token: string, id: string, bajaData: { bajaDate: string; bajaMonthsLimit: number; bajaReason?: string }) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ ...bajaData, isBaja: true }),
+    }),
+
+  // Quitar estado de baja
+  removeBaja: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/admin/sales/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ isBaja: false, bajaDate: null, bajaMonthsLimit: null, bajaReason: null }),
+    }),
 }
 
 // Plans
@@ -638,6 +654,11 @@ export interface Sale {
   ctoNumber?: string
   // Numero de contrato
   contractNumber?: string
+  // Campos para bajas
+  isBaja?: boolean
+  bajaDate?: string
+  bajaMonthsLimit?: number // Meses antes de los cuales se considera baja con descuento (ej: 6 meses)
+  bajaReason?: string
   createdAt: string
   updatedAt: string
 }
