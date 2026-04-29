@@ -178,7 +178,9 @@ export default function SellerSalesPage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">DNI</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha Turno</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Activacion</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">CTO</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
@@ -202,7 +204,28 @@ export default function SellerSalesPage() {
                         <StatusBadge status={sale.status} />
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
-                        {new Date(sale.createdAt).toLocaleDateString("es-AR")}
+                        {sale.appointedDate ? (
+                          <div>
+                            <span>{new Date(sale.appointedDate).toLocaleDateString("es-AR")}</span>
+                            {sale.appointmentSlot && (
+                              <span className="ml-1 text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                                {sale.appointmentSlot}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/50">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {sale.completedDate ? (
+                          new Date(sale.completedDate).toLocaleDateString("es-AR")
+                        ) : (
+                          <span className="text-muted-foreground/50">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-foreground font-mono text-sm">
+                        {sale.ctoNumber || <span className="text-muted-foreground/50">-</span>}
                       </td>
                       <td className="py-3 px-4">
                         <Button
@@ -220,7 +243,7 @@ export default function SellerSalesPage() {
                   ))}
                   {filteredSales.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No se encontraron ventas
                       </td>
                     </tr>
@@ -338,6 +361,45 @@ export default function SellerSalesPage() {
                           {selectedSale.customerInfo.emergencyContact.phone}
                         </p>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Información de Turno e Instalación */}
+                {(selectedSale.appointedDate || selectedSale.completedDate || selectedSale.ctoNumber) && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      Turno e Instalacion
+                    </h4>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {selectedSale.appointedDate && (
+                        <div className="bg-secondary/20 p-3 rounded-lg">
+                          <p className="text-xs text-muted-foreground">Fecha de Turno</p>
+                          <p className="font-medium text-foreground">
+                            {new Date(selectedSale.appointedDate).toLocaleDateString("es-AR")}
+                            {selectedSale.appointmentSlot && (
+                              <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
+                                {selectedSale.appointmentSlot === "AM" ? "8:30 - 13:30" : "13:30 - 18:30"}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                      {selectedSale.completedDate && (
+                        <div className="bg-secondary/20 p-3 rounded-lg">
+                          <p className="text-xs text-muted-foreground">Fecha de Activacion</p>
+                          <p className="font-medium text-green-500">
+                            {new Date(selectedSale.completedDate).toLocaleDateString("es-AR")}
+                          </p>
+                        </div>
+                      )}
+                      {selectedSale.ctoNumber && (
+                        <div className="bg-secondary/20 p-3 rounded-lg">
+                          <p className="text-xs text-muted-foreground">Numero de CTO</p>
+                          <p className="font-mono font-medium text-foreground">{selectedSale.ctoNumber}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -632,6 +632,7 @@ export const leadsAPI = {
 // Types
 export interface User {
   _id: string
+  companyId: "prosegur" | "tupaginaya"
   name: string
   email: string
   phone: string
@@ -656,6 +657,7 @@ export interface RegisterData {
 }
 
 export interface CreateUserData {
+  companyId: "prosegur" | "tupaginaya"
   name: string
   email: string
   password: string

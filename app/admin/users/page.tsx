@@ -51,6 +51,7 @@ export default function AdminUsersPage() {
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
+    companyId: currentCompany.id as "prosegur" | "tupaginaya",
     name: "",
     email: "",
     password: "",
@@ -69,7 +70,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     filterUsers()
-  }, [users, searchQuery, roleFilter])
+  }, [users, searchQuery, roleFilter, currentCompany.id])
 
   const fetchUsers = async () => {
     const token = localStorage.getItem("token")
@@ -87,6 +88,9 @@ export default function AdminUsersPage() {
 
   const filterUsers = () => {
     let filtered = [...users]
+
+    // Filtrar por empresa actual - solo mostrar usuarios de esta empresa
+    filtered = filtered.filter((user) => user.companyId === currentCompany.id)
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -114,6 +118,7 @@ export default function AdminUsersPage() {
     if (user) {
       setSelectedUser(user)
       setFormData({
+        companyId: user.companyId || currentCompany.id as "prosegur" | "tupaginaya",
         name: user.name,
         email: user.email,
         password: "",
@@ -128,6 +133,7 @@ export default function AdminUsersPage() {
     } else {
       setSelectedUser(null)
       setFormData({
+        companyId: currentCompany.id as "prosegur" | "tupaginaya",
         name: "",
         email: "",
         password: "",
@@ -151,6 +157,7 @@ export default function AdminUsersPage() {
     try {
       if (selectedUser) {
         const updateData: Partial<User> & { password?: string; supervisorBaseCommission?: number; fixedCommissionPerSale?: number | null } = {
+          companyId: formData.companyId,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -175,12 +182,18 @@ export default function AdminUsersPage() {
         })
       } else {
         const createData = { 
-          ...formData, 
+          companyId: formData.companyId,
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          location: formData.location,
+          role: formData.role,
           commissionRate: formData.commissionRate,
           ...(formData.role === "supervisor" && { supervisorBaseCommission: formData.supervisorBaseCommission }),
           ...(formData.role === "seller" && formData.useFixedCommission && { fixedCommissionPerSale: formData.fixedCommissionPerSale }),
         }
-        await usersAPI.create(token, createData as any)
+        await usersAPI.create(token, createData)
         toast({
           title: "Usuario creado",
           description: "El usuario se ha creado correctamente",
@@ -394,6 +407,7 @@ export default function AdminUsersPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Usuario</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Empresa</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Contacto</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Rol</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Ventas</th>
@@ -413,6 +427,15 @@ export default function AdminUsersPage() {
                           <p className="font-medium text-foreground">{user.name}</p>
                           <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          user.companyId === "prosegur" 
+                            ? "bg-blue-500/20 text-blue-400" 
+                            : "bg-green-500/20 text-green-400"
+                        }`}>
+                          {user.companyId === "prosegur" ? "Prosegur" : "TuPaginaYa"}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <div>
@@ -478,7 +501,7 @@ export default function AdminUsersPage() {
                   ))}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No se encontraron usuarios
                       </td>
                     </tr>
@@ -503,6 +526,26 @@ export default function AdminUsersPage() {
               </DialogDescription>
             </DialogHeader>
             <FieldGroup>
+              <Field>
+                <FieldLabel>Empresa</FieldLabel>
+                <Select
+                  value={formData.companyId}
+                  onValueChange={(value: "prosegur" | "tupaginaya") =>
+                    setFormData((prev) => ({ ...prev, companyId: value }))
+                  }
+                >
+                  <SelectTrigger className="bg-secondary/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="prosegur">Prosegur - Internet</SelectItem>
+                    <SelectItem value="tupaginaya">TuPaginaYa - Webs</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Empresa a la que pertenece este usuario
+                </p>
+              </Field>
               <Field>
                 <FieldLabel htmlFor="name">Nombre</FieldLabel>
                 <Input

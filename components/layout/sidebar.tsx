@@ -45,8 +45,8 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     router.push("/login")
   }
 
-  // Links base para Prosegur (Internet) - TusVentas
-  const tusventasAdminLinks = [
+  // Links base para Prosegur (Internet)
+  const prosegurAdminLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/admin/new-sale", label: "Nueva Venta", icon: TrendingUp },
@@ -78,7 +78,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/admin/chat", label: "Chat", icon: MessageSquare },
   ]
 
-  const tusventasSellerLinks = [
+  const prosegurSellerLinks = [
     { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
     { href: "/seller/sales", label: "Mis Ventas", icon: ShoppingCart },
     { href: "/seller/new-sale", label: "Nueva Venta", icon: TrendingUp },
@@ -99,8 +99,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/seller/chat", label: "Chat", icon: MessageSquare },
   ]
 
-  // Links para supervisor en Prosegur (TusVentas)
-  const prosegurSupervisorLinks = [
+  const tusventasSupervisorLinks = [
     { href: "/supervisor", label: "Dashboard", icon: LayoutDashboard },
     { href: "/supervisor/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/supervisor/new-sale", label: "Nueva Venta", icon: TrendingUp },
@@ -136,7 +135,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
       return isTuPaginaYa ? tupaginayaAdminLinks : tusventasAdminLinks
     }
     if (role === "supervisor") {
-      return isTuPaginaYa ? tupaginayaSupervisorLinks : prosegurSupervisorLinks
+      return isTuPaginaYa ? tupaginayaSupervisorLinks : tusventasSupervisorLinks
     }
     if (role === "support") {
       return supportLinks

@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
           setFinanceSummary(summaryRes.summary)
           setCollections(collectionsRes.collections)
         } else {
-          // Cargar datos de Prosegur (TusVentas software)
+          // Cargar datos de TusVentas (actual)
           const [statsRes, salesRes, adCostsRes] = await Promise.all([
             dashboardAPI.getAdminStats(token),
             salesAPI.getAdminSales(token),
@@ -132,9 +132,9 @@ export default function AdminDashboardPage() {
 
     fetchData()
     
-    // Refresh online users every 30 seconds (solo para Prosegur/TusVentas)
+    // Refresh online users every 30 seconds (solo para TusVentas)
     let interval: NodeJS.Timeout | null = null
-    if (currentCompany.id === "prosegur") {
+    if (currentCompany.id === "tusventas") {
       interval = setInterval(() => {
         const token = localStorage.getItem("token")
         if (token) fetchOnlineUsers(token)
@@ -597,7 +597,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  // Dashboard de Prosegur (Internet) - TusVentas Software
+  // Dashboard de TusVentas (original)
   return (
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">

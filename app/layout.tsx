@@ -7,8 +7,8 @@ import { Providers } from "./providers"
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 export const metadata: Metadata = {
-  title: "TusVentas - Sistema de Gestion",
-  description: "TusVentas - Software de gestion de ventas para empresas del Grupo JV (Prosegur, TuPaginaYa)",
+  title: "Grupo JV - Sistema de Gestion",
+  description: "Sistema de gestion multi-empresa para Grupo JV - TusVentas y TuPaginaYa",
 }
 
 export default function RootLayout({

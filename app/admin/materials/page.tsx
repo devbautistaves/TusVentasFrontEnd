@@ -67,7 +67,7 @@ const MATERIALS = {
       createdAt: "2024-02-01",
     },
   ],
-  prosegur: [
+  tusventas: [
     {
       id: "1",
       category: "Flyers",

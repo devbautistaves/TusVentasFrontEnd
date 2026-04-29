@@ -1386,7 +1386,7 @@ const clientSchema = new mongoose.Schema(
   {
     companyId: {
       type: String,
-      enum: ["prosegur", "tupaginaya", "tusventas"],
+      enum: ["tusventas", "tupaginaya"],
       default: "tupaginaya",
     },
     // Datos del cliente
@@ -1501,7 +1501,7 @@ const paymentSchema = new mongoose.Schema(
   {
     companyId: {
       type: String,
-      enum: ["prosegur", "tupaginaya", "tusventas"],
+      enum: ["tusventas", "tupaginaya"],
       default: "tupaginaya",
     },
     clientId: {
@@ -1550,7 +1550,7 @@ const transactionSchema = new mongoose.Schema(
   {
     companyId: {
       type: String,
-      enum: ["prosegur", "tupaginaya", "tusventas"],
+      enum: ["tusventas", "tupaginaya"],
       default: "tupaginaya",
     },
     type: {
@@ -1606,7 +1606,7 @@ const liquidationSchema = new mongoose.Schema(
   {
     companyId: {
       type: String,
-      enum: ["prosegur", "tupaginaya", "tusventas"],
+      enum: ["tusventas", "tupaginaya"],
       default: "tupaginaya",
     },
     userId: {
@@ -5588,16 +5588,14 @@ app.put("/api/liquidations/:id/pay", authenticateToken, async (req, res) => {
 // --- RUTA DE EMPRESAS ---
 
 // Obtener empresas disponibles
-// NOTA: TusVentas es el nombre del SOFTWARE, no una empresa
-// Las empresas del Grupo JV son: Prosegur (internet) y TuPaginaYa (webs)
 app.get("/api/companies", authenticateToken, async (req, res) => {
   res.json({
     success: true,
     companies: [
       {
-        id: "prosegur",
-        name: "Prosegur",
-        displayName: "Prosegur - Internet",
+        id: "tusventas",
+        name: "TusVentas",
+        displayName: "TusVentas - Internet",
         isActive: true,
       },
       {
