@@ -34,6 +34,8 @@ import { useToast } from "@/hooks/use-toast"
 import { transactionsAPI, Transaction, TransactionType } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
+import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { Spinner } from "@/components/ui/spinner"
 
 const CATEGORIES = {
   ingreso: [
@@ -160,18 +162,21 @@ export default function TransactionsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <DashboardLayout requiredRole="admin">
+        <div className="flex items-center justify-center h-64">
+          <Spinner className="h-8 w-8 text-primary" />
+        </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Ingresos y Egresos</h1>
+    <DashboardLayout requiredRole="admin">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Ingresos y Egresos</h1>
           <p className="text-muted-foreground">Control financiero de TuPaginaYa</p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)}>
@@ -416,12 +421,13 @@ export default function TransactionsPage() {
             }}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateTransaction}>
-              Crear Transaccion
-            </Button>
-          </div>
+          <Button onClick={handleCreateTransaction}>
+            Crear Transaccion
+          </Button>
+        </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

@@ -16,7 +16,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useEffect, useState } from "react"
 import { notificationsAPI, Notification } from "@/lib/api"
 import Link from "next/link"
-import { CompanySelector } from "./company-selector"
 
 interface HeaderProps {
   userName: string
@@ -74,9 +73,6 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
       >
         <Menu className="h-5 w-5" />
       </Button>
-
-      {/* Company Selector */}
-      <CompanySelector />
 
       {/* Search - hidden on small mobile */}
       <div className="flex-1 max-w-md hidden sm:block">

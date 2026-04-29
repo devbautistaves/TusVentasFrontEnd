@@ -19,14 +19,8 @@ import {
   X,
   History,
   Target,
-  CreditCard,
-  UserCheck,
-  Receipt,
-  Wallet,
-  Globe,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useCompany } from "@/lib/company-context"
 
 interface SidebarProps {
   role: "admin" | "seller" | "supervisor" | "support"
@@ -37,7 +31,6 @@ interface SidebarProps {
 export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentCompany } = useCompany()
 
   const handleLogout = () => {
     localStorage.removeItem("token")
@@ -45,8 +38,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     router.push("/login")
   }
 
-  // Links base para TusVentas (Internet)
-  const tusventasAdminLinks = [
+  const adminLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/admin/new-sale", label: "Nueva Venta", icon: TrendingUp },
@@ -60,25 +52,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/admin/chat", label: "Chat", icon: MessageSquare },
   ]
 
-  // Links para TuPaginaYa (Webs)
-  const tupaginayaAdminLinks = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/clients", label: "Clientes", icon: UserCheck },
-    { href: "/admin/sales", label: "Ventas", icon: ShoppingCart },
-    { href: "/admin/new-sale", label: "Nueva Venta", icon: TrendingUp },
-    { href: "/admin/collections", label: "Cobranzas", icon: CreditCard },
-    { href: "/admin/transactions", label: "Ingresos/Egresos", icon: Receipt },
-    { href: "/admin/leads", label: "Leads", icon: Target },
-    { href: "/admin/users", label: "Usuarios", icon: Users },
-    { href: "/admin/plans", label: "Planes", icon: Package },
-    { href: "/admin/commissions", label: "Comisiones", icon: DollarSign },
-    { href: "/admin/liquidations", label: "Liquidaciones", icon: Wallet },
-    { href: "/admin/materials", label: "Material Grafico", icon: Folder },
-    { href: "/admin/notifications", label: "Notificaciones", icon: Bell },
-    { href: "/admin/chat", label: "Chat", icon: MessageSquare },
-  ]
-
-  const tusventasSellerLinks = [
+  const sellerLinks = [
     { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
     { href: "/seller/sales", label: "Mis Ventas", icon: ShoppingCart },
     { href: "/seller/new-sale", label: "Nueva Venta", icon: TrendingUp },
@@ -88,36 +62,13 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/seller/chat", label: "Chat", icon: MessageSquare },
   ]
 
-  const tupaginayaSellerLinks = [
-    { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/seller/clients", label: "Mis Clientes", icon: UserCheck },
-    { href: "/seller/sales", label: "Mis Ventas", icon: ShoppingCart },
-    { href: "/seller/new-sale", label: "Nueva Venta", icon: TrendingUp },
-    { href: "/seller/leads", label: "Mis Leads", icon: Target },
-    { href: "/seller/notifications", label: "Notificaciones", icon: Bell },
-    { href: "/seller/materials", label: "Material Grafico", icon: Folder },
-    { href: "/seller/chat", label: "Chat", icon: MessageSquare },
-  ]
-
-  const tusventasSupervisorLinks = [
+  const supervisorLinks = [
     { href: "/supervisor", label: "Dashboard", icon: LayoutDashboard },
     { href: "/supervisor/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/supervisor/new-sale", label: "Nueva Venta", icon: TrendingUp },
     { href: "/supervisor/leads", label: "Leads", icon: Target },
     { href: "/supervisor/commissions", label: "Comisiones", icon: DollarSign },
     { href: "/supervisor/notifications", label: "Notificaciones", icon: Bell },
-    { href: "/supervisor/chat", label: "Chat", icon: MessageSquare },
-  ]
-
-  const tupaginayaSupervisorLinks = [
-    { href: "/supervisor", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/supervisor/clients", label: "Clientes", icon: UserCheck },
-    { href: "/supervisor/sales", label: "Ventas", icon: ShoppingCart },
-    { href: "/supervisor/new-sale", label: "Nueva Venta", icon: TrendingUp },
-    { href: "/supervisor/leads", label: "Leads", icon: Target },
-    { href: "/supervisor/commissions", label: "Comisiones", icon: DollarSign },
-    { href: "/supervisor/notifications", label: "Notificaciones", icon: Bell },
-    { href: "/supervisor/materials", label: "Material Grafico", icon: Folder },
     { href: "/supervisor/chat", label: "Chat", icon: MessageSquare },
   ]
 
@@ -127,23 +78,13 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/support/new-sale", label: "Nueva Venta", icon: TrendingUp },
   ]
 
-  // Seleccionar links segun empresa y rol
-  const isTuPaginaYa = currentCompany.id === "tupaginaya"
-
-  const getLinks = () => {
-    if (role === "admin") {
-      return isTuPaginaYa ? tupaginayaAdminLinks : tusventasAdminLinks
-    }
-    if (role === "supervisor") {
-      return isTuPaginaYa ? tupaginayaSupervisorLinks : tusventasSupervisorLinks
-    }
-    if (role === "support") {
-      return supportLinks
-    }
-    return isTuPaginaYa ? tupaginayaSellerLinks : tusventasSellerLinks
-  }
-
-  const links = getLinks()
+  const links = role === "admin" 
+    ? adminLinks 
+    : role === "supervisor" 
+      ? supervisorLinks 
+      : role === "support"
+        ? supportLinks
+        : sellerLinks
 
   return (
     <aside className="h-screen w-64 border-r border-border bg-card flex-shrink-0">
@@ -151,17 +92,10 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-border px-4 md:px-6">
           <div className="flex items-center gap-3">
-            <div 
-              className="h-9 w-9 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: currentCompany.primaryColor }}
-            >
-              {isTuPaginaYa ? (
-                <Globe className="h-5 w-5 text-white" />
-              ) : (
-                <TrendingUp className="h-5 w-5 text-white" />
-              )}
+            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">{currentCompany.name}</span>
+            <span className="text-xl font-bold text-foreground">TusVentas</span>
           </div>
           <Button
             variant="ghost"

@@ -35,6 +35,8 @@ import { useToast } from "@/hooks/use-toast"
 import { collectionsAPI, clientsAPI, CollectionItem, Payment } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
+import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { Spinner } from "@/components/ui/spinner"
 
 export default function CollectionsPage() {
   const router = useRouter()
@@ -208,17 +210,20 @@ export default function CollectionsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <DashboardLayout requiredRole="admin">
+        <div className="flex items-center justify-center h-64">
+          <Spinner className="h-8 w-8 text-primary" />
+        </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Panel de Cobranzas</h1>
+    <DashboardLayout requiredRole="admin">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Panel de Cobranzas</h1>
         <p className="text-muted-foreground">Gestiona los pagos pendientes de clientes activos</p>
       </div>
 
@@ -492,6 +497,7 @@ export default function CollectionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }
