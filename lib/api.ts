@@ -172,6 +172,34 @@ export const salesAPI = {
       token,
       body: JSON.stringify({ isBaja: false, bajaDate: null, bajaMonthsLimit: null, bajaReason: null }),
     }),
+
+  // Subir archivo adjunto de instalacion
+  uploadAttachment: async (token: string, saleId: string, file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    
+    const response = await fetch(`${API_BASE_URL}/api/sales/${saleId}/attachments`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || "Error uploading file")
+    }
+    
+    return response.json() as Promise<{ success: boolean; attachment: InstallationAttachment; sale: Sale }>
+  },
+
+  // Eliminar archivo adjunto
+  deleteAttachment: (token: string, saleId: string, attachmentId: string) =>
+    fetchAPI<{ success: boolean; sale: Sale }>(`/api/sales/${saleId}/attachments/${attachmentId}`, {
+      method: "DELETE",
+      token,
+    }),
 }
 
 // Plans
@@ -659,8 +687,21 @@ export interface Sale {
   bajaDate?: string
   bajaMonthsLimit?: number // Meses antes de los cuales se considera baja con descuento (ej: 6 meses)
   bajaReason?: string
+  // Archivos adjuntos de instalacion
+  installationAttachments?: InstallationAttachment[]
   createdAt: string
   updatedAt: string
+}
+
+export interface InstallationAttachment {
+  _id?: string
+  filename: string
+  originalName: string
+  mimetype: string
+  size: number
+  url: string
+  uploadedAt: string
+  uploadedBy: string
 }
 
 export interface PaymentInfo {

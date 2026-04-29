@@ -26,7 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
-import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight, Paperclip, Download, Trash2, Image, File } from "lucide-react"
 
 export default function AdminSalesPage() {
   return (
@@ -760,6 +760,67 @@ function AdminSalesContent() {
                     <pre className="text-foreground text-sm whitespace-pre-wrap bg-secondary/20 p-3 rounded-lg">
                       {selectedSale.description}
                     </pre>
+                  </div>
+                )}
+
+                {/* Archivos Adjuntos */}
+                {selectedSale.installationAttachments && selectedSale.installationAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <Paperclip className="h-4 w-4 text-primary" />
+                      Archivos Adjuntos ({selectedSale.installationAttachments.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedSale.installationAttachments.map((attachment, index) => (
+                        <div key={attachment._id || index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border/30">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {attachment.mimetype?.startsWith("image/") ? (
+                              <Image className="h-5 w-5 text-green-400 shrink-0" />
+                            ) : attachment.mimetype?.includes("pdf") ? (
+                              <FileText className="h-5 w-5 text-red-400 shrink-0" />
+                            ) : (
+                              <File className="h-5 w-5 text-blue-400 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{attachment.originalName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {(attachment.size / 1024).toFixed(1)} KB - {new Date(attachment.uploadedAt).toLocaleDateString("es-AR")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              className="h-8 w-8 text-primary hover:text-primary/80"
+                            >
+                              <a href={attachment.url} target="_blank" rel="noopener noreferrer" download>
+                                <Download className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={async () => {
+                                const token = localStorage.getItem("token")
+                                if (!token || !attachment._id) return
+                                try {
+                                  await salesAPI.deleteAttachment(token, selectedSale._id, attachment._id)
+                                  toast({ title: "Archivo eliminado" })
+                                  fetchData()
+                                } catch {
+                                  toast({ title: "Error al eliminar", variant: "destructive" })
+                                }
+                              }}
+                              className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

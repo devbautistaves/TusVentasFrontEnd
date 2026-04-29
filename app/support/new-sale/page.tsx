@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Check, CreditCard, Building2, UserPlus, AlertCircle, Menu } from "lucide-react"
+import { ArrowLeft, Check, CreditCard, Building2, UserPlus, AlertCircle, Menu, Paperclip, X, FileText, Image, File } from "lucide-react"
 import Link from "next/link"
 
 interface Seller extends User {
@@ -36,6 +36,7 @@ export default function SupportNewSalePage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [userName, setUserName] = useState("")
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [installationFiles, setInstallationFiles] = useState<File[]>([])
   const router = useRouter()
   const { toast } = useToast()
 
@@ -119,6 +120,29 @@ export default function SupportNewSalePage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files)
+      setInstallationFiles(prev => [...prev, ...newFiles])
+    }
+  }
+
+  const removeFile = (index: number) => {
+    setInstallationFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const getFileIcon = (file: File) => {
+    if (file.type.startsWith("image/")) return <Image className="h-4 w-4 text-green-400" />
+    if (file.type.includes("pdf")) return <FileText className="h-4 w-4 text-red-400" />
+    return <File className="h-4 w-4 text-blue-400" />
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B"
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB"
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,11 +249,30 @@ export default function SupportNewSalePage() {
 
     try {
       // Usar supportAPI que maneja fallbacks internamente
-      await supportAPI.createSale(token, saleData as any)
+      const result = await supportAPI.createSale(token, saleData as any)
+
+      // Subir archivos adjuntos si existen
+      if (installationFiles.length > 0 && result?.sale?._id) {
+        for (const file of installationFiles) {
+          try {
+            const formData = new FormData()
+            formData.append("file", file)
+            await fetch(`https://vps-5905394-x.dattaweb.com/api/sales/${result.sale._id}/attachments`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            })
+          } catch (fileError) {
+            console.error("Error uploading file:", fileError)
+          }
+        }
+      }
 
       toast({
         title: "Venta registrada",
-        description: "La venta se ha registrado correctamente y asignada al usuario seleccionado",
+        description: installationFiles.length > 0 
+          ? `Venta registrada con ${installationFiles.length} archivo(s) adjunto(s)`
+          : "La venta se ha registrado correctamente y asignada al usuario seleccionado",
       })
       router.push("/support/sales")
     } catch (error) {
@@ -911,19 +954,71 @@ export default function SupportNewSalePage() {
                               : "border-border/50 bg-secondary/30 hover:border-primary/50"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <CreditCard className="h-6 w-6 text-sky-400" />
-                            <div>
-                              <p className="font-semibold">Mercado Pago</p>
-                              <p className="text-sm text-muted-foreground">Link de pago</p>
-                            </div>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="h-6 w-6 text-sky-400" />
+                        <div>
+                          <p className="font-semibold">Mercado Pago</p>
+                          <p className="text-sm text-muted-foreground">Link de pago</p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
 
-                  {/* Observaciones */}
+                  {/* Archivos adjuntos */}
+                  <div className="mt-6 pt-6 border-t border-border/50">
+                    <Field>
+                      <FieldLabel className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" />
+                        Archivos Adjuntos (Comprobantes de pago, etc.)
+                      </FieldLabel>
+                      <div className="mt-2">
+                        <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-secondary/20 transition-colors">
+                          <Paperclip className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            Click para adjuntar archivos (imagenes, PDFs, etc.)
+                          </span>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                          />
+                        </label>
+                      </div>
+                      
+                      {installationFiles.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs text-muted-foreground">{installationFiles.length} archivo(s) seleccionado(s)</p>
+                          {installationFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg border border-border/30">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {getFileIcon(file)}
+                                <span className="text-sm truncate">{file.name}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">({formatFileSize(file.size)})</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeFile(index)}
+                                className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-500/10 shrink-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Los archivos seran visibles para supervisores, administradores y soporte
+                      </p>
+                    </Field>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Observaciones */}
                   <Card className="border-border/50 bg-card/50">
                     <CardHeader>
                       <CardTitle>Observaciones</CardTitle>

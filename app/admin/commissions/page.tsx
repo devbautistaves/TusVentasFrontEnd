@@ -868,63 +868,60 @@ export default function AdminCommissionsPage() {
           }
           .header { 
             text-align: center; 
-            margin-bottom: 8px; 
-            border-bottom: 2px solid #f59e0b; 
-            padding-bottom: 6px;
+            margin-bottom: 4px; 
+            border-bottom: 1px solid #f59e0b; 
+            padding-bottom: 3px;
           }
           .header h1 { 
-            font-size: 16px; 
-            margin-bottom: 2px; 
+            font-size: 14px; 
+            margin-bottom: 1px; 
             color: #f8fafc;
-            letter-spacing: 1px;
           }
           .header p { 
-            font-size: 10px; 
+            font-size: 8px; 
             color: #94a3b8;
             text-transform: uppercase;
           }
           .info-row { 
             display: flex; 
             justify-content: space-between; 
-            margin-bottom: 8px;
-            padding: 6px 10px;
+            margin-bottom: 4px;
+            padding: 3px 8px;
             background: rgba(30, 41, 59, 0.8);
-            border-radius: 4px;
+            border-radius: 3px;
             border: 1px solid rgba(148, 163, 184, 0.2);
           }
-          .info-item { font-size: 9px; color: #cbd5e1; }
+          .info-item { font-size: 7px; color: #cbd5e1; }
           .info-item strong { color: #f8fafc; font-weight: 600; }
           h3 { 
-            font-size: 10px; 
-            margin-bottom: 4px; 
+            font-size: 8px; 
+            margin-bottom: 2px; 
             display: flex; 
             align-items: center; 
-            gap: 4px;
+            gap: 2px;
             color: #f8fafc;
           }
           .flex { display: flex; }
           .items-center { align-items: center; }
-          .gap-2 { gap: 4px; }
+          .gap-2 { gap: 2px; }
           table { 
             width: 100%; 
             border-collapse: collapse;
-            margin: 6px 0;
-            border-radius: 4px;
-            overflow: hidden;
+            margin: 3px 0;
           }
           th { 
             background: #334155;
-            padding: 4px 6px; 
+            padding: 2px 4px; 
             text-align: left; 
-            font-size: 8px; 
+            font-size: 7px; 
             font-weight: 600;
             color: #e2e8f0;
             border-bottom: 1px solid #475569;
             text-transform: uppercase;
           }
           td { 
-            padding: 3px 6px; 
-            font-size: 8px;
+            padding: 2px 4px; 
+            font-size: 7px;
             border-bottom: 1px solid rgba(71, 85, 105, 0.3);
             background: rgba(30, 41, 59, 0.6);
             color: #cbd5e1;
@@ -933,7 +930,7 @@ export default function AdminCommissionsPage() {
             background: rgba(34, 197, 94, 0.15) !important;
             border-top: 1px solid rgba(34, 197, 94, 0.4);
             font-weight: 700;
-            padding: 4px 6px;
+            padding: 2px 4px;
           }
           .text-right { text-align: right; }
           .text-left { text-align: left; }
@@ -943,28 +940,28 @@ export default function AdminCommissionsPage() {
           .font-bold { font-weight: 700; }
           .font-semibold { font-weight: 600; }
           .border { border: 1px solid rgba(148, 163, 184, 0.3); }
-          .rounded-lg { border-radius: 4px; }
+          .rounded-lg { border-radius: 3px; }
           .overflow-hidden { overflow: hidden; }
-          .p-3 { padding: 6px; }
-          .p-6 { padding: 10px; }
-          .mb-2 { margin-bottom: 4px; }
-          .space-y-6 > * + * { margin-top: 8px; }
-          .text-sm { font-size: 9px; }
-          .text-xs { font-size: 8px; }
+          .p-3 { padding: 4px; }
+          .p-6 { padding: 6px; }
+          .mb-2 { margin-bottom: 2px; }
+          .space-y-6 > * + * { margin-top: 4px; }
+          .text-sm { font-size: 7px; }
+          .text-xs { font-size: 6px; }
           .text-muted-foreground { color: #94a3b8; }
           .total-section { 
-            margin-top: 10px; 
-            padding: 10px 15px; 
+            margin-top: 6px; 
+            padding: 6px 10px; 
             border: 2px solid #f59e0b; 
-            border-radius: 6px;
+            border-radius: 4px;
             background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
           }
           .total-section h2 { 
-            font-size: 20px; 
+            font-size: 16px; 
             font-weight: 800;
             color: #f59e0b;
           }
-          .text-3xl { font-size: 20px; }
+          .text-3xl { font-size: 16px; }
           .text-primary { color: #f59e0b; }
           svg { display: none; }
           @media print {
@@ -974,7 +971,7 @@ export default function AdminCommissionsPage() {
               background: #0f172a !important;
             }
           }
-          @page { size: A4 landscape; margin: 5mm; }
+          @page { size: A4 landscape; margin: 3mm; }
         </style>
       </head>
       <body>

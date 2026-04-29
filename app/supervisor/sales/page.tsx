@@ -25,7 +25,7 @@ import {
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, usersAPI, Sale, User } from "@/lib/api"
-import { Search, Filter, Eye, Edit2, DollarSign, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Calendar, Users } from "lucide-react"
+import { Search, Filter, Eye, Edit2, DollarSign, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Calendar, Users, Paperclip, Download, Trash2, Image, File } from "lucide-react"
 
 export default function SupervisorSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -502,6 +502,47 @@ export default function SupervisorSalesPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Archivos Adjuntos */}
+                {selectedSale.installationAttachments && selectedSale.installationAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <Paperclip className="h-4 w-4 text-primary" />
+                      Archivos Adjuntos ({selectedSale.installationAttachments.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedSale.installationAttachments.map((attachment, index) => (
+                        <div key={attachment._id || index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border/30">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {attachment.mimetype?.startsWith("image/") ? (
+                              <Image className="h-5 w-5 text-green-400 shrink-0" />
+                            ) : attachment.mimetype?.includes("pdf") ? (
+                              <FileText className="h-5 w-5 text-red-400 shrink-0" />
+                            ) : (
+                              <File className="h-5 w-5 text-blue-400 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{attachment.originalName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {(attachment.size / 1024).toFixed(1)} KB - {new Date(attachment.uploadedAt).toLocaleDateString("es-AR")}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            className="h-8 w-8 text-primary hover:text-primary/80"
+                          >
+                            <a href={attachment.url} target="_blank" rel="noopener noreferrer" download>
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </DialogContent>
