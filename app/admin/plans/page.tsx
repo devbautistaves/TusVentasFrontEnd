@@ -28,11 +28,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { plansAPI, Plan } from "@/lib/api"
-import { useCompany } from "@/lib/company-context"
-import { Plus, Edit2, Trash2, Package, Check, X, Building2 } from "lucide-react"
+import { Plus, Edit2, Trash2, Package, Check, X } from "lucide-react"
 
 export default function AdminPlansPage() {
-  const { currentCompany } = useCompany()
   const [plans, setPlans] = useState<Plan[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -51,7 +49,7 @@ export default function AdminPlansPage() {
 
   useEffect(() => {
     fetchPlans()
-  }, [currentCompany.id])
+  }, [])
 
   const fetchPlans = async () => {
     const token = localStorage.getItem("token")

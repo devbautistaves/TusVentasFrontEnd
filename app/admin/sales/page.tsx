@@ -26,8 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { salesAPI, usersAPI, Sale, User as UserType } from "@/lib/api"
-import { useCompany } from "@/lib/company-context"
-import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight, Paperclip, Download, Trash2, Image, File, Building2 } from "lucide-react"
+import { Search, Filter, Eye, Edit2, Calendar, User as UserIcon, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, DollarSign, CalendarDays, ChevronLeft, ChevronRight, Paperclip, Download, Trash2, Image, File } from "lucide-react"
 
 export default function AdminSalesPage() {
   return (
@@ -45,7 +44,6 @@ export default function AdminSalesPage() {
 
 function AdminSalesContent() {
   const searchParams = useSearchParams()
-  const { currentCompany } = useCompany()
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -84,7 +82,7 @@ function AdminSalesContent() {
   useEffect(() => {
     fetchSales()
     fetchUsers()
-  }, [currentCompany.id])
+  }, [])
 
   const fetchUsers = async () => {
     const token = localStorage.getItem("token")
@@ -347,10 +345,9 @@ function AdminSalesContent() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Gestion de Ventas</h1>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Building2 className="h-4 w-4" />
-            <span>Empresa: {currentCompany.name}</span>
-          </div>
+          <p className="text-muted-foreground">
+            Administra todas las ventas del sistema
+          </p>
         </div>
 
         {/* Month Selector */}
