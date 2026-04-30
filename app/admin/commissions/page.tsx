@@ -24,8 +24,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { usersAPI, salesAPI, adCostsAPI, User, Sale, SupervisorAdCost as APIAdCost } from "@/lib/api"
-import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle, Download } from "lucide-react"
+import { usersAPI, salesAPI, adCostsAPI, advancesAPI, User, Sale, SupervisorAdCost as APIAdCost, Advance } from "@/lib/api"
+import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle, Download, Banknote, Trash2 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 
@@ -91,15 +92,26 @@ export default function AdminCommissionsPage() {
     bajaAmount: 0,
   })
   const [isSavingBaja, setIsSavingBaja] = useState(false)
+  // Estado para el sistema de adelantos
+  const [advances, setAdvances] = useState<Advance[]>([])
+  const [isAdvanceDialogOpen, setIsAdvanceDialogOpen] = useState(false)
+  const [selectedUserForAdvance, setSelectedUserForAdvance] = useState<User | null>(null)
+  const [advanceForm, setAdvanceForm] = useState({
+    amount: 0,
+    date: new Date().toISOString().split("T")[0],
+    reason: "",
+  })
+  const [isSavingAdvance, setIsSavingAdvance] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     fetchData()
   }, [])
 
-  // Recargar costos de anuncio cuando cambia el mes
+  // Recargar costos de anuncio y adelantos cuando cambia el mes
   useEffect(() => {
     fetchAdCosts()
+    fetchAdvances()
   }, [selectedMonth])
 
   const fetchData = async () => {
@@ -119,8 +131,8 @@ export default function AdminCommissionsPage() {
         setTiers(JSON.parse(savedTiers))
       }
 
-      // Cargar costos de anuncio de supervisores desde API
-      await fetchAdCosts()
+      // Cargar costos de anuncio de supervisores y adelantos desde API
+      await Promise.all([fetchAdCosts(), fetchAdvances()])
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -137,6 +149,115 @@ export default function AdminCommissionsPage() {
       setSupervisorAdCosts(adCostsRes.adCosts)
     } catch (error) {
       console.error("Error fetching ad costs:", error)
+    }
+  }
+
+  const fetchAdvances = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      const advancesRes = await advancesAPI.getAll(token, selectedMonth)
+      setAdvances(advancesRes.advances || [])
+    } catch (error) {
+      console.error("Error fetching advances:", error)
+      // No mostrar error ya que el endpoint puede no existir aun
+      setAdvances([])
+    }
+  }
+
+  // Obtener adelantos de un usuario para el mes seleccionado
+  const getUserAdvancesForMonth = (userId: string): Advance[] => {
+    return advances.filter((advance) => {
+      const advanceUserId = typeof advance.userId === "object" 
+        ? advance.userId._id 
+        : advance.userId
+      return advanceUserId === userId && advance.month === selectedMonth
+    })
+  }
+
+  // Calcular total de adelantos de un usuario para el mes
+  const getUserAdvanceTotalForMonth = (userId: string): number => {
+    const userAdvances = getUserAdvancesForMonth(userId)
+    return userAdvances.reduce((total, advance) => total + advance.amount, 0)
+  }
+
+  // Abrir dialog para crear adelanto
+  const handleOpenAdvanceDialog = (user: User) => {
+    setSelectedUserForAdvance(user)
+    setAdvanceForm({
+      amount: 0,
+      date: new Date().toISOString().split("T")[0],
+      reason: "",
+    })
+    setIsAdvanceDialogOpen(true)
+  }
+
+  // Guardar adelanto
+  const handleSaveAdvance = async () => {
+    if (!selectedUserForAdvance || advanceForm.amount <= 0 || !advanceForm.date || !advanceForm.reason.trim()) {
+      toast({
+        title: "Error",
+        description: "Complete todos los campos requeridos",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    setIsSavingAdvance(true)
+    try {
+      await advancesAPI.create(token, {
+        userId: selectedUserForAdvance._id,
+        amount: advanceForm.amount,
+        date: advanceForm.date,
+        month: selectedMonth,
+        reason: advanceForm.reason,
+      })
+
+      await fetchAdvances()
+
+      toast({
+        title: "Adelanto registrado",
+        description: `Se ha registrado un adelanto de ${formatCurrency(advanceForm.amount)} para ${selectedUserForAdvance.name}`,
+      })
+
+      setIsAdvanceDialogOpen(false)
+      setSelectedUserForAdvance(null)
+      setAdvanceForm({ amount: 0, date: new Date().toISOString().split("T")[0], reason: "" })
+    } catch (error) {
+      console.error("Error saving advance:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el adelanto. Verifique que el backend soporte esta funcionalidad.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingAdvance(false)
+    }
+  }
+
+  // Eliminar adelanto
+  const handleDeleteAdvance = async (advanceId: string) => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      await advancesAPI.delete(token, advanceId)
+      await fetchAdvances()
+      toast({
+        title: "Adelanto eliminado",
+        description: "El adelanto se ha eliminado correctamente",
+      })
+    } catch (error) {
+      console.error("Error deleting advance:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el adelanto",
+        variant: "destructive",
+      })
     }
   }
 
@@ -1481,6 +1602,12 @@ export default function AdminCommissionsPage() {
                           Bajas
                         </div>
                       </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Banknote className="h-3 w-3" />
+                          Adelantos
+                        </div>
+                      </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. (40%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                     </tr>
@@ -1492,7 +1619,8 @@ export default function AdminCommissionsPage() {
                       const adCost = getSupervisorAdCostForMonth(user._id)
                       const supBajaDiscount = calculateBajaDiscount(user._id, user.role)
                       const supBajas = getBajasForMonth(user._id, user.role)
-                      const totalCommission = Math.max(0, calculateSupervisorCommission(user._id) - supBajaDiscount)
+                      const advanceTotal = getUserAdvanceTotalForMonth(user._id)
+                      const totalCommission = Math.max(0, calculateSupervisorCommission(user._id) - supBajaDiscount - advanceTotal)
 
                       return (
                         <tr
@@ -1569,6 +1697,20 @@ export default function AdminCommissionsPage() {
                             )}
                           </td>
                           <td className="py-3 px-4">
+                            {advanceTotal > 0 ? (
+                              <div>
+                                <span className="text-amber-400 font-medium">
+                                  -{formatCurrency(advanceTotal)}
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  {getUserAdvancesForMonth(user._id).length} adelanto{getUserAdvancesForMonth(user._id).length !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">$0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
                             <span className="text-lg font-bold text-amber-400">
                               {formatCurrency(totalCommission)}
                             </span>
@@ -1602,6 +1744,15 @@ export default function AdminCommissionsPage() {
                                 className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                               >
                                 <TrendingDown className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenAdvanceDialog(user)}
+                                title="Adelantar Dinero"
+                                className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                              >
+                                <Banknote className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1643,6 +1794,12 @@ export default function AdminCommissionsPage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Bruta</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Desc. Inst.</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Desc. Bajas</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Banknote className="h-3 w-3" />
+                        Adelantos
+                      </div>
+                    </th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Com. Neta</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                   </tr>
@@ -1656,7 +1813,8 @@ export default function AdminCommissionsPage() {
                     const installationDiscounts = getSellerInstallationDiscounts(user._id)
                     const bajaDiscount = calculateBajaDiscount(user._id, user.role)
                     const bajas = getBajasForMonth(user._id, user.role)
-                    const netCommission = Math.max(0, calculateSellerCommission(user._id) - bajaDiscount)
+                    const advanceTotal = getUserAdvanceTotalForMonth(user._id)
+                    const netCommission = Math.max(0, calculateSellerCommission(user._id) - bajaDiscount - advanceTotal)
                     const currentTier = tiers.find(
                       (t) => activatedSales >= t.minSales && activatedSales <= t.maxSales
                     )
@@ -1736,6 +1894,20 @@ export default function AdminCommissionsPage() {
                           )}
                         </td>
                         <td className="py-3 px-4">
+                          {advanceTotal > 0 ? (
+                            <div>
+                              <span className="text-amber-400 font-medium">
+                                -{formatCurrency(advanceTotal)}
+                              </span>
+                              <p className="text-xs text-muted-foreground">
+                                {getUserAdvancesForMonth(user._id).length} adelanto{getUserAdvancesForMonth(user._id).length !== 1 ? "s" : ""}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">$0</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
                           <span className="text-lg font-bold text-primary">
                             {formatCurrency(netCommission)}
                           </span>
@@ -1762,6 +1934,15 @@ export default function AdminCommissionsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => handleOpenAdvanceDialog(user)}
+                              title="Adelantar Dinero"
+                              className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                            >
+                              <Banknote className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleOpenLiquidacionDialog(user)}
                               title="Ver Liquidacion"
                             >
@@ -1774,9 +1955,9 @@ export default function AdminCommissionsPage() {
   })}
   {sellers.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-muted-foreground">
-                        No hay vendedores registrados
-                      </td>
+<td colSpan={12} className="py-8 text-center text-muted-foreground">
+  No hay vendedores registrados
+  </td>
                     </tr>
                   )}
                 </tbody>
@@ -2533,6 +2714,195 @@ export default function AdminCommissionsPage() {
                   <>
                     <TrendingDown className="mr-2 h-4 w-4" />
                     Registrar Baja
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Advance Dialog - Adelantar Dinero */}
+        <Dialog open={isAdvanceDialogOpen} onOpenChange={setIsAdvanceDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-amber-400" />
+                Adelantar Dinero - {selectedUserForAdvance?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Registrar un adelanto de dinero que se descontara de la comision del mes en curso
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedUserForAdvance && (
+              <div className="space-y-4 py-4">
+                {/* Info de la comision actual */}
+                <div className="p-4 rounded-lg bg-secondary/30 space-y-2">
+                  <p className="text-sm text-muted-foreground">Comision estimada del mes:</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(
+                      selectedUserForAdvance.role === "supervisor"
+                        ? calculateSupervisorCommission(selectedUserForAdvance._id)
+                        : calculateSellerCommission(selectedUserForAdvance._id)
+                    )}
+                  </p>
+                  {getUserAdvanceTotalForMonth(selectedUserForAdvance._id) > 0 && (
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <Banknote className="h-4 w-4" />
+                      <span className="text-sm">
+                        Adelantos del mes: -{formatCurrency(getUserAdvanceTotalForMonth(selectedUserForAdvance._id))}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-sm font-medium text-foreground">
+                    Neto a cobrar (sin nuevo adelanto): {formatCurrency(
+                      Math.max(0, (selectedUserForAdvance.role === "supervisor"
+                        ? calculateSupervisorCommission(selectedUserForAdvance._id)
+                        : calculateSellerCommission(selectedUserForAdvance._id)) - getUserAdvanceTotalForMonth(selectedUserForAdvance._id)
+                    )}
+                  </p>
+                </div>
+
+                {/* Formulario del adelanto */}
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel>Fecha del adelanto *</FieldLabel>
+                    <Input
+                      type="date"
+                      value={advanceForm.date}
+                      onChange={(e) => setAdvanceForm(prev => ({ ...prev, date: e.target.value }))}
+                      className="bg-secondary/50"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>Importe *</FieldLabel>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        value={advanceForm.amount || ""}
+                        onChange={(e) => setAdvanceForm(prev => ({ ...prev, amount: Number(e.target.value) || 0 }))}
+                        className="bg-secondary/50 pl-8"
+                        placeholder="0"
+                      />
+                    </div>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Motivo *</FieldLabel>
+                    <Textarea
+                      value={advanceForm.reason}
+                      onChange={(e) => setAdvanceForm(prev => ({ ...prev, reason: e.target.value }))}
+                      className="bg-secondary/50"
+                      placeholder="Ej: Adelanto a cuenta de comisiones, Urgencia personal, etc."
+                      rows={3}
+                    />
+                  </Field>
+                </FieldGroup>
+
+                {/* Calculo automatico */}
+                {advanceForm.amount > 0 && (
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-2">
+                    <p className="text-sm font-medium text-amber-400 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Vista previa del descuento
+                    </p>
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Comision del mes:</span>
+                        <span className="text-foreground">
+                          {formatCurrency(
+                            selectedUserForAdvance.role === "supervisor"
+                              ? calculateSupervisorCommission(selectedUserForAdvance._id)
+                              : calculateSellerCommission(selectedUserForAdvance._id)
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Adelantos previos:</span>
+                        <span className="text-amber-400">
+                          -{formatCurrency(getUserAdvanceTotalForMonth(selectedUserForAdvance._id))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Nuevo adelanto:</span>
+                        <span className="text-amber-400">-{formatCurrency(advanceForm.amount)}</span>
+                      </div>
+                      <div className="border-t border-amber-500/30 pt-2 mt-2">
+                        <div className="flex justify-between font-bold">
+                          <span className="text-foreground">Neto a cobrar:</span>
+                          <span className={`${
+                            Math.max(0, (selectedUserForAdvance.role === "supervisor"
+                              ? calculateSupervisorCommission(selectedUserForAdvance._id)
+                              : calculateSellerCommission(selectedUserForAdvance._id)) - getUserAdvanceTotalForMonth(selectedUserForAdvance._id) - advanceForm.amount) > 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}>
+                            {formatCurrency(
+                              Math.max(0, (selectedUserForAdvance.role === "supervisor"
+                                ? calculateSupervisorCommission(selectedUserForAdvance._id)
+                                : calculateSellerCommission(selectedUserForAdvance._id)) - getUserAdvanceTotalForMonth(selectedUserForAdvance._id) - advanceForm.amount)
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Adelantos ya registrados este mes */}
+                {getUserAdvancesForMonth(selectedUserForAdvance._id).length > 0 && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2 text-amber-400">
+                      <History className="h-4 w-4" />
+                      Adelantos registrados este mes ({getUserAdvancesForMonth(selectedUserForAdvance._id).length})
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {getUserAdvancesForMonth(selectedUserForAdvance._id).map((advance) => (
+                        <div key={advance._id} className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                          <div>
+                            <p className="font-medium text-amber-400">{formatCurrency(advance.amount)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(advance.date).toLocaleDateString("es-AR")} - {advance.reason}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteAdvance(advance._id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => {
+                setIsAdvanceDialogOpen(false)
+                setSelectedUserForAdvance(null)
+                setAdvanceForm({ amount: 0, date: new Date().toISOString().split("T")[0], reason: "" })
+              }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveAdvance}
+                disabled={isSavingAdvance || advanceForm.amount <= 0 || !advanceForm.date || !advanceForm.reason.trim()}
+                className="bg-amber-500 text-white hover:bg-amber-600"
+              >
+                {isSavingAdvance ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Banknote className="mr-2 h-4 w-4" />
+                    Registrar Adelanto
                   </>
                 )}
               </Button>

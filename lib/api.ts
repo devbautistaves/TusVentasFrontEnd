@@ -1163,3 +1163,48 @@ export const companiesAPI = {
   getAll: (token: string) =>
     fetchAPI<{ success: boolean; companies: Array<{ id: string; name: string; displayName: string; isActive: boolean }> }>("/api/companies", { token }),
 }
+
+// Advances (Adelantos) API - Adelantos de dinero que se descuentan de la comision
+export interface Advance {
+  _id: string
+  userId: string | { _id: string; name: string; email: string; role: string }
+  amount: number
+  date: string
+  month: string // Mes al que se aplica el descuento (formato YYYY-MM)
+  reason: string
+  createdBy: string | { _id: string; name: string }
+  createdAt: string
+  updatedAt: string
+}
+
+export const advancesAPI = {
+  // Admin: obtener todos los adelantos
+  getAll: (token: string, month?: string, userId?: string) => {
+    const params = new URLSearchParams()
+    if (month) params.append("month", month)
+    if (userId) params.append("userId", userId)
+    const queryString = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; advances: Advance[] }>(`/api/admin/advances${queryString}`, { token })
+  },
+
+  // Admin: crear adelanto
+  create: (token: string, data: { userId: string; amount: number; date: string; month: string; reason: string }) =>
+    fetchAPI<{ success: boolean; advance: Advance; message: string }>("/api/admin/advances", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  // Admin: eliminar adelanto
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean }>(`/api/admin/advances/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+
+  // Usuario: obtener mis adelantos
+  getMine: (token: string, month?: string) => {
+    const queryString = month ? `?month=${month}` : ""
+    return fetchAPI<{ success: boolean; advances: Advance[] }>(`/api/advances/my${queryString}`, { token })
+  },
+}

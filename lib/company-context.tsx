@@ -106,12 +106,12 @@ const STORAGE_KEY = "selectedCompanyId"
 function getAvailableCompanies(userRole?: string, userCompanyId?: string): Company[] {
   const activeCompanies = COMPANIES.filter((c) => c.isActive)
   
-  // Admin y support pueden ver todas las empresas activas
-  if (userRole === "admin" || userRole === "support") {
+  // Solo admin puede ver todas las empresas activas
+  if (userRole === "admin") {
     return activeCompanies
   }
   
-  // Vendedores y supervisores solo pueden ver su empresa asignada
+  // Vendedores, supervisores y soporte solo pueden ver su empresa asignada
   if (userCompanyId) {
     const assignedCompany = activeCompanies.find((c) => c.id === userCompanyId)
     if (assignedCompany) {
@@ -151,7 +151,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setAvailableCompanies(companies)
     
     // Verificar si el usuario puede cambiar de empresa
-    const canSwitch = userRole === "admin" || userRole === "support"
+    // Solo admin puede cambiar de empresa
+    const canSwitch = userRole === "admin"
     setCanSwitchCompany(canSwitch)
     
     // Cargar empresa guardada o usar la empresa asignada
