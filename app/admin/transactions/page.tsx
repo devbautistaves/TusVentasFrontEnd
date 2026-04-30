@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, TrendingUp, TrendingDown, DollarSign, Filter, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, DollarSign, Filter, ArrowUpRight, ArrowDownRight, Trash2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,7 +41,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { transactionsAPI, Transaction, TransactionType } from "@/lib/api"
+import { transactionsAPI, Transaction, TransactionType, clientsAPI } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -63,10 +73,14 @@ export default function TransactionsPage() {
   
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [summary, setSummary] = useState<{ ingresos: number; egresos: number; balance: number } | null>(null)
+  const [activationTotal, setActivationTotal] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const [formData, setFormData] = useState({
     type: "ingreso" as TransactionType,
@@ -98,13 +112,29 @@ export default function TransactionsPage() {
       const filters: { type?: string; month?: string } = { month: selectedMonth }
       if (typeFilter !== "all") filters.type = typeFilter
       
-      const [transactionsRes, summaryRes] = await Promise.all([
+      const [transactionsRes, summaryRes, clientsRes] = await Promise.all([
         transactionsAPI.getAll(token, filters),
         transactionsAPI.getSummary(token, selectedMonth),
+        clientsAPI.getAll(token, {}),
       ])
       
       setTransactions(transactionsRes.transactions)
       setSummary(summaryRes.summary)
+      
+      // Calcular monto de activacion del mes seleccionado
+      const [year, monthNum] = selectedMonth.split("-")
+      const startOfMonth = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
+      const endOfMonth = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59)
+      
+      const activationSum = clientsRes.clients
+        .filter(client => {
+          if (!client.activationDate || !client.setupPrice) return false
+          const activationDate = new Date(client.activationDate)
+          return activationDate >= startOfMonth && activationDate <= endOfMonth
+        })
+        .reduce((sum, client) => sum + (client.setupPrice || 0), 0)
+      
+      setActivationTotal(activationSum)
     } catch (error) {
       console.error("Error fetching data:", error)
       toast({
@@ -114,6 +144,34 @@ export default function TransactionsPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete) return
+    
+    const token = localStorage.getItem("token")
+    if (!token) return
+    
+    try {
+      setIsDeleting(true)
+      await transactionsAPI.delete(token, transactionToDelete._id)
+      toast({
+        title: "Transaccion eliminada",
+        description: "La transaccion fue eliminada correctamente",
+      })
+      setDeleteDialogOpen(false)
+      setTransactionToDelete(null)
+      fetchData()
+    } catch (error) {
+      console.error("Error deleting transaction:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la transaccion",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -187,7 +245,7 @@ export default function TransactionsPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-emerald-500/30 bg-emerald-500/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-emerald-500">
@@ -226,6 +284,23 @@ export default function TransactionsPage() {
             <CardContent>
               <p className={`text-3xl font-bold ${summary.balance >= 0 ? "text-blue-500" : "text-orange-500"}`}>
                 ${summary.balance.toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-purple-500/30 bg-purple-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-purple-500">
+                Activaciones del Mes
+              </CardTitle>
+              <Zap className="h-5 w-5 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-purple-500">
+                ${activationTotal.toLocaleString()}
+              </p>
+              <p className="text-xs text-purple-400 mt-1">
+                Monto de setups cobrados
               </p>
             </CardContent>
           </Card>
@@ -277,12 +352,13 @@ export default function TransactionsPage() {
                 <TableHead>Descripcion</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {transactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No hay transacciones en este periodo
                   </TableCell>
                 </TableRow>
@@ -312,6 +388,19 @@ export default function TransactionsPage() {
                     </TableCell>
                     <TableCell className={`text-right font-bold ${transaction.type === "ingreso" ? "text-emerald-500" : "text-red-500"}`}>
                       {transaction.type === "ingreso" ? "+" : "-"}${transaction.amount.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        onClick={() => {
+                          setTransactionToDelete(transaction)
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -427,6 +516,35 @@ export default function TransactionsPage() {
         </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar Transaccion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta accion no se puede deshacer. Se eliminara permanentemente la transaccion:
+              <br />
+              <strong className={transactionToDelete?.type === "ingreso" ? "text-emerald-500" : "text-red-500"}>
+                {transactionToDelete?.type === "ingreso" ? "Ingreso" : "Egreso"}: ${transactionToDelete?.amount.toLocaleString()}
+              </strong>
+              <br />
+              {transactionToDelete?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTransaction}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </DashboardLayout>
   )

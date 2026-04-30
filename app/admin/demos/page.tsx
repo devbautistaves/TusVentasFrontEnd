@@ -104,6 +104,13 @@ export default function AdminDemosPage() {
   const handleStatusChange = async () => {
     if (!selectedDemo || !newStatus) return
 
+    // Si el nuevo estado es web_pendiente o web_activada, redirigir a la pagina de conversion
+    if (newStatus === "web_pendiente" || newStatus === "web_activada") {
+      setShowStatusDialog(false)
+      router.push(`/admin/demos/${selectedDemo._id}/convert`)
+      return
+    }
+
     try {
       setIsUpdating(true)
       const token = localStorage.getItem("token")
@@ -392,7 +399,7 @@ export default function AdminDemosPage() {
                 Selecciona el nuevo estado para la demo de {selectedDemo?.businessName}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
+            <div className="py-4 space-y-4">
               <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ClientStatus)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar estado" />
@@ -404,6 +411,13 @@ export default function AdminDemosPage() {
                   <SelectItem value="web_activada">Web Activada</SelectItem>
                 </SelectContent>
               </Select>
+              {(newStatus === "web_pendiente" || newStatus === "web_activada") && (
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+                  <p className="text-sm text-blue-500">
+                    Al seleccionar este estado, seras redirigido al formulario de conversion para completar los datos del cliente (email, dominio, montos, etc.)
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button

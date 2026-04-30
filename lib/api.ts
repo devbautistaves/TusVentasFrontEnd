@@ -1230,6 +1230,12 @@ export const transactionsAPI = {
     const query = month ? `?month=${month}` : ""
     return fetchAPI<{ success: boolean; summary: { ingresos: number; egresos: number; balance: number } }>(`/api/transactions/summary${query}`, { token })
   },
+
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; message: string }>(`/api/transactions/${id}`, {
+      method: "DELETE",
+      token,
+    }),
 }
 
 // Liquidations API
