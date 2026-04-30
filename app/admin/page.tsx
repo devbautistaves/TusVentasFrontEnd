@@ -84,7 +84,18 @@ export default function AdminDashboardPage() {
   })
   
   // Estados para TuPaginaYa
-  const [clientStats, setClientStats] = useState<{ byStatus: Record<string, number>; totalActiveRevenue: number; total: number } | null>(null)
+  const [clientStats, setClientStats] = useState<{
+    total: number
+    demoPendiente: number
+    demoEnviada: number
+    webPendiente: number
+    webActivada: number
+    webPausada: number
+    clienteBaja: number
+    setupsThisMonth: number
+    setupsCount: number
+    mrr: number
+  } | null>(null)
   const [financeSummary, setFinanceSummary] = useState<{ ingresos: number; egresos: number; balance: number } | null>(null)
   const [collections, setCollections] = useState<CollectionItem[]>([])
 
@@ -440,15 +451,15 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Total Clientes</p>
-                    <p className="text-4xl font-bold text-foreground">{clientStats?.total || 0}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Webs Activas</p>
+                    <p className="text-4xl font-bold text-foreground">{clientStats?.webActivada || 0}</p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      {clientStats?.byStatus?.web_activada || 0} webs activas
+                      {clientStats?.total || 0} clientes totales
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
@@ -462,14 +473,31 @@ export default function AdminDashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Ingreso Mensual</p>
-                    <p className="text-4xl font-bold text-green-400">{formatCurrency(clientStats?.totalActiveRevenue || 0)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">MRR</p>
+                    <p className="text-4xl font-bold text-green-400">{formatCurrency(clientStats?.mrr || 0)}</p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      De clientes activos
+                      Ingreso recurrente mensual
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
                     <Banknote className="h-6 w-6 text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-card to-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Setups del Mes</p>
+                    <p className="text-4xl font-bold text-purple-400">{formatCurrency(clientStats?.setupsThisMonth || 0)}</p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {clientStats?.setupsCount || 0} activaciones
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <CheckCircle className="h-6 w-6 text-purple-400" />
                   </div>
                 </div>
               </CardContent>
@@ -481,10 +509,10 @@ export default function AdminDashboardPage() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Demos Pendientes</p>
                     <p className="text-4xl font-bold text-amber-400">
-                      {(clientStats?.byStatus?.demo_pendiente || 0) + (clientStats?.byStatus?.demo_enviada || 0)}
+                      {(clientStats?.demoPendiente || 0) + (clientStats?.demoEnviada || 0)}
                     </p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      Por activar
+                      {clientStats?.webPendiente || 0} webs pendientes
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
@@ -564,17 +592,23 @@ export default function AdminDashboardPage() {
               <CardDescription>Accede a las funciones principales</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <Link href="/admin/demos">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <ShoppingCart className="h-6 w-6" />
+                    <span>Gestionar Demos</span>
+                  </Button>
+                </Link>
                 <Link href="/admin/clients">
                   <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
                     <Users className="h-6 w-6" />
-                    <span>Gestionar Clientes</span>
+                    <span>Clientes Activos</span>
                   </Button>
                 </Link>
                 <Link href="/admin/collections">
                   <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
                     <DollarSign className="h-6 w-6" />
-                    <span>Panel de Cobranzas</span>
+                    <span>Cobranzas</span>
                   </Button>
                 </Link>
                 <Link href="/admin/transactions">

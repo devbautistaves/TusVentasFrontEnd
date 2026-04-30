@@ -941,34 +941,55 @@ export interface AddLeadContactData {
 // TUPAGINAYA - Tipos e Interfaces
 // ========================================
 
-export type ClientStatus = "demo_pendiente" | "demo_enviada" | "web_activada" | "web_pausada" | "cliente_baja"
+export type ClientStatus = "demo_pendiente" | "demo_enviada" | "web_pendiente" | "web_activada" | "web_pausada" | "cliente_baja"
 export type WebType = "landing" | "ecommerce" | "catalogo" | "institucional" | "blog" | "otro"
 export type PaymentMethod = "efectivo" | "transferencia" | "mercadopago" | "tarjeta" | "otro"
 export type PaymentStatus = "pendiente" | "pagado" | "vencido" | "anulado"
 export type TransactionType = "ingreso" | "egreso"
 export type LiquidationStatus = "pendiente" | "pagado" | "anulado"
 
+export interface SocialNetworks {
+  instagram?: string
+  facebook?: string
+  tiktok?: string
+  website?: string
+  other?: string
+}
+
 export interface Client {
   _id: string
   companyId: string
   name: string
-  email: string
-  phone: string
+  email?: string
+  phone?: string
+  whatsapp?: string
   dni?: string
-  businessName?: string
+  // Datos del negocio
+  businessName: string
   businessType?: string
+  whatTheySell?: string
+  // Redes sociales y archivos
+  socialNetworks?: SocialNetworks
+  flyerUrl?: string
+  logoUrl?: string
+  // Datos de la web
   domain?: string
   demoUrl?: string
   liveUrl?: string
   webType: WebType
   hostingPlan?: string
+  // Comprobante de pago
+  paymentProofUrl?: string
+  // Estado
   status: ClientStatus
   activationDate?: string
   cancellationDate?: string
   cancellationReason?: string
+  // Precios
   monthlyPrice: number
   setupPrice: number
   billingDay: number
+  // Relaciones
   sellerId?: string | { _id: string; name: string; email?: string }
   saleId?: string
   notes?: string
@@ -976,13 +997,44 @@ export interface Client {
   updatedAt: string
 }
 
+// Datos para crear una demo
+export interface CreateDemoData {
+  name: string
+  phone?: string
+  businessName: string
+  businessType?: string
+  whatTheySell?: string
+  socialNetworks?: SocialNetworks
+  flyerUrl?: string
+  logoUrl?: string
+  notes?: string
+}
+
+// Datos para convertir demo a venta
+export interface ConvertDemoData {
+  name?: string
+  email: string
+  whatsapp: string
+  domain: string
+  monthlyPrice: number
+  setupPrice: number
+  paymentProofUrl?: string
+  activateNow?: boolean
+}
+
+// Datos completos para crear un cliente
 export interface CreateClientData {
   name: string
-  email: string
-  phone: string
+  email?: string
+  phone?: string
+  whatsapp?: string
   dni?: string
-  businessName?: string
+  businessName: string
   businessType?: string
+  whatTheySell?: string
+  socialNetworks?: SocialNetworks
+  flyerUrl?: string
+  logoUrl?: string
   domain?: string
   demoUrl?: string
   webType?: WebType
@@ -990,8 +1042,23 @@ export interface CreateClientData {
   monthlyPrice?: number
   setupPrice?: number
   billingDay?: number
+  paymentProofUrl?: string
   sellerId?: string
   notes?: string
+}
+
+// Estadisticas de clientes
+export interface ClientStats {
+  total: number
+  demoPendiente: number
+  demoEnviada: number
+  webPendiente: number
+  webActivada: number
+  webPausada: number
+  clienteBaja: number
+  setupsThisMonth: number
+  setupsCount: number
+  mrr: number
 }
 
 export interface Payment {
@@ -1075,6 +1142,14 @@ export const clientsAPI = {
   getById: (token: string, id: string) =>
     fetchAPI<{ success: boolean; client: Client }>(`/api/clients/${id}`, { token }),
 
+  // Crear una nueva demo
+  createDemo: (token: string, data: CreateDemoData) =>
+    fetchAPI<{ success: boolean; client: Client }>("/api/clients/demo", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
   create: (token: string, data: CreateClientData) =>
     fetchAPI<{ success: boolean; client: Client }>("/api/clients", {
       method: "POST",
@@ -1089,8 +1164,25 @@ export const clientsAPI = {
       body: JSON.stringify(data),
     }),
 
+  // Cambiar estado del cliente
+  updateStatus: (token: string, id: string, status: ClientStatus) =>
+    fetchAPI<{ success: boolean; client: Client }>(`/api/clients/${id}/status`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ status }),
+    }),
+
+  // Convertir demo a venta
+  convertDemo: (token: string, id: string, data: ConvertDemoData) =>
+    fetchAPI<{ success: boolean; client: Client }>(`/api/clients/${id}/convert`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  // Estadisticas de clientes
   getStats: (token: string) =>
-    fetchAPI<{ success: boolean; stats: { byStatus: Record<string, number>; totalActiveRevenue: number; total: number } }>("/api/clients/stats", { token }),
+    fetchAPI<{ success: boolean; stats: ClientStats }>("/api/clients/stats/summary", { token }),
 
   getPayments: (token: string, clientId: string) =>
     fetchAPI<{ success: boolean; payments: Payment[] }>(`/api/clients/${clientId}/payments`, { token }),
