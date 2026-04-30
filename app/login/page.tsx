@@ -26,6 +26,8 @@ export default function LoginPage() {
       const response = await authAPI.login(email, password)
       localStorage.setItem("token", response.token)
       localStorage.setItem("user", JSON.stringify(response.user))
+      // Limpiar la empresa seleccionada para que se use la empresa asignada al usuario
+      localStorage.removeItem("selectedCompanyId")
       
       toast({
         title: "Bienvenido",

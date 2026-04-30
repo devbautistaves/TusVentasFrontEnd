@@ -130,7 +130,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [canSwitchCompany, setCanSwitchCompany] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
+  const initializeCompany = () => {
     // Obtener datos del usuario desde localStorage
     const userDataString = localStorage.getItem("user")
     let userRole: string | undefined
@@ -158,7 +158,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     // Cargar empresa guardada o usar la empresa asignada
     const savedCompanyId = localStorage.getItem(STORAGE_KEY)
     
-    // Priorizar la empresa asignada para vendedores/supervisores
+    // Priorizar la empresa asignada para vendedores/supervisores/soporte
     if (!canSwitch && userCompanyId) {
       const assignedCompany = companies.find((c) => c.id === userCompanyId)
       if (assignedCompany) {
@@ -169,7 +169,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Para admin/support, usar la empresa guardada si es valida
+    // Para admin, usar la empresa guardada si es valida
     if (savedCompanyId) {
       const company = companies.find((c) => c.id === savedCompanyId)
       if (company) {
@@ -186,6 +186,20 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     }
     
     setIsLoading(false)
+  }
+
+  useEffect(() => {
+    initializeCompany()
+    
+    // Escuchar cambios en localStorage (para cuando el usuario hace login/logout)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "user" || e.key === STORAGE_KEY) {
+        initializeCompany()
+      }
+    }
+    
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
   const switchCompany = (companyId: string) => {

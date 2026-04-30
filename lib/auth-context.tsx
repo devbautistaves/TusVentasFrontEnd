@@ -57,9 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await usersAPI.getProfile(authToken)
       setUser(response.user)
+      // Guardar datos del usuario en localStorage para que CompanyContext pueda acceder
+      localStorage.setItem("user", JSON.stringify(response.user))
     } catch (error) {
       console.error("Error fetching user:", error)
       localStorage.removeItem("token")
+      localStorage.removeItem("user")
       setToken(null)
     } finally {
       setIsLoading(false)
@@ -69,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const response = await authAPI.login(email, password)
     localStorage.setItem("token", response.token)
+    // Guardar datos del usuario en localStorage para que CompanyContext pueda acceder
+    localStorage.setItem("user", JSON.stringify(response.user))
     setToken(response.token)
     setUser(response.user)
   }
@@ -86,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    localStorage.removeItem("selectedCompanyId")
     setToken(null)
     setUser(null)
   }
