@@ -1209,7 +1209,7 @@ export default function AdminCommissionsPage() {
       // SECCION: VENTAS CANCELADAS CON DESCUENTO
       const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
       csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-      csvRows.push(`────────────────��──────────────────────────────────────────────────────────`)
+      csvRows.push(`────────────────��──────────────────���───────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
       
       cancelledWithCost.forEach((sale, idx) => {
@@ -2758,7 +2758,7 @@ export default function AdminCommissionsPage() {
                     Neto a cobrar (sin nuevo adelanto): {formatCurrency(
                       Math.max(0, (selectedUserForAdvance.role === "supervisor"
                         ? calculateSupervisorCommission(selectedUserForAdvance._id)
-                        : calculateSellerCommission(selectedUserForAdvance._id)) - getUserAdvanceTotalForMonth(selectedUserForAdvance._id)
+                        : calculateSellerCommission(selectedUserForAdvance._id)) - getUserAdvanceTotalForMonth(selectedUserForAdvance._id))
                     )}
                   </p>
                 </div>
