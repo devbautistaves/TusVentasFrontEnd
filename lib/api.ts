@@ -1064,6 +1064,14 @@ export const clientsAPI = {
     return fetchAPI<{ success: boolean; clients: Client[] }>(`/api/clients${query}`, { token })
   },
 
+  // Obtener clientes asignados al vendedor actual
+  getMyClients: (token: string, filters?: { status?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; clients: Client[] }>(`/api/clients/my${query}`, { token })
+  },
+
   getById: (token: string, id: string) =>
     fetchAPI<{ success: boolean; client: Client }>(`/api/clients/${id}`, { token }),
 

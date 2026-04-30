@@ -11,6 +11,8 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/hooks/use-toast"
 import { plansAPI, salesAPI, usersAPI, Plan, User } from "@/lib/api"
+import { useCompany } from "@/lib/company-context"
+import { TuPaginaYaSaleForm } from "@/components/tupaginaya-sale-form"
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import { ArrowLeft, Check, CreditCard, Building2, UserPlus, AlertCircle, Papercl
 import Link from "next/link"
 
 export default function NewSalePage() {
+  const { currentCompany } = useCompany()
   const [plans, setPlans] = useState<Plan[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
@@ -32,6 +35,19 @@ export default function NewSalePage() {
   const [installationFiles, setInstallationFiles] = useState<File[]>([])
   const router = useRouter()
   const { toast } = useToast()
+
+  // Si es TuPaginaYa, mostrar formulario simplificado
+  if (currentCompany.id === "tupaginaya") {
+    return (
+      <DashboardLayout requiredRole="admin">
+        <TuPaginaYaSaleForm 
+          redirectPath="/admin/clients" 
+          backPath="/admin" 
+          requiredRole="admin"
+        />
+      </DashboardLayout>
+    )
+  }
 
   const [formData, setFormData] = useState({
     // Datos del cliente

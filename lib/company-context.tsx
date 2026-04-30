@@ -111,7 +111,8 @@ function getAvailableCompanies(userRole?: string, userCompanyId?: string): Compa
     return activeCompanies
   }
   
-  // Vendedores, supervisores y soporte solo pueden ver su empresa asignada
+  // Vendedores, supervisores y soporte SOLO pueden ver su empresa asignada
+  // NUNCA mostrar otra empresa que no sea la asignada
   if (userCompanyId) {
     const assignedCompany = activeCompanies.find((c) => c.id === userCompanyId)
     if (assignedCompany) {
@@ -119,9 +120,16 @@ function getAvailableCompanies(userRole?: string, userCompanyId?: string): Compa
     }
   }
   
-  // Si no hay empresa asignada, default a prosegur (compatibilidad)
-  const defaultCompany = activeCompanies.find((c) => c.id === "prosegur")
-  return defaultCompany ? [defaultCompany] : activeCompanies.slice(0, 1)
+  // Si no hay empresa asignada, NO mostrar ninguna empresa por defecto
+  // Esto forzara al admin a asignar una empresa al usuario
+  return []
+}
+
+// Helper para obtener la empresa correcta del usuario
+function getUserCompany(userCompanyId?: string): Company | null {
+  if (!userCompanyId) return null
+  const activeCompanies = COMPANIES.filter((c) => c.isActive)
+  return activeCompanies.find((c) => c.id === userCompanyId) || null
 }
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
@@ -146,31 +154,32 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Calcular empresas disponibles segun rol y companyId
-    const companies = getAvailableCompanies(userRole, userCompanyId)
-    setAvailableCompanies(companies)
-    
     // Verificar si el usuario puede cambiar de empresa
     // Solo admin puede cambiar de empresa
     const canSwitch = userRole === "admin"
     setCanSwitchCompany(canSwitch)
     
-    // Cargar empresa guardada o usar la empresa asignada
-    const savedCompanyId = localStorage.getItem(STORAGE_KEY)
-    
-    // Priorizar la empresa asignada para vendedores/supervisores/soporte
+    // IMPORTANTE: Para usuarios NO admin, SIEMPRE usar la empresa asignada
+    // Ignorar completamente lo que haya en localStorage
     if (!canSwitch && userCompanyId) {
-      const assignedCompany = companies.find((c) => c.id === userCompanyId)
+      const assignedCompany = getUserCompany(userCompanyId)
       if (assignedCompany) {
         setCurrentCompany(assignedCompany)
+        setAvailableCompanies([assignedCompany])
+        // Forzar el localStorage a la empresa correcta
         localStorage.setItem(STORAGE_KEY, assignedCompany.id)
         setIsLoading(false)
         return
       }
     }
     
+    // Para admin, calcular empresas disponibles
+    const companies = getAvailableCompanies(userRole, userCompanyId)
+    setAvailableCompanies(companies)
+    
     // Para admin, usar la empresa guardada si es valida
-    if (savedCompanyId) {
+    const savedCompanyId = localStorage.getItem(STORAGE_KEY)
+    if (canSwitch && savedCompanyId) {
       const company = companies.find((c) => c.id === savedCompanyId)
       if (company) {
         setCurrentCompany(company)

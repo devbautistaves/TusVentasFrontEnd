@@ -11,10 +11,13 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/hooks/use-toast"
 import { plansAPI, salesAPI, Plan } from "@/lib/api"
+import { useCompany } from "@/lib/company-context"
+import { TuPaginaYaSaleForm } from "@/components/tupaginaya-sale-form"
 import { ArrowLeft, Check, CreditCard, Building2, UserPlus, AlertCircle, Paperclip, X, FileText, Image, File } from "lucide-react"
 import Link from "next/link"
 
 export default function NewSalePage() {
+  const { currentCompany } = useCompany()
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -23,6 +26,19 @@ export default function NewSalePage() {
   const [installationFiles, setInstallationFiles] = useState<File[]>([])
   const router = useRouter()
   const { toast } = useToast()
+
+  // Si es TuPaginaYa, mostrar formulario simplificado
+  if (currentCompany.id === "tupaginaya") {
+    return (
+      <DashboardLayout requiredRole="seller">
+        <TuPaginaYaSaleForm 
+          redirectPath="/seller/clients" 
+          backPath="/seller" 
+          requiredRole="seller"
+        />
+      </DashboardLayout>
+    )
+  }
 
   const [formData, setFormData] = useState({
     // Datos del cliente
