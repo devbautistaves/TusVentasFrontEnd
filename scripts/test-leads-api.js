@@ -1,7 +1,7 @@
 // Script para testear los endpoints de Leads API
 // Ejecutar con: node scripts/test-leads-api.js
 
-const API_URL = process.env.API_URL || "http://192.168.100.6:3000"
+const API_URL = process.env.API_URL || "https://vps-5905394-x.dattaweb.com"
 
 // Credenciales de prueba (admin)
 const TEST_EMAIL = process.env.TEST_EMAIL || "admin@test.com"

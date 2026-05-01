@@ -7,16 +7,8 @@ import { Providers } from "./providers"
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 export const metadata: Metadata = {
-  title: "Grupo JV - Broker de Negocios y Seguros",
-  description: "En nuestra organizacion podras encontrar una amplia gama de soluciones para vos, tus bienes y tu vida diaria, desde seguros con las mejores coberturas hasta alarmas monitoreadas.",
-  keywords: "GrupoJV, Jonathan, Vescio, Seguros, ADT, ALARMAS, ASEGURADORA, PRODUCTOR, EMPRESA",
-  authors: [{ name: "Grupo JV" }],
-  openGraph: {
-    type: "website",
-    url: "https://www.grupojv.com.ar",
-    locale: "es_AR",
-    siteName: "Grupo JV",
-  },
+  title: "Grupo JV - Sistema de Gestion",
+  description: "Sistema de gestion multi-empresa para Grupo JV - TusVentas y TuPaginaYa",
 }
 
 export default function RootLayout({

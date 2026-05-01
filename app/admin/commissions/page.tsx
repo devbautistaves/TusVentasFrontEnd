@@ -24,8 +24,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { usersAPI, salesAPI, adCostsAPI, advancesAPI, User, Sale, SupervisorAdCost as APIAdCost, Advance } from "@/lib/api"
-import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle, Download, Banknote, Trash2 } from "lucide-react"
+import { usersAPI, salesAPI, adCostsAPI, advancesAPI, liquidationEmailsAPI, User, Sale, SupervisorAdCost as APIAdCost, Advance } from "@/lib/api"
+import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsheet, Calendar, Eye, Megaphone, History, Wrench, Printer, AlertCircle, XCircle, Download, Banknote, Trash2, Mail, Send } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
@@ -980,8 +980,9 @@ export default function AdminCommissionsPage() {
     }
   }
 
-  // Estado para descarga PDF
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+// Estado para descarga PDF y envio de email
+const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+const [isSendingEmail, setIsSendingEmail] = useState(false)
 
   // Descargar como PDF (screenshot del modal)
   const handleDownloadPDF = async () => {
@@ -1049,6 +1050,82 @@ export default function AdminCommissionsPage() {
       })
     } finally {
       setIsGeneratingPDF(false)
+    }
+  }
+
+  // Enviar liquidacion por email
+  const handleSendLiquidacionEmail = async () => {
+    const printContent = document.getElementById("liquidacion-print-content")
+    if (!printContent || !selectedUserForLiquidacion) return
+
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    setIsSendingEmail(true)
+
+    try {
+      // Generar PDF como base64
+      const canvas = await html2canvas(printContent, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#0f172a",
+        logging: false,
+      })
+
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      })
+
+      const imgWidth = 297
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const pageHeight = 210
+      let finalWidth = imgWidth
+      let finalHeight = imgHeight
+
+      if (imgHeight > pageHeight - 10) {
+        const ratio = (pageHeight - 10) / imgHeight
+        finalWidth = imgWidth * ratio
+        finalHeight = pageHeight - 10
+      }
+
+      const xOffset = (297 - finalWidth) / 2
+      const yOffset = (210 - finalHeight) / 2
+      const imgData = canvas.toDataURL("image/png")
+      pdf.addImage(imgData, "PNG", xOffset, yOffset, finalWidth, finalHeight)
+
+      // Convertir PDF a base64
+      const pdfBase64 = pdf.output("datauristring").split(",")[1]
+
+      // Obtener datos de la liquidacion
+      const data = getLiquidacionData(selectedUserForLiquidacion)
+
+      // Enviar email
+      await liquidationEmailsAPI.sendEmail(token, {
+        userId: selectedUserForLiquidacion._id,
+        period: selectedMonth,
+        totalAmount: data.totalCommission,
+        pdfBase64,
+      })
+
+      toast({
+        title: "Email enviado",
+        description: `La liquidacion fue enviada a ${selectedUserForLiquidacion.email || selectedUserForLiquidacion.name}`,
+      })
+
+      setIsLiquidacionDialogOpen(false)
+      setSelectedUserForLiquidacion(null)
+    } catch (error) {
+      console.error("Error sending liquidation email:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo enviar el email",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSendingEmail(false)
     }
   }
   
@@ -1209,7 +1286,7 @@ export default function AdminCommissionsPage() {
       // SECCION: VENTAS CANCELADAS CON DESCUENTO
       const cancelledWithCost = cancelledUserSales.filter(s => s.installationCost && s.installationCost > 0)
       csvRows.push(`VENTAS CANCELADAS CON DESCUENTO DE INSTALACION (${cancelledWithCost.length})`)
-      csvRows.push(`────────────────��──────────────────���───────────────────────────────────────`)
+      csvRows.push(`────────────────��──────────────────�����───────────────────────────────────────`)
       csvRows.push(`#,Cliente,DNI,Plan,Fecha Carga,Estado,Costo Instalacion Descontado`)
       
       cancelledWithCost.forEach((sale, idx) => {
@@ -1762,6 +1839,18 @@ export default function AdminCommissionsPage() {
                               >
                                 <FileSpreadsheet className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedUserForLiquidacion(user)
+                                  setIsLiquidacionDialogOpen(true)
+                                }}
+                                title="Enviar por Email"
+                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                              >
+                                <Mail className="h-4 w-4" />
+                              </Button>
   </div>
   </td>
   </tr>
@@ -1947,6 +2036,18 @@ export default function AdminCommissionsPage() {
                               title="Ver Liquidacion"
                             >
                               <FileSpreadsheet className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedUserForLiquidacion(user)
+                                setIsLiquidacionDialogOpen(true)
+                              }}
+                              title="Enviar por Email"
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                            >
+                              <Mail className="h-4 w-4" />
                             </Button>
                           </div>
                         </td>
@@ -2502,13 +2603,25 @@ export default function AdminCommissionsPage() {
               }}>
                 Cerrar
               </Button>
-<Button onClick={handleDownloadPDF} disabled={isGeneratingPDF} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+<Button onClick={handleDownloadPDF} disabled={isGeneratingPDF || isSendingEmail} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
   {isGeneratingPDF ? (
     <Spinner className="h-4 w-4" />
   ) : (
     <Download className="h-4 w-4" />
   )}
   {isGeneratingPDF ? "Generando..." : "Descargar PDF"}
+  </Button>
+  <Button 
+    onClick={handleSendLiquidacionEmail} 
+    disabled={isGeneratingPDF || isSendingEmail} 
+    className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+  >
+    {isSendingEmail ? (
+      <Spinner className="h-4 w-4" />
+    ) : (
+      <Send className="h-4 w-4" />
+    )}
+    {isSendingEmail ? "Enviando..." : "Enviar por Email"}
   </Button>
             </DialogFooter>
           </DialogContent>
