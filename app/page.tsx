@@ -316,7 +316,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section id="inicio" className="relative min-h-screen pt-16">
+      <section id="inicio" className="relative min-h-[100vh] lg:min-h-[100vh]">
         {heroSlides.map((slide, index) => (
           <div
             key={index}
@@ -329,46 +329,47 @@ export default function LandingPage() {
                 src={slide.image}
                 alt={slide.title}
                 fill
-                className="object-cover opacity-20"
+                className="object-cover opacity-25"
                 priority={index === 0}
               />
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-gray-900/50 to-transparent" />
             </div>
           </div>
         ))}
 
-        {/* Hero Content - Always visible */}
-        <div className="relative z-20 container mx-auto px-4 pt-12 pb-8">
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
+        {/* Hero Content */}
+        <div className="relative z-20 container mx-auto px-6 lg:px-8 h-full flex items-center pt-24 pb-32 lg:pt-32 lg:pb-40">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full">
             {/* Left Side - Slider Content */}
             <div className="text-white">
-              <div className="min-h-[280px] md:min-h-[320px]">
+              <div className="min-h-[380px] md:min-h-[420px] lg:min-h-[450px]">
                 {heroSlides.map((slide, index) => (
                   <div
                     key={index}
-                    className={`transition-all duration-500 ${
-                      index === currentSlide ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 absolute"
+                    className={`transition-all duration-700 ${
+                      index === currentSlide ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 absolute"
                     }`}
                   >
                     {index === currentSlide && (
                       <>
-                        <span className="inline-block px-3 py-1 bg-blue-500/20 border border-blue-400/30 rounded-full text-blue-300 text-sm font-medium mb-4">
-                          {index === 3 ? "Nueva Plataforma" : "Grupo JV"}
+                        <span className="inline-block px-4 py-2 bg-blue-500/20 border border-blue-400/30 rounded-full text-blue-300 text-sm font-medium mb-6 backdrop-blur-sm">
+                          {index === 3 ? "Nueva Plataforma" : "Grupo JV - Mas de 10 anos protegiendote"}
                         </span>
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
-                          {slide.title} <span className="text-blue-400">{slide.highlight}</span>
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 leading-[1.1] tracking-tight">
+                          {slide.title} <br className="hidden sm:block" /><span className="text-blue-400">{slide.highlight}</span>
                         </h1>
-                        <p className="text-base md:text-lg mb-6 text-gray-300 leading-relaxed max-w-xl">
+                        <p className="text-lg md:text-xl lg:text-2xl mb-10 text-gray-300 leading-relaxed max-w-2xl">
                           {slide.description}
                         </p>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-4">
                           {slide.buttons.map((button, btnIndex) => (
                             <Link key={btnIndex} href={button.href} target={button.href.startsWith("http") ? "_blank" : undefined}>
                               <Button
                                 size="lg"
                                 className={
                                   button.primary
-                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all"
-                                    : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-gray-900 transition-all"
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xl shadow-blue-600/40 hover:shadow-blue-600/60 transition-all px-8 py-6 text-lg font-semibold"
+                                    : "bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white hover:bg-white hover:text-gray-900 transition-all px-8 py-6 text-lg font-semibold"
                                 }
                               >
                                 {button.text}
@@ -383,21 +384,21 @@ export default function LandingPage() {
               </div>
 
               {/* Slider Controls */}
-              <div className="flex items-center gap-4 mt-6">
+              <div className="flex items-center gap-6 mt-10">
                 <button
                   onClick={prevSlide}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
+                  className="p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-all border border-white/20 hover:border-white/40"
                   aria-label="Previous slide"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-6 w-6" />
                 </button>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   {heroSlides.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentSlide(index)}
-                      className={`h-2 rounded-full transition-all ${
-                        index === currentSlide ? "bg-blue-500 w-8" : "bg-white/30 hover:bg-white/50 w-2"
+                      className={`h-3 rounded-full transition-all ${
+                        index === currentSlide ? "bg-blue-500 w-12" : "bg-white/30 hover:bg-white/50 w-3"
                       }`}
                       aria-label={`Go to slide ${index + 1}`}
                     />
@@ -405,44 +406,52 @@ export default function LandingPage() {
                 </div>
                 <button
                   onClick={nextSlide}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
+                  className="p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-all border border-white/20 hover:border-white/40"
                   aria-label="Next slide"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-6 w-6" />
                 </button>
               </div>
             </div>
 
             {/* Right Side - Quick Cotizadores Grid */}
-            <div className="lg:pl-8">
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-                <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-400" />
-                  Cotiza rapido
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="lg:pl-4">
+              <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="p-3 bg-yellow-500/20 rounded-xl">
+                    <Zap className="h-7 w-7 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-2xl">Cotiza Rapido</h3>
+                    <p className="text-gray-400 text-sm">Obtene tu presupuesto en minutos</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   {quickCotizadores.map((item, index) => (
                     <Link
                       key={index}
                       href={item.href}
                       target="_blank"
-                      className="group relative overflow-hidden rounded-xl p-4 bg-gradient-to-br from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                      className="group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-white/15 to-white/5 hover:from-white/25 hover:to-white/15 border border-white/15 hover:border-white/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl"
                     >
                       <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                       <div className="relative z-10">
-                        <div className="w-10 h-10 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center mb-3 transition-colors">
-                          <item.icon className="h-5 w-5 text-white" />
+                        <div className="w-14 h-14 rounded-2xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center mb-4 transition-all group-hover:scale-110">
+                          <item.icon className="h-7 w-7 text-white" />
                         </div>
-                        <h4 className="font-semibold text-white text-sm mb-1">{item.title}</h4>
-                        <p className="text-xs text-gray-400 group-hover:text-white/80 transition-colors">{item.description}</p>
-                        <ArrowRight className="absolute bottom-4 right-4 h-4 w-4 text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                        <h4 className="font-bold text-white text-lg mb-1">{item.title}</h4>
+                        <p className="text-sm text-gray-400 group-hover:text-white/90 transition-colors leading-relaxed">{item.description}</p>
+                        <ArrowRight className="absolute bottom-5 right-5 h-5 w-5 text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
                       </div>
                     </Link>
                   ))}
                 </div>
-                <Link href="/cotizaciones" className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all hover:shadow-lg hover:shadow-blue-600/30">
+                <Link 
+                  href="/cotizaciones" 
+                  className="mt-6 w-full flex items-center justify-center gap-3 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg transition-all hover:shadow-2xl hover:shadow-blue-600/40 hover:scale-[1.02]"
+                >
                   Ver todos los cotizadores
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-5 w-5" />
                 </Link>
               </div>
             </div>
@@ -451,18 +460,18 @@ export default function LandingPage() {
 
         {/* Floating Partners Bar */}
         <div className="absolute bottom-0 left-0 right-0 z-20">
-          <div className="bg-white/5 backdrop-blur-md border-t border-white/10 py-4">
-            <div className="container mx-auto px-4">
-              <div className="flex items-center justify-center gap-8 flex-wrap">
-                <span className="text-gray-400 text-sm hidden sm:block">Trabajamos con:</span>
+          <div className="bg-black/30 backdrop-blur-xl border-t border-white/10 py-6">
+            <div className="container mx-auto px-6">
+              <div className="flex items-center justify-center gap-12 flex-wrap">
+                <span className="text-gray-300 text-sm font-medium hidden sm:block">Trabajamos con:</span>
                 {partners.map((partner, index) => (
-                  <div key={index} className="grayscale hover:grayscale-0 transition-all opacity-60 hover:opacity-100">
+                  <div key={index} className="grayscale hover:grayscale-0 transition-all opacity-70 hover:opacity-100 hover:scale-110">
                     <Image
                       src={partner.logo}
                       alt={partner.name}
-                      width={80}
-                      height={40}
-                      className="h-6 w-auto object-contain brightness-0 invert"
+                      width={100}
+                      height={50}
+                      className="h-8 w-auto object-contain brightness-0 invert"
                     />
                   </div>
                 ))}
