@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://192.168.100.6:3000"
 
 interface FetchOptions extends RequestInit {
   token?: string
@@ -28,10 +28,15 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers["Authorization"] = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-  })
+  let response
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+    })
+  } catch {
+    throw new Error("Error de conexion con el servidor")
+  }
 
   const responseText = await response.text()
   
@@ -1313,71 +1318,4 @@ export const advancesAPI = {
     const queryString = month ? `?month=${month}` : ""
     return fetchAPI<{ success: boolean; advances: Advance[] }>(`/api/advances/my${queryString}`, { token })
   },
-}
-
-// Liquidation Email API - Envio de liquidaciones por email y gestion de facturas
-export interface LiquidationEmailRecord {
-  _id: string
-  userId: string | { _id: string; name: string; email: string }
-  period: string
-  totalAmount: number
-  emailSentTo: string
-  emailSentAt: string
-  sentBy: string | { _id: string; name: string }
-  invoiceUploaded: boolean
-  invoiceUrl?: string
-  invoiceUploadedAt?: string
-  invoiceStatus: "pending" | "uploaded" | "processed" | "paid"
-  paymentDate?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export const liquidationEmailsAPI = {
-  // Enviar liquidacion por email
-  sendEmail: (token: string, data: { userId: string; period: string; totalAmount: number; liquidationHtml?: string; pdfBase64?: string }) =>
-    fetchAPI<{ success: boolean; message: string; liquidationEmailId: string }>("/api/liquidations/send-email", {
-      method: "POST",
-      token,
-      body: JSON.stringify(data),
-    }),
-
-  // Obtener liquidaciones enviadas
-  getAll: (token: string, filters?: { userId?: string; period?: string }) => {
-    const params = new URLSearchParams()
-    if (filters?.userId) params.append("userId", filters.userId)
-    if (filters?.period) params.append("period", filters.period)
-    const query = params.toString() ? `?${params.toString()}` : ""
-    return fetchAPI<{ success: boolean; liquidationEmails: LiquidationEmailRecord[] }>(`/api/liquidations/emails${query}`, { token })
-  },
-
-  // Subir factura
-  uploadInvoice: async (token: string, id: string, file: File) => {
-    const formData = new FormData()
-    formData.append("invoice", file)
-    
-    const response = await fetch(`${API_BASE_URL}/api/liquidations/emails/${id}/upload-invoice`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    })
-    
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || "Error uploading invoice")
-    }
-    
-    return response.json() as Promise<{ success: boolean; message: string; invoiceUrl: string }>
-  },
-
-  // Actualizar estado de factura
-  updateStatus: (token: string, id: string, data: { invoiceStatus: string; paymentDate?: string; notes?: string }) =>
-    fetchAPI<{ success: boolean; liquidationEmail: LiquidationEmailRecord }>(`/api/liquidations/emails/${id}/status`, {
-      method: "PUT",
-      token,
-      body: JSON.stringify(data),
-    }),
 }

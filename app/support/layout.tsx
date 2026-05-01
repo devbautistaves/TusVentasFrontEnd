@@ -3,5 +3,9 @@ export default function SupportLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return (
+    <div className="dark">
+      {children}
+    </div>
+  )
 }

@@ -231,7 +231,7 @@ export default function NewSalePage() {
 
     // Enviar al backend
     try {
-      const response = await fetch(`https://vps-5905394-x.dattaweb.com/api/sales`, {
+      const response = await fetch(`http://192.168.100.6:3000/api/sales`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

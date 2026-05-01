@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
-import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/hooks/use-toast"
 import { authAPI } from "@/lib/api"
-import { TrendingUp, Shield, BarChart3, Users } from "lucide-react"
+import { TrendingUp, Shield, BarChart3, Users, ArrowLeft } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -18,15 +18,17 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async () => {
+    if (isLoading) return
+    
     setIsLoading(true)
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://192.168.100.6:3000"
 
     try {
       const response = await authAPI.login(email, password)
       localStorage.setItem("token", response.token)
       localStorage.setItem("user", JSON.stringify(response.user))
-      // Limpiar la empresa seleccionada para que se use la empresa asignada al usuario
       localStorage.removeItem("selectedCompanyId")
       
       toast({
@@ -55,15 +57,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="dark min-h-screen flex bg-background">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-secondary to-background p-12 flex-col justify-between">
         <div>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-primary-foreground" />
+              <span className="text-primary-foreground font-bold text-xl">JV</span>
             </div>
-            <span className="text-2xl font-bold text-foreground">TusVentas</span>
+            <span className="text-2xl font-bold text-foreground">Grupo JV</span>
           </div>
         </div>
         
@@ -100,7 +102,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          2024 TusVentas. Todos los derechos reservados.
+          2025 Grupo JV. Todos los derechos reservados.
         </p>
       </div>
 
@@ -110,9 +112,9 @@ export default function LoginPage() {
           <CardHeader className="space-y-1 text-center">
             <div className="lg:hidden flex items-center justify-center gap-3 mb-4">
               <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-primary-foreground" />
+                <span className="text-primary-foreground font-bold text-xl">JV</span>
               </div>
-              <span className="text-2xl font-bold text-foreground">TusVentas</span>
+              <span className="text-2xl font-bold text-foreground">Grupo JV</span>
             </div>
             <CardTitle className="text-2xl font-bold">Iniciar Sesion</CardTitle>
             <CardDescription>
@@ -120,7 +122,7 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-4">
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -144,24 +146,26 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="bg-secondary/50"
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   />
                 </Field>
               </FieldGroup>
               <Button
-                type="submit"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                type="button"
+                onClick={handleLogin}
+                className="w-full"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <>
-                    <Spinner className="mr-2 h-4 w-4" />
-                    Ingresando...
-                  </>
-                ) : (
-                  "Ingresar"
-                )}
+                {isLoading ? "Ingresando..." : "Ingresar"}
               </Button>
-            </form>
+              
+              <div className="text-center pt-4">
+                <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver al inicio
+                </Link>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
