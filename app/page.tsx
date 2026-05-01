@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation"
 
 <<<<<<< HEAD
-<<<<<<< HEAD
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -867,10 +866,6 @@ export default function LandingPage() {
       </footer>
     </div>
   )
-=======
-export default function HomePage() {
-  redirect("/login")
->>>>>>> parent of 9a8514a (ASD)
 =======
 export default function HomePage() {
   redirect("/login")
