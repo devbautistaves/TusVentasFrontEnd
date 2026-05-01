@@ -65,7 +65,7 @@ export default function SupportDashboard() {
   const fetchStats = async (token: string) => {
     try {
       // Intentar endpoint de support primero, con fallback a admin
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://192.168.100.6:3000"
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
       const response = await fetch(`${API_URL}/api/support/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       })

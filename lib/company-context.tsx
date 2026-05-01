@@ -36,8 +36,8 @@ export interface CompanySettings {
 export const COMPANIES: Company[] = [
   {
     id: "prosegur",
-    name: "Empresa 1",
-    displayName: "Empresa 1 - Internet",
+    name: "Prosegur",
+    displayName: "Prosegur - Internet",
     primaryColor: "#f59e0b",
     secondaryColor: "#1a1a2e",
     isActive: true,
@@ -63,8 +63,8 @@ export const COMPANIES: Company[] = [
   },
   {
     id: "tupaginaya",
-    name: "Empresa 2",
-    displayName: "Empresa 2 - Webs",
+    name: "TuPaginaYa",
+    displayName: "TuPaginaYa - Webs",
     primaryColor: "#3b82f6",
     secondaryColor: "#0f172a",
     isActive: true,

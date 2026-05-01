@@ -257,7 +257,7 @@ export default function SupportNewSalePage() {
           try {
             const formData = new FormData()
             formData.append("file", file)
-            await fetch(`http://192.168.100.6:3000/api/sales/${result.sale._id}/attachments`, {
+            await fetch(`https://vps-5905394-x.dattaweb.com/api/sales/${result.sale._id}/attachments`, {
               method: "POST",
               headers: { Authorization: `Bearer ${token}` },
               body: formData,

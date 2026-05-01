@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NEXT_PUBLIC_API_URL = "http://192.168.100.6:3000"
+  NEXT_PUBLIC_API_URL = "https://vps-5905394-x.dattaweb.com"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

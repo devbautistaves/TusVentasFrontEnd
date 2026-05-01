@@ -440,7 +440,7 @@ export default function AdminUsersPage() {
                             ? "bg-blue-500/20 text-blue-400" 
                             : "bg-green-500/20 text-green-400"
                         }`}>
-                          {(user.companyId || "prosegur") === "prosegur" ? "Empresa 1" : "Empresa 2"}
+                          {(user.companyId || "prosegur") === "prosegur" ? "Prosegur" : "TuPaginaYa"}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -544,8 +544,8 @@ export default function AdminUsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="prosegur">Empresa 1 - Alarmas</SelectItem>
-                    <SelectItem value="tupaginaya">Empresa 2 - Webs</SelectItem>
+                    <SelectItem value="prosegur">Prosegur - Internet</SelectItem>
+                    <SelectItem value="tupaginaya">TuPaginaYa - Webs</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
