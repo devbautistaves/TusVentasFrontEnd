@@ -10,5 +10,9 @@ export default function SupervisorLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return (
+    <div className="dark">
+      {children}
+    </div>
+  )
 }

@@ -113,7 +113,7 @@ export function TuPaginaYaSaleForm({ redirectPath, backPath, requiredRole }: TuP
     }
 
     try {
-      const response = await fetch(`https://vps-5905394-x.dattaweb.com/api/clients`, {
+      const response = await fetch(`http://192.168.100.6:3000/api/clients`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
