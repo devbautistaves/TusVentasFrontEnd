@@ -65,7 +65,7 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
     .slice(0, 2)
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 md:gap-4 border-b border-border bg-card/95 backdrop-blur px-3 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 md:gap-4 border-b border-slate-200 bg-white px-3 md:px-6 shadow-sm">
       <Button
         variant="ghost"
         size="icon"
@@ -81,10 +81,10 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
       {/* Search - hidden on small mobile */}
       <div className="flex-1 max-w-md hidden sm:block">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Buscar..."
-            className="pl-9 bg-secondary/50 border-border/50"
+            className="pl-9 bg-slate-50 border-slate-200 focus:border-[#1a3a5c] focus:ring-[#1a3a5c]"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#5eb3e4] text-[10px] font-bold text-white flex items-center justify-center">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -149,7 +149,7 @@ export function Header({ userName, role, onMenuClick }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2 md:px-3">
               <Avatar className="h-7 w-7 md:h-8 md:w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs md:text-sm">
+                <AvatarFallback className="bg-[#1a3a5c] text-white text-xs md:text-sm">
                   {initials}
                 </AvatarFallback>
               </Avatar>

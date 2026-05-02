@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +10,7 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/hooks/use-toast"
 import { authAPI } from "@/lib/api"
-import { TrendingUp, Shield, BarChart3, Users } from "lucide-react"
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -26,7 +27,6 @@ export default function LoginPage() {
       const response = await authAPI.login(email, password)
       localStorage.setItem("token", response.token)
       localStorage.setItem("user", JSON.stringify(response.user))
-      // Limpiar la empresa seleccionada para que se use la empresa asignada al usuario
       localStorage.removeItem("selectedCompanyId")
       
       toast({
@@ -57,73 +57,80 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-secondary to-background p-12 flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">TusVentas</span>
-          </div>
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1a3a5c] relative overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-full h-full" 
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          />
         </div>
         
-        <div className="space-y-8">
-          <h1 className="text-4xl font-bold text-foreground leading-tight text-balance">
-            Sistema de Gestion de Ventas Profesional
-          </h1>
-          <p className="text-lg text-muted-foreground text-pretty">
-            Gestiona tu equipo de ventas, controla comisiones y optimiza el rendimiento de tu negocio.
-          </p>
-          
-          <div className="grid grid-cols-2 gap-6">
-            <FeatureCard
-              icon={<BarChart3 className="h-5 w-5" />}
-              title="Dashboard"
-              description="Metricas en tiempo real"
-            />
-            <FeatureCard
-              icon={<Users className="h-5 w-5" />}
-              title="Equipo"
-              description="Gestion de vendedores"
-            />
-            <FeatureCard
-              icon={<TrendingUp className="h-5 w-5" />}
-              title="Ventas"
-              description="Seguimiento completo"
-            />
-            <FeatureCard
-              icon={<Shield className="h-5 w-5" />}
-              title="Seguro"
-              description="Datos protegidos"
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 w-full h-full">
+          {/* Logo section */}
+          <div className="flex flex-col items-center">
+            <Image
+              src="/images/grupojv/logo2.png"
+              alt="Grupo JV - 10 Anos"
+              width={320}
+              height={280}
+              className="object-contain drop-shadow-2xl"
+              priority
             />
           </div>
+          
+          {/* Title and subtitle */}
+          <div className="space-y-6 text-center mt-10">
+            <div className="space-y-3">
+              <h1 className="text-2xl font-bold text-white leading-tight tracking-wide">
+                SISTEMA DE GESTION COMERCIAL GRUPOJV
+              </h1>
+              <p className="text-xl text-[#5eb3e4] font-semibold tracking-widest">
+                COMERCIALIZADORA
+              </p>
+            </div>
+            
+            <div className="pt-8 border-t border-white/20 mt-8">
+              <p className="text-lg text-white font-medium">
+                AGENTE OFICIAL PROSEGUR ARGENTINA
+              </p>
+            </div>
+          </div>
         </div>
-
-        <p className="text-sm text-muted-foreground">
-          2024 TusVentas. Todos los derechos reservados.
-        </p>
       </div>
 
       {/* Right side - Login form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <Card className="w-full max-w-md border-border/50 bg-card/50 backdrop-blur">
-          <CardHeader className="space-y-1 text-center">
-            <div className="lg:hidden flex items-center justify-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <span className="text-2xl font-bold text-foreground">TusVentas</span>
+      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50">
+        <Card className="w-full max-w-md border-slate-200 shadow-xl">
+          <CardHeader className="space-y-4 text-center pb-2">
+            {/* Mobile logo */}
+            <div className="lg:hidden flex justify-center mb-2">
+              <Image
+                src="/images/grupojv/logo2.png"
+                alt="Grupo JV"
+                width={200}
+                height={160}
+                className="object-contain"
+                priority
+              />
             </div>
-            <CardTitle className="text-2xl font-bold">Iniciar Sesion</CardTitle>
-            <CardDescription>
-              Ingresa tus credenciales para acceder al sistema
-            </CardDescription>
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-800">
+                Iniciar Sesion
+              </CardTitle>
+              <CardDescription className="text-slate-500 mt-2">
+                Ingresa tus credenciales para acceder al sistema de gestion
+              </CardDescription>
+            </div>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className="pt-4">
+            <form onSubmit={handleLogin} className="space-y-5">
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <FieldLabel htmlFor="email" className="text-slate-700">
+                    Email
+                  </FieldLabel>
                   <Input
                     id="email"
                     type="email"
@@ -131,11 +138,13 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-secondary/50"
+                    className="bg-white border-slate-300 focus:border-[#1a3a5c] focus:ring-[#1a3a5c]"
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="password">Contrasena</FieldLabel>
+                  <FieldLabel htmlFor="password" className="text-slate-700">
+                    Contrasena
+                  </FieldLabel>
                   <Input
                     id="password"
                     type="password"
@@ -143,13 +152,13 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="bg-secondary/50"
+                    className="bg-white border-slate-300 focus:border-[#1a3a5c] focus:ring-[#1a3a5c]"
                   />
                 </Field>
               </FieldGroup>
               <Button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                className="w-full bg-[#1a3a5c] hover:bg-[#0f2840] text-white font-semibold py-5"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -162,6 +171,15 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            
+            <div className="mt-6 pt-6 border-t border-slate-200 text-center">
+              <p className="text-xs text-slate-400">
+                Sistema de Gestion de Ventas
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Powered by TusVentas
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -169,16 +187,4 @@ export default function LoginPage() {
   )
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-  return (
-    <div className="flex items-start gap-3 p-4 rounded-lg bg-card/50 border border-border/50">
-      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-        {icon}
-      </div>
-      <div>
-        <h3 className="font-semibold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  )
-}
+

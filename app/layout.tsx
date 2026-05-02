@@ -73,8 +73,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0f172a" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: light)", color: "#1a3a5c" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a3a5c" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -87,8 +87,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className="bg-slate-950">
-      <body className={`${inter.variable} font-sans antialiased`}>
+    <html lang="es" className="bg-slate-50">
+      <body className={`${inter.variable} font-sans antialiased bg-slate-50`}>
         <Providers>
           {children}
         </Providers>

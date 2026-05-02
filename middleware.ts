@@ -7,9 +7,9 @@ export function middleware(request: NextRequest) {
   
   // Check if the request is coming from grupojv.tusventas.digital
   if (hostname.includes('grupojv.tusventas.digital') || hostname.includes('grupojv.')) {
-    // If accessing the root, rewrite to /login (URL stays the same in browser)
-    if (url.pathname === '/' || url.pathname === '') {
-      url.pathname = '/login'
+    // If accessing the root or /login, rewrite to /grupojv/login (URL stays the same in browser)
+    if (url.pathname === '/' || url.pathname === '' || url.pathname === '/login') {
+      url.pathname = '/grupojv/login'
       return NextResponse.rewrite(url)
     }
   }

@@ -102,10 +102,10 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
-          <Spinner className="h-8 w-8 text-primary" />
-          <p className="text-muted-foreground">Cargando...</p>
+          <Spinner className="h-8 w-8 text-[#1a3a5c]" />
+          <p className="text-slate-500">Cargando...</p>
         </div>
       </div>
     )
@@ -116,7 +116,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-slate-100 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div

@@ -4,35 +4,39 @@
 
 @layer base {
   :root {
-    --background: 222 35% 12%;
-    --foreground: 210 40% 98%;
+    /* Paleta basada en Grupo JV - Azul profesional */
+    --background: 210 20% 98%;
+    --foreground: 210 40% 15%;
 
-    --card: 222 35% 15%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 40% 15%;
 
-    --popover: 222 35% 15%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 40% 15%;
 
-    --primary: 45 93% 47%;
-    --primary-foreground: 222 47% 6%;
+    /* Primary: Azul oscuro Grupo JV #1a3a5c */
+    --primary: 209 55% 23%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 30% 22%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary: Gris azulado suave */
+    --secondary: 210 20% 93%;
+    --secondary-foreground: 210 40% 20%;
 
-    --muted: 217 30% 22%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 210 15% 92%;
+    --muted-foreground: 210 15% 45%;
 
-    --accent: 217 30% 22%;
-    --accent-foreground: 210 40% 98%;
+    /* Accent: Celeste Grupo JV #5eb3e4 */
+    --accent: 200 70% 63%;
+    --accent-foreground: 210 40% 15%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 30% 25%;
-    --input: 217 30% 22%;
-    --ring: 45 93% 47%;
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 209 55% 23%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Status colors */
     --status-pending: 48 96% 53%;
@@ -41,11 +45,18 @@
     --status-completed: 142 71% 45%;
     --status-cancelled: 0 84% 60%;
 
-    --chart-1: 45 93% 47%;
-    --chart-2: 217 91% 60%;
+    --chart-1: 209 55% 23%;
+    --chart-2: 200 70% 63%;
     --chart-3: 142 71% 45%;
     --chart-4: 25 95% 53%;
     --chart-5: 0 84% 60%;
+
+    /* Sidebar specific */
+    --sidebar-bg: 209 55% 18%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-border: 209 50% 25%;
+    --sidebar-muted: 209 40% 30%;
+    --sidebar-accent: 200 70% 63%;
   }
 }
 
@@ -81,25 +92,25 @@
 
 /* Status badge styles */
 .status-pending {
-  @apply bg-yellow-500/20 text-yellow-400 border-yellow-500/30;
+  @apply bg-yellow-100 text-yellow-700 border-yellow-300;
 }
 
 .status-observed {
-  @apply bg-orange-500/20 text-orange-400 border-orange-500/30;
+  @apply bg-orange-100 text-orange-700 border-orange-300;
 }
 
 .status-appointed {
-  @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+  @apply bg-blue-100 text-blue-700 border-blue-300;
 }
 
 .status-completed {
-  @apply bg-green-500/20 text-green-400 border-green-500/30;
+  @apply bg-green-100 text-green-700 border-green-300;
 }
 
 .status-cancelled {
-  @apply bg-red-500/20 text-red-400 border-red-500/30;
+  @apply bg-red-100 text-red-700 border-red-300;
 }
 
 .status-pending_appointment {
-  @apply bg-purple-500/20 text-purple-400 border-purple-500/30;
+  @apply bg-purple-100 text-purple-700 border-purple-300;
 }
