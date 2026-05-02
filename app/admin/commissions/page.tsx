@@ -548,12 +548,14 @@ export default function AdminCommissionsPage() {
     
     // Descontar costo de anuncio mensual del neto (100%) ANTES de aplicar el 40%
     const monthlyAdCost = getSupervisorAdCostForMonth(supervisorId)
-    // Descontar adelantos del supervisor
-    const totalAdvances = getUserAdvanceTotalForMonth(supervisorId)
-    const netAfterAdCost = totalBeforePercentage - monthlyAdCost - totalAdvances
+    const netAfterAdCost = totalBeforePercentage - monthlyAdCost
     
-    // Aplicar 40% sobre el neto despues de descontar anuncio y adelantos
-    return Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+    // Aplicar 40% sobre el neto despues de descontar anuncio
+    const commissionBeforeAdvances = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+    
+    // Los adelantos se descuentan de la comision FINAL (despues del 40%)
+    const totalAdvances = getUserAdvanceTotalForMonth(supervisorId)
+    return Math.max(0, commissionBeforeAdvances - totalAdvances)
   }
 
   // Calcular comision ANTES de descontar costo de anuncio (para mostrar desglose)

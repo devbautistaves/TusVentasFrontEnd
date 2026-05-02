@@ -189,16 +189,30 @@ export default function SupervisorDashboardPage() {
       }
     })
 
+    // Descontar costos de instalacion de ventas CANCELADAS
+    cancelledSales.forEach(sale => {
+      if (sale.installationCost && sale.installationCost > 0) {
+        totalBeforePercentage -= sale.installationCost
+      }
+    })
+
     return Math.max(0, totalBeforePercentage)
   }
+  
+  // Calcular descuento por canceladas para mostrar en UI
+  const cancelledInstallationCost = cancelledSales.reduce((acc, sale) => {
+    return acc + (sale.installationCost || 0)
+  }, 0)
 
   // Calcular total de adelantos del mes
   const totalAdvances = myAdvances.reduce((acc, advance) => acc + advance.amount, 0)
 
   const totalBeforePercentage = calculateSupervisorCommission()
-  // Descontar costo de anuncio y adelantos del 100% (neto), luego aplicar 40%
-  const netAfterAdCost = totalBeforePercentage - monthlyAdCost - totalAdvances
-  const totalCommission = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+  // Descontar costo de anuncio del 100% (neto), luego aplicar 40%
+  const netAfterAdCost = totalBeforePercentage - monthlyAdCost
+  const commissionBeforeAdvances = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+  // Los adelantos se descuentan de la comision FINAL (despues del 40%)
+  const totalCommission = Math.max(0, commissionBeforeAdvances - totalAdvances)
 
   // Generar meses disponibles
   const getAvailableMonths = () => {
@@ -272,6 +286,11 @@ export default function SupervisorDashboardPage() {
                     <p className="flex items-center gap-1 text-amber-400">
                       <Megaphone className="h-3 w-3" />
                       Costo de anuncio descontado: -{formatCurrency(monthlyAdCost)}
+                    </p>
+                  )}
+                  {cancelledInstallationCost > 0 && (
+                    <p className="text-red-400">
+                      Descuento por canceladas: -{formatCurrency(cancelledInstallationCost)}
                     </p>
                   )}
                   {totalAdvances > 0 && (
@@ -368,22 +387,30 @@ export default function SupervisorDashboardPage() {
                   <span className="font-semibold text-amber-400">-{formatCurrency(monthlyAdCost)}</span>
                 </div>
               )}
-              {totalAdvances > 0 && (
-                <div className="flex justify-between items-center p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
-                  <span className="text-sm text-orange-400">
-                    Adelantos del mes:
-                  </span>
-                  <span className="font-semibold text-orange-400">-{formatCurrency(totalAdvances)}</span>
-                </div>
-              )}
-              <div className="border-t border-border pt-3">
-                <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
-                  <span className="text-sm font-medium text-foreground">TOTAL DESCUENTOS:</span>
-                  <span className="font-bold text-lg text-red-400">
-                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions + monthlyAdCost + totalAdvances)}
-                  </span>
-                </div>
-              </div>
+  {cancelledInstallationCost > 0 && (
+  <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+  <span className="text-sm text-red-400">
+  Descuento por canceladas:
+  </span>
+  <span className="font-semibold text-red-400">-{formatCurrency(cancelledInstallationCost)}</span>
+  </div>
+  )}
+  {totalAdvances > 0 && (
+  <div className="flex justify-between items-center p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
+  <span className="text-sm text-orange-400">
+  Adelantos del mes (sobre comision final):
+  </span>
+  <span className="font-semibold text-orange-400">-{formatCurrency(totalAdvances)}</span>
+  </div>
+  )}
+  <div className="border-t border-border pt-3">
+  <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
+  <span className="text-sm font-medium text-foreground">TOTAL DESCUENTOS:</span>
+  <span className="font-bold text-lg text-red-400">
+  -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions + monthlyAdCost + cancelledInstallationCost + totalAdvances)}
+  </span>
+  </div>
+  </div>
             </CardContent>
           </Card>
 

@@ -228,9 +228,11 @@ export default function SupervisorCommissionsPage() {
   }
 
   const commission = calculateDetailedCommission()
-  // Descontar costo de anuncio y adelantos del neto (100%), LUEGO aplicar 40%
-  const netAfterAdCost = commission.totalBeforePercentage - monthlyAdCost - totalAdvances
-  const finalCommission = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+  // Descontar costo de anuncio del neto (100%), LUEGO aplicar 40%
+  const netAfterAdCost = commission.totalBeforePercentage - monthlyAdCost
+  const commissionBeforeAdvances = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
+  // Los adelantos se descuentan de la comision FINAL (despues del 40%)
+  const finalCommission = Math.max(0, commissionBeforeAdvances - totalAdvances)
 
   const handleOpenCostsDialog = (sale: Sale) => {
     setSelectedSale(sale)
