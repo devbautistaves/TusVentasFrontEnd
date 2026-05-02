@@ -1,4 +1,12 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
+// Helper to get the correct API base URL
+// Client-side: use local proxy to avoid CORS issues
+// Server-side: call backend directly
+function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return "/api/proxy"
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
+}
 
 interface FetchOptions extends RequestInit {
   token?: string
@@ -28,7 +36,8 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     headers["Authorization"] = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}${endpoint}`, {
     ...fetchOptions,
     headers,
   })
@@ -190,7 +199,7 @@ export const salesAPI = {
     const formData = new FormData()
     formData.append("file", file)
     
-    const response = await fetch(`${API_URL}/api/sales/${saleId}/attachments`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/sales/${saleId}/attachments`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -254,7 +263,7 @@ export const dashboardAPI = {
 export const supportAPI = {
   // Obtener todas las ventas - usa endpoint admin con token de support
   getSales: async (token: string): Promise<{ success: boolean; sales: Sale[] }> => {
-    const response = await fetch(`${API_URL}/api/admin/sales`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/sales`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
@@ -269,7 +278,7 @@ export const supportAPI = {
 
   // Obtener usuarios - usa endpoint admin con token de support
   getUsers: async (token: string): Promise<{ success: boolean; users: User[] }> => {
-    const response = await fetch(`${API_URL}/api/admin/users`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/users`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
@@ -284,7 +293,7 @@ export const supportAPI = {
 
   // Obtener planes - usa endpoint general /api/plans
   getPlans: async (token: string): Promise<{ success: boolean; plans: Plan[] }> => {
-    const response = await fetch(`${API_URL}/api/plans`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/plans`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
@@ -299,7 +308,7 @@ export const supportAPI = {
 
   // Actualizar estado de venta - usa endpoint admin
   updateSaleStatus: async (token: string, id: string, status: string, notes?: string, statusDate?: string, ctoNumber?: string, appointmentSlot?: string) => {
-    const response = await fetch(`${API_URL}/api/admin/sales/${id}/status`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/sales/${id}/status`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -316,7 +325,7 @@ export const supportAPI = {
 
   // Actualizar costos de venta - usa endpoint admin
   updateSaleCosts: async (token: string, id: string, costs: { installationCost?: number; adminCost?: number; adCost?: number; sellerCommissionPaid?: number }) => {
-    const response = await fetch(`${API_URL}/api/admin/sales/${id}/costs`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/sales/${id}/costs`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -333,7 +342,7 @@ export const supportAPI = {
 
   // Asignar vendedor - usa endpoint admin
   assignSeller: async (token: string, id: string, sellerId: string) => {
-    const response = await fetch(`${API_URL}/api/admin/sales/${id}/assign`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/sales/${id}/assign`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -350,7 +359,7 @@ export const supportAPI = {
 
   // Crear venta - usa endpoint admin
   createSale: async (token: string, data: CreateSaleData) => {
-    const response = await fetch(`${API_URL}/api/admin/sales`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/sales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -367,7 +376,7 @@ export const supportAPI = {
 
   // Dashboard stats para support - usa endpoint admin
   getStats: async (token: string) => {
-    const response = await fetch(`${API_URL}/api/admin/stats`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/admin/stats`, {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
@@ -425,7 +434,7 @@ export const announcementsAPI = {
       })
     }
 
-    const response = await fetch(`${API_URL}/api/notifications`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/notifications`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
