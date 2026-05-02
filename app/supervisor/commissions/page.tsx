@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
+import { salesAPI, adCostsAPI, advancesAPI, Sale, Advance } from "@/lib/api"
 import { DollarSign, TrendingUp, Calendar, FileSpreadsheet, Edit2, Megaphone, Wrench, Printer, Download } from "lucide-react"
 
 // Constantes de comision supervisor
@@ -48,6 +48,7 @@ export default function SupervisorCommissionsPage() {
     sellerCommissionPaid: 0,
   })
   const [monthlyAdCost, setMonthlyAdCost] = useState(0)
+  const [myAdvances, setMyAdvances] = useState<Advance[]>([])
   const [isLiquidacionDialogOpen, setIsLiquidacionDialogOpen] = useState(false)
   const { toast } = useToast()
 
@@ -60,11 +61,13 @@ export default function SupervisorCommissionsPage() {
     if (!token) return
 
     try {
-      const [salesRes, adCostsRes] = await Promise.all([
+      const [salesRes, adCostsRes, advancesRes] = await Promise.all([
         salesAPI.getMySales(token),
         adCostsAPI.getMyCosts(token, selectedMonth),
+        advancesAPI.getMine(token, selectedMonth),
       ])
       setSales(salesRes.sales)
+      setMyAdvances(advancesRes.advances || [])
 
       // Obtener el costo de anuncio del mes seleccionado
       const currentAdCost = adCostsRes.adCosts.find(
@@ -86,10 +89,35 @@ export default function SupervisorCommissionsPage() {
     }).format(value)
   }
 
-  // Filtrar ventas del mes seleccionado
+  // Calcular total de adelantos del mes
+  const totalAdvances = myAdvances.reduce((acc, advance) => acc + advance.amount, 0)
+
+  // Filtrar ventas del mes seleccionado segun reglas de negocio:
+  // - INSTALADAS (completed): Se muestran en el mes de completedDate (fecha de activacion)
+  // - TURNADAS (appointed): Se muestran en el mes de appointedDate (fecha del turno)
+  // - PENDIENTE DE TURNO (pending_appointment): Aparecen en TODOS los meses hasta que se resuelvan
+  // - Otros estados: Se muestran en el mes de createdAt
   const getMonthSales = () => {
     const [year, month] = selectedMonth.split("-").map(Number)
     return sales.filter(sale => {
+      // PENDIENTE DE TURNO: aparecen en todos los meses
+      if (sale.status === "pending_appointment") {
+        return true
+      }
+      
+      // INSTALADAS: usar fecha de activacion
+      if (sale.status === "completed" && sale.completedDate) {
+        const completedDate = new Date(sale.completedDate)
+        return completedDate.getMonth() + 1 === month && completedDate.getFullYear() === year
+      }
+      
+      // TURNADAS: usar fecha del turno
+      if (sale.status === "appointed" && sale.appointedDate) {
+        const appointedDate = new Date(sale.appointedDate)
+        return appointedDate.getMonth() + 1 === month && appointedDate.getFullYear() === year
+      }
+      
+      // Otros estados: usar fecha de creacion
       const saleDate = new Date(sale.createdAt)
       return saleDate.getMonth() + 1 === month && saleDate.getFullYear() === year
     })
@@ -200,8 +228,8 @@ export default function SupervisorCommissionsPage() {
   }
 
   const commission = calculateDetailedCommission()
-  // Descontar costo de anuncio del neto (100%), LUEGO aplicar 40%
-  const netAfterAdCost = commission.totalBeforePercentage - monthlyAdCost
+  // Descontar costo de anuncio y adelantos del neto (100%), LUEGO aplicar 40%
+  const netAfterAdCost = commission.totalBeforePercentage - monthlyAdCost - totalAdvances
   const finalCommission = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
 
   const handleOpenCostsDialog = (sale: Sale) => {

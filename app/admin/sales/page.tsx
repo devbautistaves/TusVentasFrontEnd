@@ -152,9 +152,31 @@ function AdminSalesContent() {
   const filterSales = () => {
     let filtered = [...sales]
 
-    // Filtrar por mes seleccionado
+    // Filtrar por mes seleccionado segun reglas de negocio:
+    // - INSTALADAS (completed): Se muestran en el mes de completedDate (fecha de activacion)
+    // - TURNADAS (appointed): Se muestran en el mes de appointedDate (fecha del turno)
+    // - PENDIENTE DE TURNO (pending_appointment): Aparecen en TODOS los meses hasta que se resuelvan
+    // - Otros estados: Se muestran en el mes de createdAt
     const [year, month] = selectedMonth.split("-").map(Number)
     filtered = filtered.filter((sale) => {
+      // PENDIENTE DE TURNO: aparecen en todos los meses
+      if (sale.status === "pending_appointment") {
+        return true
+      }
+      
+      // INSTALADAS: usar fecha de activacion
+      if (sale.status === "completed" && sale.completedDate) {
+        const completedDate = new Date(sale.completedDate)
+        return completedDate.getMonth() + 1 === month && completedDate.getFullYear() === year
+      }
+      
+      // TURNADAS: usar fecha del turno
+      if (sale.status === "appointed" && sale.appointedDate) {
+        const appointedDate = new Date(sale.appointedDate)
+        return appointedDate.getMonth() + 1 === month && appointedDate.getFullYear() === year
+      }
+      
+      // Otros estados: usar fecha de creacion
       const saleDate = new Date(sale.createdAt)
       return saleDate.getFullYear() === year && saleDate.getMonth() + 1 === month
     })
