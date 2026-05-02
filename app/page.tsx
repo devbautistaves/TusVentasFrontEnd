@@ -7,50 +7,50 @@ import { ChevronLeft, ChevronRight, ChevronUp, Shield, Camera, Users, Laptop, Me
 import { Button } from "@/components/ui/button"
 
 const quickCotizadores = [
-  { icon: Car, title: "Auto", description: "Cotiza tu seguro de auto", href: "https://webventas.com.ar/emision/alta?cod=2266", color: "from-blue-500 to-blue-600" },
-  { icon: Bike, title: "Moto", description: "Protege tu moto", href: "https://webventas.com.ar/emision/alta?cod=2266", color: "from-green-500 to-green-600" },
-  { icon: Home, title: "Hogar", description: "Seguro para tu casa", href: "https://webventas.com.ar/emision/alta?cod=2266", color: "from-orange-500 to-orange-600" },
+  { icon: Car, title: "Auto", description: "Cotiza tu seguro de auto", href: "https://webventas.com.ar/emision/alta?cod=2266&t=1", color: "from-blue-500 to-blue-600" },
+  { icon: Bike, title: "Moto", description: "Protege tu moto", href: "https://webventas.com.ar/emision/alta?cod=2266&t=3", color: "from-green-500 to-green-600" },
+  { icon: Home, title: "Hogar", description: "Seguro para tu casa", href: "https://webventas.com.ar/emision/alta?cod=2266&t=6", color: "from-orange-500 to-orange-600" },
   { icon: Heart, title: "Vida", description: "Proteccion personal", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20un%20seguro%20de%20vida", color: "from-red-500 to-red-600" },
-  { icon: Briefcase, title: "ART", description: "Riesgos del trabajo", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20ART", color: "from-purple-500 to-purple-600" },
-  { icon: Building2, title: "Comercio", description: "Para tu negocio", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20seguro%20comercial", color: "from-cyan-500 to-cyan-600" },
+  { icon: Briefcase, title: "ART", description: "Riesgos del trabajo", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20ART", color: "from-indigo-500 to-indigo-600" },
+  { icon: Building2, title: "Comercio", description: "Para tu negocio", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20seguro%20comercial", color: "from-teal-500 to-teal-600" },
 ]
 
 const heroSlides = [
   {
     title: "COTIZA TUS SEGUROS CON",
     highlight: "NOSOTROS",
-    description: "Tenemos el mejor costo y cobertura para proteger lo que más queres.",
+    description: "Tenemos el mejor costo y cobertura para proteger lo que mas queres.",
     image: "/images/grupojv/hero1.png",
     buttons: [
-      { text: "Cotizar Online", href: "/cotizaciones", primary: true },
-      { text: "Cotizar Whatsapp", href: "https://wa.me/5491171570893", primary: false },
+      { text: "Cotizar Online", href: "https://webventas.com.ar/emision/alta?cod=2266", primary: true },
+      { text: "Cotizar Whatsapp", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20un%20seguro", primary: false },
     ],
   },
   {
     title: "ALARMAS",
     highlight: "MONITOREADAS",
-    description: "Protegé tu Casa o Comercio Con nuestros sistemas de alarma de última tecnología",
+    description: "Protege tu Casa o Comercio Con nuestros sistemas de alarma de ultima tecnologia",
     image: "/images/grupojv/hero2.png",
     buttons: [
-      { text: "COTIZAR ALARMA", href: "https://wa.me/5491171570893", primary: true },
+      { text: "COTIZAR ALARMA", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20una%20alarma", primary: true },
     ],
   },
   {
     title: "UNITE A NUESTRO",
-    highlight: "ÉXITO",
-    description: "Si sos Productor de Seguros o tienes estructura comercial, en JV te damos la oportunidad de comercializar marcas líderes del mercado, con nosotros el crecimiento está asegurado",
+    highlight: "EXITO",
+    description: "Si sos Productor de Seguros o tienes estructura comercial, en JV te damos la oportunidad de comercializar marcas lideres del mercado, con nosotros el crecimiento esta asegurado",
     image: "/images/grupojv/hero3.jpg",
     buttons: [
-      { text: "MÁS INFORMACIÓN", href: "https://wa.me/5491171570893", primary: true },
+      { text: "MAS INFORMACION", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20informacion%20para%20ser%20productor", primary: true },
     ],
   },
   {
-    title: "POTENCIÁ TUS VENTAS CON",
+    title: "POTENCIA TUS VENTAS CON",
     highlight: "TUSVENTAS.DIGITAL",
     description: "La plataforma integral para gestionar tu equipo de ventas, comisiones y clientes de manera eficiente",
     image: "/images/grupojv/hero1.png",
     buttons: [
-      { text: "CONOCER MÁS", href: "/tusventas", primary: true },
+      { text: "CONOCER MAS", href: "/tusventas", primary: true },
       { text: "IR A TUSVENTAS", href: "https://tusventas.digital", primary: false },
     ],
   },
@@ -123,11 +123,11 @@ const testimonials = [
 ]
 
 const partners = [
-  { name: "ATM", logo: "/images/grupojv/atm.png" },
-  { name: "Banco del Sol", logo: "/images/grupojv/bancodelsol.png" },
+  { name: "ADT", logo: "/images/grupojv/logoadt.png" },
   { name: "BBVA", logo: "/images/grupojv/logobbva.png" },
   { name: "Sancor", logo: "/images/grupojv/logosancor.png" },
   { name: "Galeno", logo: "/images/grupojv/logogaleno.png" },
+  { name: "Prosegur", logo: "/images/grupojv/prosegur.jpg" },
 ]
 
 const stats = [
