@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { dashboardAPI, salesAPI, usersAPI, leadsAPI, DashboardStats, Sale, Lead } from "@/lib/api"
+import { dashboardAPI, salesAPI, usersAPI, leadsAPI, advancesAPI, DashboardStats, Sale, Lead, Advance } from "@/lib/api"
 import { getCommissionPerSale, calculateTotalCommission } from "@/lib/commissions"
 import {
   DollarSign,
@@ -48,6 +48,7 @@ export default function SellerDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [mySales, setMySales] = useState<Sale[]>([])
   const [myLeads, setMyLeads] = useState<Lead[]>([])
+  const [myAdvances, setMyAdvances] = useState<Advance[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -61,16 +62,18 @@ export default function SellerDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes, profileRes, leadsRes] = await Promise.all([
+        const [statsRes, salesRes, profileRes, leadsRes, advancesRes] = await Promise.all([
           dashboardAPI.getStats(token),
           salesAPI.getMySales(token),
           usersAPI.getProfile(token),
           leadsAPI.getMyLeads(token),
+          advancesAPI.getMine(token, selectedMonth),
         ])
         setStats(statsRes)
         setMySales(salesRes.sales)
         setUserProfile(profileRes.user as UserProfile)
         setMyLeads(leadsRes.leads || [])
+        setMyAdvances(advancesRes.advances || [])
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -79,7 +82,7 @@ export default function SellerDashboardPage() {
     }
 
     fetchData()
-  }, [])
+  }, [selectedMonth])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -123,8 +126,11 @@ export default function SellerDashboardPage() {
     return acc + (sale.installationCost || 0)
   }, 0)
 
-  // Comision neta = comision - costos de instalacion
-  const netCommission = totalCommission - totalInstallationCosts
+  // Calcular total de adelantos del mes
+  const totalAdvances = myAdvances.reduce((acc, advance) => acc + advance.amount, 0)
+
+  // Comision neta = comision - costos de instalacion - adelantos
+  const netCommission = totalCommission - totalInstallationCosts - totalAdvances
 
   // Generar meses disponibles
   const getAvailableMonths = () => {
@@ -365,11 +371,23 @@ export default function SellerDashboardPage() {
   <span className="text-sm text-muted-foreground">Comision bruta:</span>
   <span className="font-semibold text-green-400">{formatCurrency(totalCommission)}</span>
   </div>
+  {totalInstallationCosts > 0 && (
+  <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
+  <span className="text-sm text-muted-foreground">Costos instalacion:</span>
+  <span className="font-semibold text-red-400">-{formatCurrency(totalInstallationCosts)}</span>
+  </div>
+  )}
+  {totalAdvances > 0 && (
+  <div className="flex justify-between items-center p-3 rounded-lg bg-amber-500/10">
+  <span className="text-sm text-muted-foreground">Adelantos:</span>
+  <span className="font-semibold text-amber-400">-{formatCurrency(totalAdvances)}</span>
+  </div>
+  )}
   <div className="border-t border-border pt-3">
   <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10">
-  <span className="text-sm font-medium text-foreground">COMISION TOTAL:</span>
-  <span className="font-bold text-lg text-primary">
-  {formatCurrency(totalCommission)}
+  <span className="text-sm font-medium text-foreground">COMISION NETA:</span>
+  <span className={`font-bold text-lg ${netCommission >= 0 ? 'text-primary' : 'text-red-400'}`}>
+  {formatCurrency(netCommission)}
   </span>
   </div>
   </div>

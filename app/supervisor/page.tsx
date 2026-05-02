@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { salesAPI, adCostsAPI, Sale } from "@/lib/api"
+import { salesAPI, adCostsAPI, advancesAPI, Sale, Advance } from "@/lib/api"
 import {
   DollarSign,
   Plus,
@@ -34,6 +34,7 @@ const SUPERVISOR_PERCENTAGE = 0.40
 
 export default function SupervisorDashboardPage() {
   const [mySales, setMySales] = useState<Sale[]>([])
+  const [myAdvances, setMyAdvances] = useState<Advance[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -47,11 +48,13 @@ export default function SupervisorDashboardPage() {
       if (!token) return
 
       try {
-        const [salesRes, adCostsRes] = await Promise.all([
+        const [salesRes, adCostsRes, advancesRes] = await Promise.all([
           salesAPI.getMySales(token),
           adCostsAPI.getMyCosts(token, selectedMonth),
+          advancesAPI.getMine(token, selectedMonth),
         ])
         setMySales(salesRes.sales)
+        setMyAdvances(advancesRes.advances || [])
 
         // Obtener el costo de anuncio del mes actual
         const currentAdCost = adCostsRes.adCosts.find(
@@ -189,9 +192,12 @@ export default function SupervisorDashboardPage() {
     return Math.max(0, totalBeforePercentage)
   }
 
+  // Calcular total de adelantos del mes
+  const totalAdvances = myAdvances.reduce((acc, advance) => acc + advance.amount, 0)
+
   const totalBeforePercentage = calculateSupervisorCommission()
-  // Descontar costo de anuncio del 100% (neto), luego aplicar 40%
-  const netAfterAdCost = totalBeforePercentage - monthlyAdCost
+  // Descontar costo de anuncio y adelantos del 100% (neto), luego aplicar 40%
+  const netAfterAdCost = totalBeforePercentage - monthlyAdCost - totalAdvances
   const totalCommission = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
 
   // Generar meses disponibles
@@ -266,6 +272,11 @@ export default function SupervisorDashboardPage() {
                     <p className="flex items-center gap-1 text-amber-400">
                       <Megaphone className="h-3 w-3" />
                       Costo de anuncio descontado: -{formatCurrency(monthlyAdCost)}
+                    </p>
+                  )}
+                  {totalAdvances > 0 && (
+                    <p className="text-orange-400">
+                      Adelantos descontados: -{formatCurrency(totalAdvances)}
                     </p>
                   )}
                 </div>
@@ -357,11 +368,19 @@ export default function SupervisorDashboardPage() {
                   <span className="font-semibold text-amber-400">-{formatCurrency(monthlyAdCost)}</span>
                 </div>
               )}
+              {totalAdvances > 0 && (
+                <div className="flex justify-between items-center p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                  <span className="text-sm text-orange-400">
+                    Adelantos del mes:
+                  </span>
+                  <span className="font-semibold text-orange-400">-{formatCurrency(totalAdvances)}</span>
+                </div>
+              )}
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between items-center p-3 rounded-lg bg-red-500/10">
                   <span className="text-sm font-medium text-foreground">TOTAL DESCUENTOS:</span>
                   <span className="font-bold text-lg text-red-400">
-                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions + monthlyAdCost)}
+                    -{formatCurrency(totalInstallationCosts + (installedSales.length * ADMIN_COST) + totalAdCosts + totalSellerCommissions + monthlyAdCost + totalAdvances)}
                   </span>
                 </div>
               </div>
