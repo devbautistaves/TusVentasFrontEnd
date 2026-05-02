@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   if (hostname.includes('grupojv.tusventas.digital') || hostname.includes('grupojv.')) {
     // If accessing the root or /login, rewrite to /grupojv/login (URL stays the same in browser)
     if (url.pathname === '/' || url.pathname === '' || url.pathname === '/login') {
-      url.pathname = '/grupojv/login'
+      url.pathname = '/login'
       return NextResponse.rewrite(url)
     }
   }
