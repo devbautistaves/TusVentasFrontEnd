@@ -3,17 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, ChevronUp, Shield, Camera, Users, Laptop, Megaphone, Calculator, Quote, MapPin, Phone, Mail, Clock, Facebook, Instagram, Linkedin, Menu, X, Play, Car, Home, Heart, Briefcase, Building2, Bike, Plane, Zap, ArrowRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronUp, Shield, Camera, Users, Laptop, Megaphone, Calculator, Quote, MapPin, Phone, Mail, Clock, Facebook, Instagram, Linkedin, Menu, X, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
-const quickCotizadores = [
-  { icon: Car, title: "Auto", description: "Cotiza tu seguro de auto", href: "https://webventas.com.ar/emision/alta?cod=2266", color: "from-blue-500 to-blue-600" },
-  { icon: Bike, title: "Moto", description: "Protege tu moto", href: "https://webventas.com.ar/emision/alta?cod=2266", color: "from-green-500 to-green-600" },
-  { icon: Home, title: "Hogar", description: "Seguro para tu casa", href: "https://webventas.com.ar/emision/alta?cod=2266", color: "from-orange-500 to-orange-600" },
-  { icon: Heart, title: "Vida", description: "Proteccion personal", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20un%20seguro%20de%20vida", color: "from-red-500 to-red-600" },
-  { icon: Briefcase, title: "ART", description: "Riesgos del trabajo", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20ART", color: "from-purple-500 to-purple-600" },
-  { icon: Building2, title: "Comercio", description: "Para tu negocio", href: "https://wa.me/5491171570893?text=Hola!%20Quiero%20cotizar%20seguro%20comercial", color: "from-cyan-500 to-cyan-600" },
-]
 
 const heroSlides = [
   {
@@ -235,7 +226,7 @@ export default function LandingPage() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-8">
             <Link href="#inicio" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
               Inicio
             </Link>
@@ -244,10 +235,6 @@ export default function LandingPage() {
             </Link>
             <Link href="#servicios" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
               Servicios
-            </Link>
-            <Link href="/cotizaciones" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
-              <Zap className="h-4 w-4" />
-              Cotizar
             </Link>
             <Link href="/tusventas" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
               TusVentas
@@ -262,7 +249,7 @@ export default function LandingPage() {
             </Link>
             <Link href="/login">
               <Button variant="outline" size="sm">
-                Iniciar Sesion
+                Iniciar Sesión
               </Button>
             </Link>
           </nav>
@@ -290,10 +277,6 @@ export default function LandingPage() {
               <Link href="#servicios" className="text-sm font-medium text-gray-700" onClick={() => setMobileMenuOpen(false)}>
                 Servicios
               </Link>
-              <Link href="/cotizaciones" className="text-sm font-medium text-blue-600 flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-                <Zap className="h-4 w-4" />
-                Cotizar
-              </Link>
               <Link href="/tusventas" className="text-sm font-medium text-gray-700" onClick={() => setMobileMenuOpen(false)}>
                 TusVentas
               </Link>
@@ -307,7 +290,7 @@ export default function LandingPage() {
               </Link>
               <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="outline" size="sm" className="w-full">
-                  Iniciar Sesion
+                  Iniciar Sesión
                 </Button>
               </Link>
             </nav>
@@ -316,7 +299,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section id="inicio" className="relative min-h-screen pt-16">
+      <section id="inicio" className="relative h-screen min-h-[600px] pt-16">
         {heroSlides.map((slide, index) => (
           <div
             key={index}
@@ -324,151 +307,72 @@ export default function LandingPage() {
               index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
             }`}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900">
+            <div className="absolute inset-0 bg-black">
               <Image
                 src={slide.image}
                 alt={slide.title}
                 fill
-                className="object-cover opacity-20"
+                className="object-cover opacity-35"
                 priority={index === 0}
               />
+            </div>
+            <div className="relative z-20 container mx-auto px-4 h-full flex items-center">
+              <div className="max-w-3xl text-white">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
+                  {slide.title} <span className="text-blue-400">{slide.highlight}</span>
+                </h1>
+                <p className="text-lg md:text-xl mb-8 text-gray-200 leading-relaxed">
+                  {slide.description}
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  {slide.buttons.map((button, btnIndex) => (
+                    <Link key={btnIndex} href={button.href} target={button.href.startsWith("http") ? "_blank" : undefined}>
+                      <Button
+                        size="lg"
+                        className={
+                          button.primary
+                            ? "bg-blue-600 hover:bg-blue-700 text-white"
+                            : "bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900"
+                        }
+                      >
+                        {button.text}
+                      </Button>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         ))}
 
-        {/* Hero Content - Always visible */}
-        <div className="relative z-20 container mx-auto px-4 pt-12 pb-8">
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
-            {/* Left Side - Slider Content */}
-            <div className="text-white">
-              <div className="min-h-[280px] md:min-h-[320px]">
-                {heroSlides.map((slide, index) => (
-                  <div
-                    key={index}
-                    className={`transition-all duration-500 ${
-                      index === currentSlide ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 absolute"
-                    }`}
-                  >
-                    {index === currentSlide && (
-                      <>
-                        <span className="inline-block px-3 py-1 bg-blue-500/20 border border-blue-400/30 rounded-full text-blue-300 text-sm font-medium mb-4">
-                          {index === 3 ? "Nueva Plataforma" : "Grupo JV"}
-                        </span>
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
-                          {slide.title} <span className="text-blue-400">{slide.highlight}</span>
-                        </h1>
-                        <p className="text-base md:text-lg mb-6 text-gray-300 leading-relaxed max-w-xl">
-                          {slide.description}
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                          {slide.buttons.map((button, btnIndex) => (
-                            <Link key={btnIndex} href={button.href} target={button.href.startsWith("http") ? "_blank" : undefined}>
-                              <Button
-                                size="lg"
-                                className={
-                                  button.primary
-                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all"
-                                    : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-gray-900 transition-all"
-                                }
-                              >
-                                {button.text}
-                              </Button>
-                            </Link>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Slider Controls */}
-              <div className="flex items-center gap-4 mt-6">
-                <button
-                  onClick={prevSlide}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
-                  aria-label="Previous slide"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <div className="flex gap-2">
-                  {heroSlides.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentSlide(index)}
-                      className={`h-2 rounded-full transition-all ${
-                        index === currentSlide ? "bg-blue-500 w-8" : "bg-white/30 hover:bg-white/50 w-2"
-                      }`}
-                      aria-label={`Go to slide ${index + 1}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={nextSlide}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
-                  aria-label="Next slide"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right Side - Quick Cotizadores Grid */}
-            <div className="lg:pl-8">
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-                <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-400" />
-                  Cotiza rapido
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {quickCotizadores.map((item, index) => (
-                    <Link
-                      key={index}
-                      href={item.href}
-                      target="_blank"
-                      className="group relative overflow-hidden rounded-xl p-4 bg-gradient-to-br from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-xl"
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                      <div className="relative z-10">
-                        <div className="w-10 h-10 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center mb-3 transition-colors">
-                          <item.icon className="h-5 w-5 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-white text-sm mb-1">{item.title}</h4>
-                        <p className="text-xs text-gray-400 group-hover:text-white/80 transition-colors">{item.description}</p>
-                        <ArrowRight className="absolute bottom-4 right-4 h-4 w-4 text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                <Link href="/cotizaciones" className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all hover:shadow-lg hover:shadow-blue-600/30">
-                  Ver todos los cotizadores
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
+        {/* Slider Controls */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4">
+          <button
+            onClick={prevSlide}
+            className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <div className="flex gap-2">
+            {heroSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-3 h-3 rounded-full transition-colors ${
+                  index === currentSlide ? "bg-blue-500" : "bg-white/50 hover:bg-white/70"
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
           </div>
-        </div>
-
-        {/* Floating Partners Bar */}
-        <div className="absolute bottom-0 left-0 right-0 z-20">
-          <div className="bg-white/5 backdrop-blur-md border-t border-white/10 py-4">
-            <div className="container mx-auto px-4">
-              <div className="flex items-center justify-center gap-8 flex-wrap">
-                <span className="text-gray-400 text-sm hidden sm:block">Trabajamos con:</span>
-                {partners.map((partner, index) => (
-                  <div key={index} className="grayscale hover:grayscale-0 transition-all opacity-60 hover:opacity-100">
-                    <Image
-                      src={partner.logo}
-                      alt={partner.name}
-                      width={80}
-                      height={40}
-                      className="h-6 w-auto object-contain brightness-0 invert"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={nextSlide}
+            className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
         </div>
       </section>
 
