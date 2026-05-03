@@ -448,9 +448,10 @@ export default function AdminCommissionsPage() {
     return user?.fixedCommissionPerSale !== null && user?.fixedCommissionPerSale !== undefined
   }
 
-  // Calcular comision del vendedor con descuentos de instalacion
+  // Calcular comision del vendedor con descuentos de instalacion (SIN adelantos ni bajas)
   // La comision se imputa en el mes que se activa (completedDate)
   // El costo de instalacion se descuenta en el mes que se coloco (installationCostDate)
+  // NOTA: Bajas y adelantos se descuentan aparte en la vista
   const calculateSellerCommission = (sellerId: string) => {
     const user = users.find(u => u._id === sellerId)
     const userSales = getUserSales(sellerId, user?.role || "seller")
@@ -475,10 +476,7 @@ export default function AdminCommissionsPage() {
       }
     })
     
-    // Descontar adelantos del vendedor
-    const totalAdvances = getUserAdvanceTotalForMonth(sellerId)
-    totalCommission -= totalAdvances
-    
+    // NO descontar adelantos ni bajas aqui - eso se hace en la vista
     return Math.max(0, totalCommission)
   }
   
@@ -505,10 +503,11 @@ export default function AdminCommissionsPage() {
     return totalDiscounts
   }
 
-  // Calcular comision del supervisor
+  // Calcular comision del supervisor (SOLO base, sin adelantos ni bajas)
   // La comision se imputa en el mes que se activa (completedDate)
   // El costo de instalacion se descuenta en el mes que se coloco (installationCostDate)
   // El costo de anuncio mensual se descuenta del total
+  // NOTA: Bajas y adelantos se descuentan aparte en la vista
   const calculateSupervisorCommission = (supervisorId: string) => {
     // Supervisor: ventas donde es vendedor O donde es supervisor asignado
     const userSales = monthSales.filter(s => {
@@ -551,11 +550,8 @@ export default function AdminCommissionsPage() {
     const netAfterAdCost = totalBeforePercentage - monthlyAdCost
     
     // Aplicar 40% sobre el neto despues de descontar anuncio
-    const commissionBeforeAdvances = Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
-    
-    // Los adelantos se descuentan de la comision FINAL (despues del 40%)
-    const totalAdvances = getUserAdvanceTotalForMonth(supervisorId)
-    return Math.max(0, commissionBeforeAdvances - totalAdvances)
+    // NO descontar adelantos ni bajas aqui - eso se hace en la vista
+    return Math.max(0, netAfterAdCost * SUPERVISOR_PERCENTAGE)
   }
 
   // Calcular comision ANTES de descontar costo de anuncio (para mostrar desglose)
@@ -934,21 +930,23 @@ export default function AdminCommissionsPage() {
     const monthName = new Date(year, month - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
 
     // Calcular comision base y descuentos por separado
+    // calculateSupervisorCommission y calculateSellerCommission ya NO incluyen adelantos
     let baseCommission = 0
     let bajaDiscount = 0
+    let advanceDiscount = 0
 
     if (user.role === "supervisor") {
-      // Comision base antes de bajas
-      const grossCommission = calculateSupervisorCommission(user._id)
-      baseCommission = grossCommission
+      // Comision base (sin bajas ni adelantos)
+      baseCommission = calculateSupervisorCommission(user._id)
       bajaDiscount = calculateBajaDiscount(user._id, user.role)
+      advanceDiscount = getUserAdvanceTotalForMonth(user._id)
     } else {
-      const grossCommission = calculateSellerCommission(user._id)
-      baseCommission = grossCommission
+      baseCommission = calculateSellerCommission(user._id)
       bajaDiscount = calculateBajaDiscount(user._id, user.role)
+      advanceDiscount = getUserAdvanceTotalForMonth(user._id)
     }
     
-    const totalFinal = Math.max(0, baseCommission - bajaDiscount)
+    const totalFinal = Math.max(0, baseCommission - bajaDiscount - advanceDiscount)
     
     // Distribuir la comision base entre las ventas
     const salesCount = completedUserSales.length
@@ -984,6 +982,7 @@ export default function AdminCommissionsPage() {
       bajas: bajasData,
       baseCommission,
       bajaDiscount,
+      advanceDiscount,
       totalCommission: totalFinal,
     }
   }
@@ -1698,14 +1697,17 @@ const [isSendingEmail, setIsSendingEmail] = useState(false)
                     </tr>
                   </thead>
                   <tbody>
-                    {supervisors.map((user) => {
+                  {supervisors.map((user) => {
                       const netBeforePercentage = calculateSupervisorNetBeforePercentage(user._id)
                       const installationCost = getSupervisorInstallationCostForMonth(user._id)
                       const adCost = getSupervisorAdCostForMonth(user._id)
                       const supBajaDiscount = calculateBajaDiscount(user._id, user.role)
                       const supBajas = getBajasForMonth(user._id, user.role)
                       const advanceTotal = getUserAdvanceTotalForMonth(user._id)
-                      const totalCommission = Math.max(0, calculateSupervisorCommission(user._id) - supBajaDiscount - advanceTotal)
+                      // calculateSupervisorCommission ya tiene la comision base (sin bajas ni adelantos)
+                      // Ahora restamos bajas y adelantos una sola vez
+                      const baseCommission = calculateSupervisorCommission(user._id)
+                      const totalCommission = Math.max(0, baseCommission - supBajaDiscount - advanceTotal)
 
                       return (
                         <tr
@@ -1911,7 +1913,10 @@ const [isSendingEmail, setIsSendingEmail] = useState(false)
                     const bajaDiscount = calculateBajaDiscount(user._id, user.role)
                     const bajas = getBajasForMonth(user._id, user.role)
                     const advanceTotal = getUserAdvanceTotalForMonth(user._id)
-                    const netCommission = Math.max(0, calculateSellerCommission(user._id) - bajaDiscount - advanceTotal)
+                    // calculateSellerCommission ya tiene la comision base (sin bajas ni adelantos)
+                    // Ahora restamos bajas y adelantos una sola vez
+                    const baseCommission = calculateSellerCommission(user._id)
+                    const netCommission = Math.max(0, baseCommission - bajaDiscount - advanceTotal)
                     const currentTier = tiers.find(
                       (t) => activatedSales >= t.minSales && activatedSales <= t.maxSales
                     )
