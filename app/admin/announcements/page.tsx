@@ -96,7 +96,8 @@ export default function AnnouncementsPage() {
     setIsLoading(true)
     try {
       const response = await usersAPI.getAll(token)
-      setUsers(response.users.filter((u) => u.role === "seller" && u.isActive))
+      // Incluir vendedores y supervisores activos
+      setUsers(response.users.filter((u) => (u.role === "seller" || u.role === "supervisor") && u.isActive))
     } catch (error) {
       console.error("Error fetching users:", error)
     } finally {
@@ -413,8 +414,8 @@ export default function AnnouncementsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos los vendedores</SelectItem>
-                        <SelectItem value="selected">Seleccionar vendedores</SelectItem>
+                        <SelectItem value="all">Todos los usuarios ({users.length})</SelectItem>
+                        <SelectItem value="selected">Seleccionar usuarios</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -423,12 +424,12 @@ export default function AnnouncementsPage() {
                 {formData.recipientType === "selected" && (
                   <FieldGroup>
                     <Field>
-                      <FieldLabel>Seleccionar vendedores</FieldLabel>
-                      <div className="border rounded-lg p-3 max-h-32 overflow-y-auto space-y-2">
+                      <FieldLabel>Seleccionar usuarios ({formData.recipients.length} seleccionados)</FieldLabel>
+                      <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                         {users.map((user) => (
                           <label
                             key={user._id}
-                            className="flex items-center gap-2 cursor-pointer hover:bg-secondary/50 p-1 rounded"
+                            className="flex items-center gap-2 cursor-pointer hover:bg-secondary/50 p-1.5 rounded"
                           >
                             <input
                               type="checkbox"
@@ -450,10 +451,38 @@ export default function AnnouncementsPage() {
                               }}
                               className="rounded border-border"
                             />
-                            <span className="text-sm">{user.name}</span>
+                            <span className="text-sm flex-1">{user.name}</span>
+                            <span className={cn(
+                              "text-xs px-1.5 py-0.5 rounded",
+                              user.role === "supervisor" 
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" 
+                                : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            )}>
+                              {user.role === "supervisor" ? "Supervisor" : "Vendedor"}
+                            </span>
                           </label>
                         ))}
                       </div>
+                      {users.length > 0 && (
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFormData(prev => ({ ...prev, recipients: users.map(u => u._id) }))}
+                          >
+                            Seleccionar todos
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFormData(prev => ({ ...prev, recipients: [] }))}
+                          >
+                            Deseleccionar todos
+                          </Button>
+                        </div>
+                      )}
                     </Field>
                   </FieldGroup>
                 )}
