@@ -670,6 +670,38 @@ export interface User {
   updatedAt: string
 }
 
+export interface Notification {
+  _id: string
+  companyId: "prosegur" | "tupaginaya"
+  title: string
+  message: string
+  type: "info" | "warning" | "success" | "meeting" | "material" | "document" | "announcement" | "training"
+  priority: "low" | "medium" | "high" | "urgent"
+  recipientType: "all" | "selected"
+  recipients: string[]
+  meetingInfo?: {
+    date?: string
+    time?: string
+    link?: string
+    location?: string
+  }
+  attachments?: {
+    filename: string
+    url: string
+    type: string
+  }[]
+  readBy: {
+    userId: string
+    readAt: string
+  }[]
+  isRead?: boolean
+  createdBy: { _id: string; name: string } | string
+  emailsSent: boolean
+  emailSentCount: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface RegisterData {
   name: string
   email: string
