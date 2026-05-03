@@ -102,8 +102,8 @@ const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
 
 const STORAGE_KEY = "selectedCompanyId"
 
-// Helper para obtener las empresas disponibles segun el rol y companyId del usuario
-function getAvailableCompanies(userRole?: string, userCompanyId?: string): Company[] {
+// Helper para obtener las empresas disponibles segun el rol, companyId y allowedCompanies del usuario
+function getAvailableCompanies(userRole?: string, userCompanyId?: string, userAllowedCompanies?: string[]): Company[] {
   const activeCompanies = COMPANIES.filter((c) => c.isActive)
   
   // Solo admin puede ver todas las empresas activas
@@ -111,13 +111,22 @@ function getAvailableCompanies(userRole?: string, userCompanyId?: string): Compa
     return activeCompanies
   }
   
-  // Vendedores, supervisores y soporte SOLO pueden ver su empresa asignada
-  // NUNCA mostrar otra empresa que no sea la asignada
+  // Para otros roles, mostrar empresa principal + empresas adicionales permitidas
+  const availableIds = new Set<string>()
+  
+  // Agregar empresa principal
   if (userCompanyId) {
-    const assignedCompany = activeCompanies.find((c) => c.id === userCompanyId)
-    if (assignedCompany) {
-      return [assignedCompany]
-    }
+    availableIds.add(userCompanyId)
+  }
+  
+  // Agregar empresas adicionales permitidas
+  if (userAllowedCompanies && userAllowedCompanies.length > 0) {
+    userAllowedCompanies.forEach(id => availableIds.add(id))
+  }
+  
+  // Si tiene empresas disponibles, retornarlas
+  if (availableIds.size > 0) {
+    return activeCompanies.filter(c => availableIds.has(c.id))
   }
   
   // Si no hay empresa asignada, NO mostrar ninguna empresa por defecto
@@ -143,43 +152,32 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     const userDataString = localStorage.getItem("user")
     let userRole: string | undefined
     let userCompanyId: string | undefined
+    let userAllowedCompanies: string[] | undefined
     
     if (userDataString) {
       try {
         const userData = JSON.parse(userDataString)
         userRole = userData.role
         userCompanyId = userData.companyId
+        userAllowedCompanies = userData.allowedCompanies
       } catch {
         // Error parsing user data
       }
     }
     
-    // Verificar si el usuario puede cambiar de empresa
-    // Solo admin puede cambiar de empresa
-    const canSwitch = userRole === "admin"
-    setCanSwitchCompany(canSwitch)
-    
-    // IMPORTANTE: Para usuarios NO admin, SIEMPRE usar la empresa asignada
-    // Ignorar completamente lo que haya en localStorage
-    if (!canSwitch && userCompanyId) {
-      const assignedCompany = getUserCompany(userCompanyId)
-      if (assignedCompany) {
-        setCurrentCompany(assignedCompany)
-        setAvailableCompanies([assignedCompany])
-        // Forzar el localStorage a la empresa correcta
-        localStorage.setItem(STORAGE_KEY, assignedCompany.id)
-        setIsLoading(false)
-        return
-      }
-    }
-    
-    // Para admin, calcular empresas disponibles
-    const companies = getAvailableCompanies(userRole, userCompanyId)
+    // Calcular empresas disponibles para el usuario
+    const companies = getAvailableCompanies(userRole, userCompanyId, userAllowedCompanies)
     setAvailableCompanies(companies)
     
-    // Para admin, usar la empresa guardada si es valida
+    // Verificar si el usuario puede cambiar de empresa
+    // Admin puede cambiar, o usuarios con acceso a multiples empresas
+    const canSwitch = userRole === "admin" || companies.length > 1
+    setCanSwitchCompany(canSwitch)
+    
+    // Si el usuario tiene multiples empresas, permitir cambiar
+    // y usar la empresa guardada si es valida
     const savedCompanyId = localStorage.getItem(STORAGE_KEY)
-    if (canSwitch && savedCompanyId) {
+    if (savedCompanyId && companies.length > 0) {
       const company = companies.find((c) => c.id === savedCompanyId)
       if (company) {
         setCurrentCompany(company)
@@ -188,7 +186,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Default: primera empresa disponible
+    // Default: primera empresa disponible (empresa principal)
     if (companies.length > 0) {
       setCurrentCompany(companies[0])
       localStorage.setItem(STORAGE_KEY, companies[0].id)
@@ -212,7 +210,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const switchCompany = (companyId: string) => {
-    // Solo permitir cambio si el usuario puede hacerlo
+    // Solo permitir cambio si el usuario puede hacerlo y la empresa esta disponible
     if (!canSwitchCompany) {
       return
     }

@@ -10,10 +10,12 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { useMaintenanceMode } from "@/hooks/use-maintenance"
-import { usersAPI, User } from "@/lib/api"
-import { User as UserIcon, Mail, Phone, MapPin, Shield, Lock, Eye, EyeOff, AlertTriangle, Wrench } from "lucide-react"
+import { usersAPI, companySettingsAPI, User, CompanySettingsData } from "@/lib/api"
+import { useCompany } from "@/lib/company-context"
+import { User as UserIcon, Mail, Phone, MapPin, Shield, Lock, Eye, EyeOff, AlertTriangle, Wrench, Building2, DollarSign } from "lucide-react"
 
 export default function AdminSettingsPage() {
+  const { currentCompany } = useCompany()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -21,6 +23,9 @@ export default function AdminSettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [companySettings, setCompanySettings] = useState<CompanySettingsData | null>(null)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [baseCommissionInput, setBaseCommissionInput] = useState("")
   const { toast } = useToast()
   const { isMaintenanceMode, toggleMaintenanceMode } = useMaintenanceMode()
 
@@ -40,6 +45,50 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     fetchProfile()
   }, [])
+
+  useEffect(() => {
+    if (currentCompany.id === "tupaginaya") {
+      fetchCompanySettings()
+    }
+  }, [currentCompany.id])
+
+  const fetchCompanySettings = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    try {
+      const response = await companySettingsAPI.get(token, "tupaginaya")
+      setCompanySettings(response.settings)
+      setBaseCommissionInput(response.settings.baseCommissionPerSale?.toString() || "200000")
+    } catch (error) {
+      console.error("Error fetching company settings:", error)
+    }
+  }
+
+  const handleSaveCompanySettings = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+
+    setIsSavingSettings(true)
+    try {
+      const response = await companySettingsAPI.update(token, "tupaginaya", {
+        baseCommissionPerSale: Number(baseCommissionInput) || 200000,
+      })
+      setCompanySettings(response.settings)
+      toast({
+        title: "Configuracion guardada",
+        description: "La comision base por venta de TuPaginaYa se ha actualizado",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al guardar la configuracion",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
 
   const fetchProfile = async () => {
     const token = localStorage.getItem("token")
@@ -450,10 +499,62 @@ export default function AdminSettingsPage() {
                   )}
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
+  </form>
+  </CardContent>
+  </Card>
+
+        {/* TuPaginaYa Company Settings - Solo visible cuando esta en esa empresa */}
+        {currentCompany.id === "tupaginaya" && (
+          <Card className="border-blue-500/30 bg-blue-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-400" />
+                Configuracion TuPaginaYa
+              </CardTitle>
+              <CardDescription>
+                Configura los parametros de comisiones para esta empresa
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="baseCommission">Comision Base por Venta</FieldLabel>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="baseCommission"
+                      type="number"
+                      value={baseCommissionInput}
+                      onChange={(e) => setBaseCommissionInput(e.target.value)}
+                      className="pl-9 bg-secondary/50"
+                      placeholder="200000"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Este monto se usara como comision base por venta para los vendedores de TuPaginaYa
+                  </p>
+                </Field>
+              </FieldGroup>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSaveCompanySettings}
+                  disabled={isSavingSettings}
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {isSavingSettings ? (
+                    <>
+                      <Spinner className="mr-2 h-4 w-4" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar Configuracion"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+  </div>
+  </DashboardLayout>
   )
-}
+  }

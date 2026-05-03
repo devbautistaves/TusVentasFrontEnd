@@ -380,6 +380,28 @@ export const supportAPI = {
   },
 }
 
+// Company Settings
+export const companySettingsAPI = {
+  get: (token: string, companyId: string) =>
+    fetchAPI<{ success: boolean; settings: CompanySettingsData }>(`/api/company-settings/${companyId}`, { token }),
+
+  update: (token: string, companyId: string, data: Partial<CompanySettingsData>) =>
+    fetchAPI<{ success: boolean; message: string; settings: CompanySettingsData }>(`/api/company-settings/${companyId}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface CompanySettingsData {
+  _id?: string
+  companyId: "prosegur" | "tupaginaya"
+  baseCommissionPerSale: number
+  settings?: Record<string, unknown>
+  createdAt?: string
+  updatedAt?: string
+}
+
 // Notifications
 export const notificationsAPI = {
   getAll: (token: string) =>
@@ -632,6 +654,7 @@ export const leadsAPI = {
 export interface User {
   _id: string
   companyId?: "prosegur" | "tupaginaya"
+  allowedCompanies?: ("prosegur" | "tupaginaya")[] // Empresas adicionales a las que puede acceder
   name: string
   email: string
   phone: string

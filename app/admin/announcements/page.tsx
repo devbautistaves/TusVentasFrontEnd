@@ -173,10 +173,14 @@ export default function AnnouncementsPage() {
         formDataToSend.append("attachments", file)
       })
 
+      // Obtener el companyId actual
+      const companyId = localStorage.getItem("selectedCompanyId") || "prosegur"
+      
       const response = await fetch(`${API_URL}/api/notifications`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "X-Company-ID": companyId,
         },
         body: formDataToSend,
       })

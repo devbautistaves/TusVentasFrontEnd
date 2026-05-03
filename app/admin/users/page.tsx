@@ -52,6 +52,7 @@ export default function AdminUsersPage() {
 
   const [formData, setFormData] = useState({
     companyId: "prosegur" as "prosegur" | "tupaginaya",
+    allowedCompanies: [] as ("prosegur" | "tupaginaya")[],
     name: "",
     email: "",
     password: "",
@@ -125,6 +126,7 @@ export default function AdminUsersPage() {
       setSelectedUser(user)
       setFormData({
         companyId: user.companyId || currentCompany.id as "prosegur" | "tupaginaya",
+        allowedCompanies: user.allowedCompanies || [],
         name: user.name,
         email: user.email,
         password: "",
@@ -140,6 +142,7 @@ export default function AdminUsersPage() {
       setSelectedUser(null)
       setFormData({
         companyId: currentCompany.id as "prosegur" | "tupaginaya",
+        allowedCompanies: [],
         name: "",
         email: "",
         password: "",
@@ -162,8 +165,9 @@ export default function AdminUsersPage() {
 
     try {
       if (selectedUser) {
-        const updateData: Partial<User> & { password?: string; supervisorBaseCommission?: number; fixedCommissionPerSale?: number | null } = {
+        const updateData: Partial<User> & { password?: string; supervisorBaseCommission?: number; fixedCommissionPerSale?: number | null; allowedCompanies?: string[] } = {
           companyId: formData.companyId,
+          allowedCompanies: formData.allowedCompanies,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -189,6 +193,7 @@ export default function AdminUsersPage() {
       } else {
         const createData = { 
           companyId: formData.companyId,
+          allowedCompanies: formData.allowedCompanies,
           name: formData.name,
           email: formData.email,
           password: formData.password,
@@ -199,7 +204,7 @@ export default function AdminUsersPage() {
           ...(formData.role === "supervisor" && { supervisorBaseCommission: formData.supervisorBaseCommission }),
           ...(formData.role === "seller" && formData.useFixedCommission && { fixedCommissionPerSale: formData.fixedCommissionPerSale }),
         }
-        await usersAPI.create(token, createData)
+        await usersAPI.create(token, createData as any)
         toast({
           title: "Usuario creado",
           description: "El usuario se ha creado correctamente",
@@ -533,7 +538,7 @@ export default function AdminUsersPage() {
             </DialogHeader>
             <FieldGroup>
               <Field>
-                <FieldLabel>Empresa</FieldLabel>
+                <FieldLabel>Empresa Principal</FieldLabel>
                 <Select
                   value={formData.companyId}
                   onValueChange={(value: "prosegur" | "tupaginaya") =>
@@ -549,8 +554,66 @@ export default function AdminUsersPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Empresa a la que pertenece este usuario
+                  Empresa principal donde esta asignado este usuario
                 </p>
+              </Field>
+
+              {/* Empresas adicionales */}
+              <Field>
+                <FieldLabel>Acceso a Otras Empresas</FieldLabel>
+                <div className="space-y-2 p-3 border border-border/50 rounded-lg bg-secondary/20">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Permite que este usuario tambien pueda vender en otras empresas
+                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-secondary/50">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowedCompanies.includes("prosegur")}
+                      disabled={formData.companyId === "prosegur"}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData(prev => ({
+                            ...prev,
+                            allowedCompanies: [...prev.allowedCompanies, "prosegur"]
+                          }))
+                        } else {
+                          setFormData(prev => ({
+                            ...prev,
+                            allowedCompanies: prev.allowedCompanies.filter(c => c !== "prosegur")
+                          }))
+                        }
+                      }}
+                      className="rounded border-border"
+                    />
+                    <span className={`text-sm ${formData.companyId === "prosegur" ? "text-muted-foreground" : ""}`}>
+                      Prosegur - Internet {formData.companyId === "prosegur" && "(empresa principal)"}
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-secondary/50">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowedCompanies.includes("tupaginaya")}
+                      disabled={formData.companyId === "tupaginaya"}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData(prev => ({
+                            ...prev,
+                            allowedCompanies: [...prev.allowedCompanies, "tupaginaya"]
+                          }))
+                        } else {
+                          setFormData(prev => ({
+                            ...prev,
+                            allowedCompanies: prev.allowedCompanies.filter(c => c !== "tupaginaya")
+                          }))
+                        }
+                      }}
+                      className="rounded border-border"
+                    />
+                    <span className={`text-sm ${formData.companyId === "tupaginaya" ? "text-muted-foreground" : ""}`}>
+                      TuPaginaYa - Webs {formData.companyId === "tupaginaya" && "(empresa principal)"}
+                    </span>
+                  </label>
+                </div>
               </Field>
               <Field>
                 <FieldLabel htmlFor="name">Nombre</FieldLabel>
