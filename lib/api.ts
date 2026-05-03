@@ -447,10 +447,14 @@ export const announcementsAPI = {
       })
     }
 
+    // IMPORTANTE: Incluir X-Company-ID para que se guarde y envie a la empresa correcta
+    const companyId = getStoredCompanyId()
+    
     const response = await fetch(`${API_URL}/api/notifications`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "X-Company-ID": companyId,
       },
       body: formData,
     })
