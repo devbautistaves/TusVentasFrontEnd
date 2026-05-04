@@ -1,17 +1,103 @@
 /**
- * Script para importar datos CSV a TuPaginaYa
+ * Script para importar datos CSV a TuPaginaYa en MongoDB
  * 
- * Este script parsea los CSVs y los prepara para importar via API
- * 
- * Uso:
- * 1. Coloca los archivos CSV en la carpeta data/
- * 2. Ejecuta: node scripts/import-tpy-data.js
+ * Uso: MONGODB_URI=<uri> node scripts/import-tpy-data.js
  */
 
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
 
-// Datos parseados de los CSVs proporcionados
+// URI de MongoDB desde variable de entorno
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error('ERROR: MONGODB_URI no definida');
+  process.exit(1);
+}
+
+// ========================================
+// SCHEMAS (igual que en server.js)
+// ========================================
+
+const tpyClientSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  phone: { type: String, required: true, trim: true },
+  email: { type: String, trim: true, lowercase: true },
+  webName: { type: String, required: true, trim: true },
+  domain: { type: String, trim: true },
+  demoUrl: { type: String, trim: true },
+  status: { 
+    type: String, 
+    enum: ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada", "baja"],
+    default: "pendiente_demo"
+  },
+  activationPrice: { type: Number, default: 0 },
+  monthlyPrice: { type: Number, default: 0 },
+  createdDate: { type: Date, default: Date.now },
+  activationDate: { type: Date },
+  cancellationDate: { type: Date },
+  cancellationReason: { type: String, trim: true },
+  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  sellerName: { type: String, trim: true },
+  notes: { type: String, trim: true },
+}, { timestamps: true });
+
+const tpyDemoSchema = new mongoose.Schema({
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: "TPY_Client" },
+  name: { type: String, required: true, trim: true },
+  phone: { type: String, trim: true },
+  email: { type: String, trim: true, lowercase: true },
+  webName: { type: String, required: true, trim: true },
+  demoUrl: { type: String, trim: true },
+  status: { 
+    type: String, 
+    enum: ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada"],
+    default: "pendiente_demo"
+  },
+  activationPrice: { type: Number, default: 0 },
+  monthlyPrice: { type: Number, default: 0 },
+  demoDate: { type: Date, default: Date.now },
+  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  sellerName: { type: String, trim: true },
+  notes: { type: String, trim: true },
+}, { timestamps: true });
+
+const tpyTransactionSchema = new mongoose.Schema({
+  type: { type: String, enum: ["ingreso", "egreso"], required: true },
+  category: { type: String, required: true, trim: true },
+  concept: { type: String, required: true, trim: true },
+  amount: { type: Number, required: true },
+  date: { type: Date, default: Date.now },
+  month: { type: String, required: true, match: [/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"] },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: "TPY_Client" },
+  clientName: { type: String, trim: true },
+  recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  notes: { type: String, trim: true },
+}, { timestamps: true });
+
+const tpyCollectionSchema = new mongoose.Schema({
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: "TPY_Client" },
+  clientName: { type: String, required: true, trim: true },
+  clientPhone: { type: String, trim: true },
+  webName: { type: String, required: true, trim: true },
+  domain: { type: String, trim: true },
+  month: { type: String, required: true, match: [/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"] },
+  expectedAmount: { type: Number, required: true },
+  paidAmount: { type: Number, default: 0 },
+  status: { type: String, enum: ["pendiente", "pagado", "parcial", "vencido"], default: "pendiente" },
+  paymentDate: { type: Date },
+  recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  notes: { type: String, trim: true },
+}, { timestamps: true });
+
+// Modelos
+const TPY_Client = mongoose.model("TPY_Client", tpyClientSchema);
+const TPY_Demo = mongoose.model("TPY_Demo", tpyDemoSchema);
+const TPY_Transaction = mongoose.model("TPY_Transaction", tpyTransactionSchema);
+const TPY_Collection = mongoose.model("TPY_Collection", tpyCollectionSchema);
+
+// ========================================
+// DATOS A IMPORTAR (de los CSVs)
+// ========================================
 
 // DEMOS - de GESTION WEBS - DEMOS
 const demosData = [
@@ -63,36 +149,35 @@ const clientsData = [
 // COBRANZAS - de GESTION WEBS - COBRANZAS (pagos mensuales)
 const collectionsData = [
   // Febrero
-  { clientName: "IGLESIA REY DE GLORIA", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "FERRE ONLINE", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "ELECTRO BOHEMIA", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "SUENOS DE COLORES", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "MOV DE SUELOS EZEIZA", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "IGLESIA REY DE GLORIA", webName: "IGLESIA REY DE GLORIA", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "FERRE ONLINE", webName: "FERRE ONLINE", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "ELECTRO BOHEMIA", webName: "ELECTRO BOHEMIA", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "SUENOS DE COLORES", webName: "SUENOS DE COLORES", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "MOV DE SUELOS EZEIZA", webName: "MOV DE SUELOS EZEIZA", month: "2025-02", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
   // Marzo
-  { clientName: "IGLESIA REY DE GLORIA", month: "2025-03", expectedAmount: 20000, paidAmount: 20000, status: "pagado" },
-  { clientName: "FERRE ONLINE", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "ELECTRO BOHEMIA", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "SUENOS DE COLORES", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "MOV DE SUELOS EZEIZA", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "Cataratas Traslados", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "RB DIGITAL", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "Daniel Eventos", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "PLASTICOS HD", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "CLEAN DM LIMPIEZA", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "Donaciones Arg", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "IGLESIA REY DE GLORIA", webName: "IGLESIA REY DE GLORIA", month: "2025-03", expectedAmount: 20000, paidAmount: 20000, status: "pagado" },
+  { clientName: "FERRE ONLINE", webName: "FERRE ONLINE", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "ELECTRO BOHEMIA", webName: "ELECTRO BOHEMIA", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "SUENOS DE COLORES", webName: "SUENOS DE COLORES", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "MOV DE SUELOS EZEIZA", webName: "MOV DE SUELOS EZEIZA", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "Cataratas Traslados", webName: "Cataratas Traslados", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "RB DIGITAL", webName: "RB DIGITAL", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "Daniel Eventos", webName: "Daniel Eventos", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "PLASTICOS HD", webName: "PLASTICOS HD", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "CLEAN DM LIMPIEZA", webName: "CLEAN DM LIMPIEZA", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "Donaciones Arg", webName: "Donaciones Arg", month: "2025-03", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
   // Abril
-  { clientName: "IGLESIA REY DE GLORIA", month: "2025-04", expectedAmount: 10000, paidAmount: 10000, status: "pagado" },
-  { clientName: "FERRE ONLINE", month: "2025-04", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "ELECTRO BOHEMIA", month: "2025-04", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "SUENOS DE COLORES", month: "2025-04", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "MOV DE SUELOS EZEIZA", month: "2025-04", expectedAmount: 17000, paidAmount: 17000, status: "pagado" },
-  // ... mas cobranzas de abril
+  { clientName: "IGLESIA REY DE GLORIA", webName: "IGLESIA REY DE GLORIA", month: "2025-04", expectedAmount: 10000, paidAmount: 10000, status: "pagado" },
+  { clientName: "FERRE ONLINE", webName: "FERRE ONLINE", month: "2025-04", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "ELECTRO BOHEMIA", webName: "ELECTRO BOHEMIA", month: "2025-04", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "SUENOS DE COLORES", webName: "SUENOS DE COLORES", month: "2025-04", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "MOV DE SUELOS EZEIZA", webName: "MOV DE SUELOS EZEIZA", month: "2025-04", expectedAmount: 17000, paidAmount: 17000, status: "pagado" },
   // Mayo
-  { clientName: "IGLESIA REY DE GLORIA", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "FERRE ONLINE", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "ELECTRO BOHEMIA", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "SUENOS DE COLORES", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
-  { clientName: "MOV DE SUELOS EZEIZA", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "IGLESIA REY DE GLORIA", webName: "IGLESIA REY DE GLORIA", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "FERRE ONLINE", webName: "FERRE ONLINE", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "ELECTRO BOHEMIA", webName: "ELECTRO BOHEMIA", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "SUENOS DE COLORES", webName: "SUENOS DE COLORES", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
+  { clientName: "MOV DE SUELOS EZEIZA", webName: "MOV DE SUELOS EZEIZA", month: "2025-05", expectedAmount: 15000, paidAmount: 15000, status: "pagado" },
 ];
 
 // TRANSACCIONES DE CAJA - de GESTION WEBS - CAJA
@@ -168,20 +253,93 @@ const transactionsData = [
   { type: "egreso", date: "2025-04-30", category: "Comision", concept: "PAGO BAU", amount: 100000, month: "2025-04" },
 ];
 
-// Exportar datos para uso en frontend
-module.exports = {
-  demosData,
-  clientsData,
-  collectionsData,
-  transactionsData
-};
+// ========================================
+// FUNCION DE IMPORTACION
+// ========================================
 
-// Si se ejecuta directamente, mostrar resumen
-if (require.main === module) {
-  console.log("=== DATOS TPY PARA IMPORTAR ===");
-  console.log(`Demos: ${demosData.length} registros`);
-  console.log(`Clientes: ${clientsData.length} registros`);
-  console.log(`Cobranzas: ${collectionsData.length} registros`);
-  console.log(`Transacciones: ${transactionsData.length} registros`);
-  console.log("\nPara importar, usa la API /api/tpy/import con el token de admin");
+async function importData() {
+  console.log("=== INICIANDO IMPORTACION TPY ===\n");
+  
+  try {
+    // Conectar a MongoDB
+    console.log("Conectando a MongoDB...");
+    await mongoose.connect(MONGODB_URI);
+    console.log("Conectado exitosamente!\n");
+    
+    // Limpiar colecciones existentes (opcional)
+    console.log("Limpiando colecciones existentes...");
+    await TPY_Client.deleteMany({});
+    await TPY_Demo.deleteMany({});
+    await TPY_Transaction.deleteMany({});
+    await TPY_Collection.deleteMany({});
+    console.log("Colecciones limpiadas.\n");
+    
+    // Importar Clientes
+    console.log("Importando clientes...");
+    const clientsToInsert = clientsData.map(c => ({
+      ...c,
+      createdDate: new Date(c.createdDate),
+      activationDate: c.status === "web_activada" ? new Date(c.createdDate) : undefined,
+      phone: c.phone || "N/A",
+    }));
+    const insertedClients = await TPY_Client.insertMany(clientsToInsert);
+    console.log(`  -> ${insertedClients.length} clientes importados`);
+    
+    // Crear mapa de clientes por webName para relacionar cobranzas
+    const clientMap = {};
+    insertedClients.forEach(c => {
+      clientMap[c.webName.toUpperCase()] = c;
+    });
+    
+    // Importar Demos
+    console.log("Importando demos...");
+    const demosToInsert = demosData.map(d => ({
+      ...d,
+      demoDate: new Date(d.demoDate),
+    }));
+    const insertedDemos = await TPY_Demo.insertMany(demosToInsert);
+    console.log(`  -> ${insertedDemos.length} demos importadas`);
+    
+    // Importar Transacciones
+    console.log("Importando transacciones de caja...");
+    const transactionsToInsert = transactionsData.map(t => ({
+      ...t,
+      date: new Date(t.date),
+    }));
+    const insertedTransactions = await TPY_Transaction.insertMany(transactionsToInsert);
+    console.log(`  -> ${insertedTransactions.length} transacciones importadas`);
+    
+    // Importar Cobranzas (relacionando con clientes)
+    console.log("Importando cobranzas...");
+    const collectionsToInsert = collectionsData.map(c => {
+      const client = clientMap[c.webName.toUpperCase()];
+      return {
+        ...c,
+        clientId: client?._id,
+        paymentDate: c.status === "pagado" ? new Date() : undefined,
+      };
+    });
+    const insertedCollections = await TPY_Collection.insertMany(collectionsToInsert);
+    console.log(`  -> ${insertedCollections.length} cobranzas importadas`);
+    
+    // Resumen final
+    console.log("\n=== RESUMEN DE IMPORTACION ===");
+    console.log(`Clientes:      ${insertedClients.length}`);
+    console.log(`Demos:         ${insertedDemos.length}`);
+    console.log(`Transacciones: ${insertedTransactions.length}`);
+    console.log(`Cobranzas:     ${insertedCollections.length}`);
+    console.log("\nImportacion completada exitosamente!");
+    
+  } catch (error) {
+    console.error("\nERROR durante la importacion:", error.message);
+    throw error;
+  } finally {
+    await mongoose.disconnect();
+    console.log("\nConexion cerrada.");
+  }
 }
+
+// Ejecutar
+importData()
+  .then(() => process.exit(0))
+  .catch(() => process.exit(1));

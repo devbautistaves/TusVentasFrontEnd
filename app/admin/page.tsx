@@ -50,7 +50,10 @@ import {
   Legend,
 } from "recharts"
 import { useCompany } from "@/lib/company-context"
-import { clientsAPI, transactionsAPI, collectionsAPI, Client, CollectionItem } from "@/lib/api"
+import { 
+  clientsAPI, transactionsAPI, collectionsAPI, Client, CollectionItem,
+  tpyClientsAPI, tpyTransactionsAPI, tpyCollectionsAPI, tpyStatsAPI, TPY_Stats
+} from "@/lib/api"
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#eab308",
@@ -83,21 +86,9 @@ export default function AdminDashboardPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
   
-  // Estados para TuPaginaYa
-  const [clientStats, setClientStats] = useState<{
-    total: number
-    demoPendiente: number
-    demoEnviada: number
-    webPendiente: number
-    webActivada: number
-    webPausada: number
-    clienteBaja: number
-    setupsThisMonth: number
-    setupsCount: number
-    mrr: number
-  } | null>(null)
+  // Estados para TuPaginaYa (usando nuevas APIs TPY)
+  const [tpyStats, setTpyStats] = useState<TPY_Stats | null>(null)
   const [financeSummary, setFinanceSummary] = useState<{ ingresos: number; egresos: number; balance: number } | null>(null)
-  const [collections, setCollections] = useState<CollectionItem[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -111,15 +102,13 @@ export default function AdminDashboardPage() {
         setAllUsers(users)
         
         if (currentCompany.id === "tupaginaya") {
-          // Cargar datos de TuPaginaYa
-          const [clientStatsRes, summaryRes, collectionsRes] = await Promise.all([
-            clientsAPI.getStats(token),
-            transactionsAPI.getSummary(token, selectedMonth),
-            collectionsAPI.getAll(token),
+          // Cargar datos de TuPaginaYa usando nuevas APIs TPY
+          const [statsRes, transactionsRes] = await Promise.all([
+            tpyStatsAPI.get(token, selectedMonth),
+            tpyTransactionsAPI.getAll(token, { month: selectedMonth }),
           ])
-          setClientStats(clientStatsRes.stats)
-          setFinanceSummary(summaryRes.summary)
-          setCollections(collectionsRes.collections)
+          setTpyStats(statsRes.stats)
+          setFinanceSummary(transactionsRes.totals)
         } else {
           // Cargar datos de TusVentas (actual)
           const [statsRes, salesRes, adCostsRes] = await Promise.all([
@@ -422,19 +411,32 @@ export default function AdminDashboardPage() {
 
   // Dashboard de TuPaginaYa
   if (currentCompany.id === "tupaginaya") {
-    const criticalCollections = collections.filter(c => c.daysOverdue >= 30).length
-    const urgentCollections = collections.filter(c => c.daysOverdue >= 15 && c.daysOverdue < 30).length
+    // Usar datos de la nueva API TPY
+    const statusCounts = tpyStats?.clientsByStatus || {}
+    const totalClients = Object.values(statusCounts).reduce((sum, count) => sum + (count as number), 0)
+    const pendingCollections = tpyStats?.collections?.pending || 0
     
     return (
       <DashboardLayout requiredRole="admin">
         <div className="space-y-6">
-          {/* Header */}
+          {/* Header con selector de mes */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground">Dashboard TuPaginaYa</h1>
               <p className="text-muted-foreground">Gestion de paginas web</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-48">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableMonths().map(m => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Link href="/admin/clients">
                 <Button variant="outline" className="gap-2">
                   <Users className="h-4 w-4" />
@@ -450,16 +452,16 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats Cards usando tpyStats */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Webs Activas</p>
-                    <p className="text-4xl font-bold text-foreground">{clientStats?.webActivada || 0}</p>
+                    <p className="text-4xl font-bold text-foreground">{tpyStats?.activeClients || 0}</p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      {clientStats?.total || 0} clientes totales
+                      {totalClients} clientes totales
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
@@ -473,10 +475,10 @@ export default function AdminDashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">MRR</p>
-                    <p className="text-4xl font-bold text-green-400">{formatCurrency(clientStats?.mrr || 0)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Ingresos del Mes</p>
+                    <p className="text-4xl font-bold text-green-400">{formatCurrency(financeSummary?.ingresos || 0)}</p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      Ingreso recurrente mensual
+                      Balance: {formatCurrency(financeSummary?.balance || 0)}
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
@@ -490,10 +492,10 @@ export default function AdminDashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Setups del Mes</p>
-                    <p className="text-4xl font-bold text-purple-400">{formatCurrency(clientStats?.setupsThisMonth || 0)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Ventas del Mes</p>
+                    <p className="text-4xl font-bold text-purple-400">{tpyStats?.salesThisMonth || 0}</p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      {clientStats?.setupsCount || 0} activaciones
+                      {tpyStats?.totalDemos || 0} demos totales
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -509,10 +511,10 @@ export default function AdminDashboardPage() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Demos Pendientes</p>
                     <p className="text-4xl font-bold text-amber-400">
-                      {(clientStats?.demoPendiente || 0) + (clientStats?.demoEnviada || 0)}
+                      {(statusCounts.pendiente_demo || 0) + (statusCounts.demo_enviada || 0) + (statusCounts.demo_pausada || 0)}
                     </p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      {clientStats?.webPendiente || 0} webs pendientes
+                      {statusCounts.pendiente_web || 0} webs pendientes
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
@@ -522,20 +524,20 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className={`${(criticalCollections + urgentCollections) > 0 ? "border-red-500/30 bg-gradient-to-br from-red-500/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10"} via-card to-card`}>
+            <Card className={`${pendingCollections > 0 ? "border-red-500/30 bg-gradient-to-br from-red-500/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10"} via-card to-card`}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Cobranzas Urgentes</p>
-                    <p className={`text-4xl font-bold ${(criticalCollections + urgentCollections) > 0 ? "text-red-400" : "text-emerald-400"}`}>
-                      {criticalCollections + urgentCollections}
+                    <p className="text-sm font-medium text-muted-foreground">Cobranzas Pendientes</p>
+                    <p className={`text-4xl font-bold ${pendingCollections > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                      {pendingCollections}
                     </p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      {criticalCollections} criticos (+30 dias)
+                      {tpyStats?.collections?.paid || 0} pagadas
                     </p>
                   </div>
-                  <div className={`h-12 w-12 rounded-xl ${(criticalCollections + urgentCollections) > 0 ? "bg-red-500/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
-                    <AlertTriangle className={`h-6 w-6 ${(criticalCollections + urgentCollections) > 0 ? "text-red-400" : "text-emerald-400"}`} />
+                  <div className={`h-12 w-12 rounded-xl ${pendingCollections > 0 ? "bg-red-500/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
+                    <AlertTriangle className={`h-6 w-6 ${pendingCollections > 0 ? "text-red-400" : "text-emerald-400"}`} />
                   </div>
                 </div>
               </CardContent>

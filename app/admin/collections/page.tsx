@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { collectionsAPI, clientsAPI, CollectionItem, Payment, Client } from "@/lib/api"
+import { collectionsAPI, clientsAPI, CollectionItem, Payment, Client, tpyCollectionsAPI, TPY_Collection } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -67,7 +67,7 @@ export default function CollectionsPage() {
   const { toast } = useToast()
   const { currentCompany } = useCompany()
   
-  const [collections, setCollections] = useState<CollectionItem[]>([])
+  const [collections, setCollections] = useState<TPY_Collection[]>([])
   const [paymentHistories, setPaymentHistories] = useState<ClientPaymentHistory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false)
@@ -103,32 +103,32 @@ export default function CollectionsPage() {
 
     try {
       setIsLoading(true)
-      const response = await collectionsAPI.getAll(token)
-      setCollections(response.collections)
+      // Usar nueva API TPY
+      const response = await tpyCollectionsAPI.getAll(token)
       
-      // Fetch payment history for each client
-      const histories: ClientPaymentHistory[] = []
-      for (const collection of response.collections) {
-        try {
-          const paymentsRes = await clientsAPI.getPayments(token, collection.client._id)
-          const paymentsByMonth: Record<string, number> = {}
-          
-          for (const payment of paymentsRes.payments || []) {
-            const month = payment.period?.slice(0, 7) || new Date(payment.paymentDate).toISOString().slice(0, 7)
-            paymentsByMonth[month] = (paymentsByMonth[month] || 0) + payment.amount
-          }
-          
-          histories.push({
-            client: collection.client,
-            payments: paymentsByMonth,
-          })
-        } catch {
-          histories.push({
-            client: collection.client,
-            payments: {},
-          })
-        }
-      }
+      // Convertir TPY_Collection a formato esperado por el componente
+      const collectionsData = (response.collections || []).map((c: TPY_Collection) => ({
+        client: {
+          _id: c.clientId || c._id,
+          name: c.clientName || "Sin nombre",
+          email: c.clientEmail || "",
+          phone: c.clientPhone || "",
+          businessName: c.webName || "",
+          domain: c.domain || "",
+          monthlyPrice: c.expectedAmount || 0,
+        },
+        amountDue: c.expectedAmount - c.paidAmount,
+        lastBillingDate: new Date().toISOString(),
+        daysOverdue: c.status === "pagado" ? 0 : 15,
+      }))
+      
+      setCollections(collectionsData as any)
+      
+      // Crear historial de pagos desde las cobranzas
+      const histories: ClientPaymentHistory[] = collectionsData.map((c: any) => ({
+        client: c.client,
+        payments: {},
+      }))
       setPaymentHistories(histories)
     } catch (error) {
       console.error("Error fetching collections:", error)

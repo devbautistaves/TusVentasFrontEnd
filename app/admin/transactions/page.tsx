@@ -41,7 +41,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { transactionsAPI, Transaction, TransactionType, clientsAPI } from "@/lib/api"
+import { transactionsAPI, Transaction, TransactionType, clientsAPI, tpyTransactionsAPI, TPY_Transaction } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -71,7 +71,7 @@ export default function TransactionsPage() {
   const { toast } = useToast()
   const { currentCompany } = useCompany()
   
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [transactions, setTransactions] = useState<TPY_Transaction[]>([])
   const [summary, setSummary] = useState<{ ingresos: number; egresos: number; balance: number } | null>(null)
   const [activationTotal, setActivationTotal] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -112,29 +112,18 @@ export default function TransactionsPage() {
       const filters: { type?: string; month?: string } = { month: selectedMonth }
       if (typeFilter !== "all") filters.type = typeFilter
       
-      const [transactionsRes, summaryRes, clientsRes] = await Promise.all([
-        transactionsAPI.getAll(token, filters),
-        transactionsAPI.getSummary(token, selectedMonth),
-        clientsAPI.getAll(token, {}),
-      ])
+      // Usar nueva API TPY
+      const transactionsRes = await tpyTransactionsAPI.getAll(token, filters)
       
-      setTransactions(transactionsRes.transactions)
-      setSummary(summaryRes.summary)
+      setTransactions(transactionsRes.transactions || [])
+      setSummary(transactionsRes.totals)
       
-      // Calcular monto de activacion del mes seleccionado
-      const [year, monthNum] = selectedMonth.split("-")
-      const startOfMonth = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
-      const endOfMonth = new Date(parseInt(year), parseInt(monthNum), 0, 23, 59, 59)
+      // Calcular activaciones del mes desde transacciones de tipo "activacion"
+      const activaciones = (transactionsRes.transactions || [])
+        .filter((t: TPY_Transaction) => t.type === "ingreso" && t.category === "activacion")
+        .reduce((sum: number, t: TPY_Transaction) => sum + t.amount, 0)
       
-      const activationSum = clientsRes.clients
-        .filter(client => {
-          if (!client.activationDate || !client.setupPrice) return false
-          const activationDate = new Date(client.activationDate)
-          return activationDate >= startOfMonth && activationDate <= endOfMonth
-        })
-        .reduce((sum, client) => sum + (client.setupPrice || 0), 0)
-      
-      setActivationTotal(activationSum)
+      setActivationTotal(activaciones)
     } catch (error) {
       console.error("Error fetching data:", error)
       toast({
@@ -155,7 +144,7 @@ export default function TransactionsPage() {
     
     try {
       setIsDeleting(true)
-      await transactionsAPI.delete(token, transactionToDelete._id)
+      await tpyTransactionsAPI.delete(token, transactionToDelete._id)
       toast({
         title: "Transaccion eliminada",
         description: "La transaccion fue eliminada correctamente",
@@ -189,7 +178,7 @@ export default function TransactionsPage() {
     }
 
     try {
-      await transactionsAPI.create(token, formData)
+      await tpyTransactionsAPI.create(token, formData as any)
       toast({
         title: "Transaccion creada",
         description: `Se registro el ${formData.type} correctamente`,

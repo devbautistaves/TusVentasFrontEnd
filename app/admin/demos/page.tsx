@@ -32,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, Client, ClientStatus } from "@/lib/api"
+import { clientsAPI, Client, ClientStatus, tpyDemosAPI, TPY_Demo } from "@/lib/api"
 import { Plus, Search, Eye, Send, ArrowRight, Globe, Clock, CheckCircle, MoreHorizontal, ExternalLink } from "lucide-react"
 import {
   DropdownMenu,
@@ -57,11 +57,11 @@ const statusColors: Record<string, string> = {
 }
 
 export default function AdminDemosPage() {
-  const [demos, setDemos] = useState<Client[]>([])
+  const [demos, setDemos] = useState<TPY_Demo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedDemo, setSelectedDemo] = useState<Client | null>(null)
+  const [selectedDemo, setSelectedDemo] = useState<TPY_Demo | null>(null)
   const [showStatusDialog, setShowStatusDialog] = useState(false)
   const [newStatus, setNewStatus] = useState<ClientStatus | "">("")
   const [isUpdating, setIsUpdating] = useState(false)
@@ -81,16 +81,13 @@ export default function AdminDemosPage() {
         return
       }
 
+      // Usar nueva API TPY para demos
       const filters: { status?: string } = {}
-      if (statusFilter && statusFilter !== "all") {
-        filters.status = statusFilter
-      }
-
-      const response = await clientsAPI.getAll(token, filters)
-      if (response.success) {
-        // Filtrar solo demos (no webs activadas ni bajas)
-        const demoStatuses = ["demo_pendiente", "demo_enviada", "demo_pausada", "web_pendiente"]
-        setDemos(response.clients.filter(c => demoStatuses.includes(c.status)))
+      if (statusFilter !== "all") filters.status = statusFilter
+      
+      const response = await tpyDemosAPI.getAll(token, filters)
+      if (response.demos) {
+        setDemos(response.demos)
       }
     } catch (error) {
       toast({
@@ -118,8 +115,8 @@ export default function AdminDemosPage() {
       const token = localStorage.getItem("token")
       if (!token) return
 
-      const response = await clientsAPI.updateStatus(token, selectedDemo._id, newStatus)
-      if (response.success) {
+      const response = await tpyDemosAPI.updateStatus(token, selectedDemo._id, newStatus)
+      if (response.success || response.demo) {
         toast({
           title: "Estado actualizado",
           description: `La demo fue actualizada a ${statusLabels[newStatus] || newStatus}`,
@@ -143,7 +140,7 @@ export default function AdminDemosPage() {
   const filteredDemos = demos.filter((demo) => {
     const matchesSearch =
       demo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      demo.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      demo.webName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (demo.phone && demo.phone.includes(searchTerm))
 
     return matchesSearch
@@ -157,7 +154,7 @@ export default function AdminDemosPage() {
     webPendiente: demos.filter(d => d.status === "web_pendiente").length,
   }
 
-  const getSellerName = (sellerId: Client["sellerId"]) => {
+  const getSellerName = (sellerId: TPY_Demo["sellerId"]) => {
     if (!sellerId) return "-"
     if (typeof sellerId === "string") return sellerId
     return sellerId.name
@@ -325,7 +322,7 @@ export default function AdminDemosPage() {
                     {filteredDemos.map((demo) => (
                       <TableRow key={demo._id}>
                         <TableCell className="whitespace-nowrap">
-                          {new Date(demo.createdAt).toLocaleDateString("es-AR")}
+                          {new Date(demo.demoDate || demo.createdAt).toLocaleDateString("es-AR")}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -336,7 +333,7 @@ export default function AdminDemosPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium">{demo.businessName}</p>
+                          <p className="font-medium">{demo.webName}</p>
                         </TableCell>
                         <TableCell>
                           {demo.demoUrl ? (

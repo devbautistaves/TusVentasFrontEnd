@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, usersAPI, CreateDemoData, SocialNetworks, User } from "@/lib/api"
+import { clientsAPI, usersAPI, CreateDemoData, SocialNetworks, User, tpyDemosAPI } from "@/lib/api"
 import { ArrowLeft, Upload, X, Instagram, Facebook, Globe, Smartphone } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -129,14 +129,22 @@ export default function AdminNewDemoPage() {
         return
       }
 
-      // Admin creates demo and assigns to seller
+      // Admin creates demo using TPY API
       const dataToSend = {
-        ...formData,
+        name: formData.name,
+        phone: formData.phone,
+        webName: formData.businessName,
+        email: "",
+        demoUrl: "",
+        status: "demo_pausada",
+        activationPrice: 0,
+        monthlyPrice: 0,
+        notes: formData.notes,
         sellerId: selectedSellerId || undefined,
       }
 
-      const response = await clientsAPI.createDemo(token, dataToSend as CreateDemoData)
-      if (response.success) {
+      const response = await tpyDemosAPI.create(token, dataToSend)
+      if (response.success || response.demo) {
         toast({
           title: "Demo creada",
           description: "La demo fue creada exitosamente",

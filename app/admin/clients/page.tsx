@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, Client, CreateClientData, usersAPI, User, TPY_STATUS_LABELS } from "@/lib/api"
+import { clientsAPI, Client, CreateClientData, usersAPI, User, TPY_STATUS_LABELS, tpyClientsAPI, TPY_Client } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -62,7 +62,7 @@ export default function ClientsPage() {
   const { toast } = useToast()
   const { currentCompany } = useCompany()
   
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<TPY_Client[]>([])
   const [sellers, setSellers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -103,14 +103,25 @@ export default function ClientsPage() {
 
     try {
       setIsLoading(true)
-      const [clientsRes, statsRes, usersRes] = await Promise.all([
-        clientsAPI.getAll(token),
-        clientsAPI.getStats(token),
+      const [clientsRes, usersRes] = await Promise.all([
+        tpyClientsAPI.getAll(token),
         usersAPI.getAll(token),
       ])
       
-      setClients(clientsRes.clients)
-      setStats(statsRes.stats)
+      // Calcular stats desde los clientes
+      const allClients = clientsRes.clients || []
+      const byStatus: Record<string, number> = {}
+      let totalActiveRevenue = 0
+      
+      allClients.forEach((c: TPY_Client) => {
+        byStatus[c.status] = (byStatus[c.status] || 0) + 1
+        if (c.status === "web_activada") {
+          totalActiveRevenue += c.monthlyPrice || 0
+        }
+      })
+      
+      setClients(allClients)
+      setStats({ byStatus, totalActiveRevenue, total: allClients.length })
       setSellers(usersRes.users.filter(u => u.role === "seller" || u.role === "supervisor"))
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -129,7 +140,7 @@ export default function ClientsPage() {
     if (!token) return
 
     try {
-      await clientsAPI.create(token, formData)
+      await tpyClientsAPI.create(token, formData as any)
       toast({
         title: "Cliente creado",
         description: "El cliente se ha creado correctamente",
@@ -152,7 +163,7 @@ export default function ClientsPage() {
     if (!token || !selectedClient) return
 
     try {
-      await clientsAPI.update(token, selectedClient._id, formData)
+      await tpyClientsAPI.update(token, selectedClient._id, formData as any)
       toast({
         title: "Cliente actualizado",
         description: "El cliente se ha actualizado correctamente",
@@ -176,7 +187,7 @@ export default function ClientsPage() {
     if (!token) return
 
     try {
-      await clientsAPI.update(token, clientId, { status: newStatus as Client["status"] })
+      await tpyClientsAPI.update(token, clientId, { status: newStatus })
       toast({
         title: "Estado actualizado",
         description: `El cliente ahora esta en estado: ${statusConfig[newStatus]?.label || newStatus}`,
