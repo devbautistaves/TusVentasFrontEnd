@@ -393,10 +393,19 @@ export const companySettingsAPI = {
     }),
 }
 
+export interface CommissionScale {
+  minSales: number
+  maxSales: number | null
+  commissionAmount: number
+}
+
 export interface CompanySettingsData {
   _id?: string
   companyId: "prosegur" | "tupaginaya"
   baseCommissionPerSale: number
+  basePrice?: number // Para TuPaginaYa
+  commissionScales?: CommissionScale[] // Escalas de comisiones para vendedores
+  supervisorFixedCommission?: number // Comision fija para supervisores por venta
   settings?: Record<string, unknown>
   createdAt?: string
   updatedAt?: string
