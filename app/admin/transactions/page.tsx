@@ -225,7 +225,12 @@ export default function TransactionsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Ingresos y Egresos</h1>
-          <p className="text-muted-foreground">Control financiero de TuPaginaYa</p>
+          <p className="text-muted-foreground">
+            {selectedMonth === "all" 
+              ? "Vista general - Todos los movimientos" 
+              : `Movimientos de ${new Date(selectedMonth + "-01").toLocaleDateString("es-AR", { month: "long", year: "numeric" })}`
+            }
+          </p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -267,7 +272,7 @@ export default function TransactionsPage() {
           <Card className={`${summary.balance >= 0 ? "border-blue-500/30 bg-blue-500/5" : "border-orange-500/30 bg-orange-500/5"}`}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className={`text-sm font-medium ${summary.balance >= 0 ? "text-blue-500" : "text-orange-500"}`}>
-                Balance
+                {selectedMonth === "all" ? "Balance General" : "Balance del Mes"}
               </CardTitle>
               <DollarSign className={`h-5 w-5 ${summary.balance >= 0 ? "text-blue-500" : "text-orange-500"}`} />
             </CardHeader>
@@ -275,6 +280,9 @@ export default function TransactionsPage() {
               <p className={`text-3xl font-bold ${summary.balance >= 0 ? "text-blue-500" : "text-orange-500"}`}>
                 ${summary.balance.toLocaleString()}
               </p>
+              {selectedMonth === "all" && (
+                <p className="text-xs text-muted-foreground mt-1">Acumulado historico</p>
+              )}
             </CardContent>
           </Card>
           

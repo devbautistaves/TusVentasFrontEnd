@@ -1717,6 +1717,9 @@ export const tpyDemosAPI = {
     return fetchAPI<{ success: boolean; demos: TPY_Demo[] }>(`/api/tpy/demos${query}`, { token })
   },
 
+  getById: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; demo: TPY_Demo }>(`/api/tpy/demos/${id}`, { token }),
+
   create: (token: string, data: Partial<TPY_Demo>) =>
     fetchAPI<{ success: boolean; demo: TPY_Demo }>("/api/tpy/demos", {
       method: "POST",
