@@ -43,17 +43,13 @@ import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Spinner } from "@/components/ui/spinner"
 
-// Estados TuPaginaYa actualizados
+// Estados TuPaginaYa - segun el backend
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pendiente_demo: { label: "Pendiente de Demo", color: "bg-yellow-500", icon: Pause },
+  demo_pendiente: { label: "Demo Pendiente", color: "bg-yellow-500", icon: Pause },
   demo_enviada: { label: "Demo Enviada", color: "bg-blue-500", icon: Eye },
-  demo_pausada: { label: "Demo Pausada", color: "bg-orange-500", icon: Pause },
-  pendiente_web: { label: "Pendiente Web", color: "bg-purple-500", icon: Globe },
+  web_pendiente: { label: "Web Pendiente", color: "bg-purple-500", icon: Globe },
   web_activada: { label: "Web Activada", color: "bg-emerald-500", icon: Globe },
-  baja: { label: "Baja", color: "bg-red-500", icon: UserX },
-  // Mantener compatibilidad con valores antiguos
-  demo_pendiente: { label: "Pendiente de Demo", color: "bg-yellow-500", icon: Pause },
-  web_pausada: { label: "Demo Pausada", color: "bg-orange-500", icon: Pause },
+  web_pausada: { label: "Web Pausada", color: "bg-orange-500", icon: Pause },
   cliente_baja: { label: "Baja", color: "bg-red-500", icon: UserX },
 }
 
@@ -453,11 +449,11 @@ export default function ClientsPage() {
                                 Demo Pausada
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(client._id, "pendiente_web")}
-                                disabled={client.status === "pendiente_web"}
+                                onClick={() => handleStatusChange(client._id, "web_pendiente")}
+                                disabled={client.status === "web_pendiente"}
                               >
                                 <Globe className="mr-2 h-4 w-4" />
-                                Pendiente Web
+                                Web Pendiente
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleStatusChange(client._id, "web_activada")}
@@ -467,9 +463,16 @@ export default function ClientsPage() {
                                 Web Activada
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(client._id, "baja")}
+                                onClick={() => handleStatusChange(client._id, "web_pausada")}
+                                disabled={client.status === "web_pausada"}
+                              >
+                                <Pause className="mr-2 h-4 w-4" />
+                                Web Pausada
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "cliente_baja")}
                                 className="text-destructive"
-                                disabled={client.status === "baja"}
+                                disabled={client.status === "cliente_baja"}
                               >
                                 <UserX className="mr-2 h-4 w-4" />
                                 Dar de Baja

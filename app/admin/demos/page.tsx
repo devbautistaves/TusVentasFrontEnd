@@ -43,17 +43,19 @@ import {
 import Link from "next/link"
 
 const statusLabels: Record<string, string> = {
-  demo_pendiente: "Demo Pendiente",
+  pendiente_demo: "Demo Pendiente",
   demo_enviada: "Demo Enviada",
   demo_pausada: "Demo Pausada",
-  web_pendiente: "Web Pendiente",
+  pendiente_web: "Web Pendiente",
+  web_activada: "Web Activada",
 }
 
 const statusColors: Record<string, string> = {
-  demo_pendiente: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  pendiente_demo: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
   demo_enviada: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   demo_pausada: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-  web_pendiente: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  pendiente_web: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  web_activada: "bg-green-500/10 text-green-500 border-green-500/20",
 }
 
 export default function AdminDemosPage() {
@@ -103,8 +105,8 @@ export default function AdminDemosPage() {
   const handleStatusChange = async () => {
     if (!selectedDemo || !newStatus) return
 
-    // Si el nuevo estado es web_pendiente o web_activada, redirigir a la pagina de conversion
-    if (newStatus === "web_pendiente" || newStatus === "web_activada") {
+    // Si el nuevo estado es pendiente_web o web_activada, redirigir a la pagina de conversion
+    if (newStatus === "pendiente_web" || newStatus === "web_activada") {
       setShowStatusDialog(false)
       router.push(`/admin/demos/${selectedDemo._id}/convert`)
       return
@@ -148,10 +150,10 @@ export default function AdminDemosPage() {
 
   const stats = {
     total: demos.length,
-    demoPendiente: demos.filter(d => d.status === "demo_pendiente").length,
+    demoPendiente: demos.filter(d => d.status === "pendiente_demo").length,
     demoEnviada: demos.filter(d => d.status === "demo_enviada").length,
     demoPausada: demos.filter(d => d.status === "demo_pausada").length,
-    webPendiente: demos.filter(d => d.status === "web_pendiente").length,
+    webPendiente: demos.filter(d => d.status === "pendiente_web").length,
   }
 
   const getSellerName = (sellerId: TPY_Demo["sellerId"]) => {
@@ -267,10 +269,11 @@ export default function AdminDemosPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="demo_pendiente">Demo Pendiente</SelectItem>
+                  <SelectItem value="pendiente_demo">Demo Pendiente</SelectItem>
                   <SelectItem value="demo_enviada">Demo Enviada</SelectItem>
                   <SelectItem value="demo_pausada">Demo Pausada</SelectItem>
-                  <SelectItem value="web_pendiente">Web Pendiente</SelectItem>
+                  <SelectItem value="pendiente_web">Web Pendiente</SelectItem>
+                  <SelectItem value="web_activada">Web Activada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -383,7 +386,7 @@ export default function AdminDemosPage() {
                                 <ArrowRight className="mr-2 h-4 w-4" />
                                 Cambiar estado
                               </DropdownMenuItem>
-                              {(demo.status === "demo_enviada" || demo.status === "web_pendiente") && (
+                              {(demo.status === "demo_enviada" || demo.status === "pendiente_web") && (
                                 <DropdownMenuItem asChild>
                                   <Link href={`/admin/demos/${demo._id}/convert`}>
                                     <CheckCircle className="mr-2 h-4 w-4" />
@@ -418,14 +421,14 @@ export default function AdminDemosPage() {
                   <SelectValue placeholder="Seleccionar estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="demo_pendiente">Demo Pendiente</SelectItem>
+                  <SelectItem value="pendiente_demo">Demo Pendiente</SelectItem>
                   <SelectItem value="demo_enviada">Demo Enviada</SelectItem>
                   <SelectItem value="demo_pausada">Demo Pausada</SelectItem>
-                  <SelectItem value="web_pendiente">Web Pendiente</SelectItem>
+                  <SelectItem value="pendiente_web">Web Pendiente</SelectItem>
                   <SelectItem value="web_activada">Web Activada</SelectItem>
                 </SelectContent>
               </Select>
-              {(newStatus === "web_pendiente" || newStatus === "web_activada") && (
+              {(newStatus === "pendiente_web" || newStatus === "web_activada") && (
                 <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
                   <p className="text-sm text-blue-500">
                     Al seleccionar este estado, seras redirigido al formulario de conversion para completar los datos del cliente (email, dominio, montos, etc.)
