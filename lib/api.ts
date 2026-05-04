@@ -1009,7 +1009,7 @@ export interface AddLeadContactData {
 // TUPAGINAYA - Tipos e Interfaces
 // ========================================
 
-export type ClientStatus = "demo_pendiente" | "demo_enviada" | "web_pendiente" | "web_activada" | "web_pausada" | "cliente_baja"
+export type ClientStatus = "demo_pendiente" | "demo_enviada" | "demo_pausada" | "web_pendiente" | "web_activada" | "web_pausada" | "cliente_baja"
 export type WebType = "landing" | "ecommerce" | "catalogo" | "institucional" | "blog" | "otro"
 export type PaymentMethod = "efectivo" | "transferencia" | "mercadopago" | "tarjeta" | "otro"
 export type PaymentStatus = "pendiente" | "pagado" | "vencido" | "anulado"
@@ -1447,5 +1447,70 @@ export const liquidationEmailsAPI = {
       method: "PUT",
       token,
       body: JSON.stringify(data),
+    }),
+}
+
+// ========================================
+// MARKETING MATERIALS API
+// ========================================
+
+export type MaterialCategory = "induccion" | "publicidad" | "demos_entregadas"
+export type MaterialFileType = "image" | "video" | "document" | "other"
+
+export interface MarketingMaterial {
+  _id: string
+  companyId: string
+  category: MaterialCategory
+  name: string
+  description?: string
+  fileType: MaterialFileType
+  fileName: string
+  fileUrl: string
+  mimeType?: string
+  fileSize?: number
+  uploadedBy?: { _id: string; name: string }
+  createdAt: string
+  updatedAt: string
+}
+
+export const materialsAPI = {
+  // Obtener todos los materiales (opcionalmente filtrar por categoria)
+  getAll: (token: string, category?: MaterialCategory) => {
+    const query = category ? `?category=${category}` : ""
+    return fetchAPI<{ success: boolean; materials: MarketingMaterial[] }>(`/api/materials${query}`, { token })
+  },
+
+  // Subir nuevo material (admin only)
+  upload: async (token: string, data: { category: MaterialCategory; name: string; description?: string }, file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("category", data.category)
+    formData.append("name", data.name)
+    if (data.description) formData.append("description", data.description)
+    
+    const companyId = getStoredCompanyId()
+    
+    const response = await fetch(`${API_URL}/api/materials`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Company-ID": companyId,
+      },
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || "Error uploading material")
+    }
+    
+    return response.json() as Promise<{ success: boolean; material: MarketingMaterial; message: string }>
+  },
+
+  // Eliminar material (admin only)
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; message: string }>(`/api/materials/${id}`, {
+      method: "DELETE",
+      token,
     }),
 }

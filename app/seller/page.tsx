@@ -25,7 +25,6 @@ import {
   Clock,
   Calendar,
   AlertTriangle,
-  TrendingDown,
   UserPlus,
 } from "lucide-react"
 import {
@@ -223,13 +222,13 @@ export default function SellerDashboardPage() {
         </div>
 
         {/* Commission Cards - PRIMERO */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Comision Bruta */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {/* Ganancias Generadas (Comision Bruta) */}
           <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Comision Bruta</p>
+                  <p className="text-sm font-medium text-muted-foreground">Ganancias Generadas</p>
                   <p className="text-3xl font-bold text-green-400">{formatCurrency(totalCommission)}</p>
                   <p className="text-xs text-muted-foreground">
                     {activatedCount} ventas x {formatCurrency(commissionPerSale)}
@@ -238,6 +237,42 @@ export default function SellerDashboardPage() {
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
                   <DollarSign className="h-6 w-6 text-green-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Webs Vendidas */}
+          <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Webs Vendidas</p>
+                  <p className="text-3xl font-bold text-purple-400">{installedSales.length}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ventas completadas
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-purple-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Demos Entregadas */}
+          <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-card to-card">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Demos Entregadas</p>
+                  <p className="text-3xl font-bold text-cyan-400">{appointedSales.length + installedSales.length}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Demos enviadas a clientes
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-cyan-400" />
                 </div>
               </div>
             </CardContent>
@@ -256,26 +291,6 @@ export default function SellerDashboardPage() {
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
                   <UserPlus className="h-6 w-6 text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Comision Neta */}
-          <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Comision Neta</p>
-                  <p className={`text-3xl font-bold ${netCommission >= 0 ? 'text-primary' : 'text-red-400'}`}>
-                    {formatCurrency(netCommission)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Tu ganancia final
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <TrendingDown className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </CardContent>

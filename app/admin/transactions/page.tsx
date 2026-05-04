@@ -337,10 +337,111 @@ export default function TransactionsPage() {
         </CardContent>
       </Card>
 
-      {/* Transactions Table */}
+      {/* Dual Column View - Like Excel CAJA */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* INGRESOS Column */}
+        <Card className="border-emerald-500/30">
+          <CardHeader className="bg-emerald-500/10 border-b border-emerald-500/20">
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-emerald-500">
+                <TrendingUp className="h-5 w-5" />
+                INGRESOS
+              </span>
+              <span className="text-xl text-emerald-400">
+                ${summary?.ingresos.toLocaleString() || 0}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-20">Fecha</TableHead>
+                  <TableHead>Concepto</TableHead>
+                  <TableHead className="text-right">Importe</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.filter(t => t.type === "ingreso").length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                      Sin ingresos este mes
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  transactions.filter(t => t.type === "ingreso").map((transaction) => (
+                    <TableRow key={transaction._id}>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(transaction.date).toLocaleDateString("es-AR", { day: "numeric", month: "numeric" })}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {transaction.description}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-emerald-500">
+                        ${transaction.amount.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        
+        {/* EGRESOS Column */}
+        <Card className="border-red-500/30">
+          <CardHeader className="bg-red-500/10 border-b border-red-500/20">
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-red-500">
+                <TrendingDown className="h-5 w-5" />
+                EGRESOS
+              </span>
+              <span className="text-xl text-red-400">
+                ${summary?.egresos.toLocaleString() || 0}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-20">Fecha</TableHead>
+                  <TableHead>Concepto</TableHead>
+                  <TableHead className="text-right">Importe</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.filter(t => t.type === "egreso").length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                      Sin egresos este mes
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  transactions.filter(t => t.type === "egreso").map((transaction) => (
+                    <TableRow key={transaction._id}>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(transaction.date).toLocaleDateString("es-AR", { day: "numeric", month: "numeric" })}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {transaction.description}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-red-500">
+                        ${transaction.amount.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transactions Table - Full Details */}
       <Card>
         <CardHeader>
-          <CardTitle>Transacciones ({transactions.length})</CardTitle>
+          <CardTitle>Detalle de Transacciones ({transactions.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

@@ -326,113 +326,126 @@ export default function ClientsPage() {
           <CardTitle>Lista de Clientes ({filteredClients.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Negocio</TableHead>
-                <TableHead>Dominio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Precio Mensual</TableHead>
-                <TableHead>Vendedor</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.length === 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No se encontraron clientes
-                  </TableCell>
+                  <TableHead className="whitespace-nowrap">Fecha Alta</TableHead>
+                  <TableHead>Cliente / Celular</TableHead>
+                  <TableHead>Negocio / Web</TableHead>
+                  <TableHead>Dominio</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Activacion</TableHead>
+                  <TableHead className="text-right">Suscripcion</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ) : (
-                filteredClients.map((client) => {
-                  const StatusIcon = statusConfig[client.status]?.icon || Users
-                  return (
-                    <TableRow key={client._id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{client.name}</p>
-                          <p className="text-sm text-muted-foreground">{client.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{client.businessName || "-"}</TableCell>
-                      <TableCell>
-                        {client.domain ? (
-                          <a 
-                            href={client.liveUrl || `https://${client.domain}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-1"
-                          >
-                            <Globe className="h-3 w-3" />
-                            {client.domain}
-                          </a>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${statusConfig[client.status]?.color || "bg-gray-500"} text-white`}>
-                          <StatusIcon className="mr-1 h-3 w-3" />
-                          {statusConfig[client.status]?.label || client.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        ${client.monthlyPrice?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell>
-                        {typeof client.sellerId === "object" ? client.sellerId?.name : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(client)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            {client.email && (
-                              <DropdownMenuItem onClick={() => window.open(`mailto:${client.email}`)}>
-                                <Mail className="mr-2 h-4 w-4" />
-                                Enviar Email
+              </TableHeader>
+              <TableBody>
+                {filteredClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      No se encontraron clientes
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredClients.map((client) => {
+                    const StatusIcon = statusConfig[client.status]?.icon || Users
+                    return (
+                      <TableRow key={client._id}>
+                        <TableCell className="whitespace-nowrap">
+                          {client.activationDate 
+                            ? new Date(client.activationDate).toLocaleDateString("es-AR")
+                            : new Date(client.createdAt).toLocaleDateString("es-AR")}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{client.name}</p>
+                            <p className="text-sm text-muted-foreground">{client.phone || "-"}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{client.businessName || "-"}</p>
+                        </TableCell>
+                        <TableCell>
+                          {client.domain ? (
+                            <a 
+                              href={client.liveUrl || `https://${client.domain}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline flex items-center gap-1 max-w-[180px] truncate"
+                            >
+                              <Globe className="h-3 w-3 flex-shrink-0" />
+                              {client.domain}
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">
+                          {client.email || "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-500">
+                          ${client.setupPrice?.toLocaleString() || 0}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          ${client.monthlyPrice?.toLocaleString() || 0}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`${statusConfig[client.status]?.color || "bg-gray-500"} text-white`}>
+                            {statusConfig[client.status]?.label || client.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditDialog(client)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem 
-                              onClick={() => handleStatusChange(client._id, "web_activada")}
-                              disabled={client.status === "web_activada"}
-                            >
-                              <Globe className="mr-2 h-4 w-4" />
-                              Marcar como Activa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleStatusChange(client._id, "web_pausada")}
-                              disabled={client.status === "web_pausada"}
-                            >
-                              <Pause className="mr-2 h-4 w-4" />
-                              Pausar Web
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleStatusChange(client._id, "cliente_baja")}
-                              className="text-destructive"
-                              disabled={client.status === "cliente_baja"}
-                            >
-                              <UserX className="mr-2 h-4 w-4" />
-                              Dar de Baja
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                              {client.email && (
+                                <DropdownMenuItem onClick={() => window.open(`mailto:${client.email}`)}>
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Enviar Email
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "web_activada")}
+                                disabled={client.status === "web_activada"}
+                              >
+                                <Globe className="mr-2 h-4 w-4" />
+                                Marcar como Activa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "web_pausada")}
+                                disabled={client.status === "web_pausada"}
+                              >
+                                <Pause className="mr-2 h-4 w-4" />
+                                Pausar Web
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "cliente_baja")}
+                                className="text-destructive"
+                                disabled={client.status === "cliente_baja"}
+                              >
+                                <UserX className="mr-2 h-4 w-4" />
+                                Dar de Baja
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

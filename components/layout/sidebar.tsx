@@ -88,12 +88,11 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
 
   const tupaginayaSellerLinks = [
     { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/seller/clients", label: "Mis Clientes", icon: UserCheck },
     { href: "/seller/sales", label: "Mis Ventas", icon: ShoppingCart },
     { href: "/seller/demos", label: "Demos", icon: Globe },
     { href: "/seller/leads", label: "Mis Leads", icon: Target },
     { href: "/seller/notifications", label: "Notificaciones", icon: Bell },
-    { href: "/seller/materials", label: "Material Grafico", icon: Folder },
+    { href: "/seller/marketing", label: "Marketing", icon: Folder },
     { href: "/seller/chat", label: "Chat", icon: MessageSquare },
   ]
 
@@ -115,7 +114,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
     { href: "/supervisor/leads", label: "Leads", icon: Target },
     { href: "/supervisor/commissions", label: "Comisiones", icon: DollarSign },
     { href: "/supervisor/notifications", label: "Notificaciones", icon: Bell },
-    { href: "/supervisor/materials", label: "Material Grafico", icon: Folder },
+    { href: "/supervisor/marketing", label: "Marketing", icon: Folder },
     { href: "/supervisor/chat", label: "Chat", icon: MessageSquare },
   ]
 

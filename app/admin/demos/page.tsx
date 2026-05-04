@@ -45,12 +45,14 @@ import Link from "next/link"
 const statusLabels: Record<string, string> = {
   demo_pendiente: "Demo Pendiente",
   demo_enviada: "Demo Enviada",
+  demo_pausada: "Demo Pausada",
   web_pendiente: "Web Pendiente",
 }
 
 const statusColors: Record<string, string> = {
   demo_pendiente: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
   demo_enviada: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  demo_pausada: "bg-gray-500/10 text-gray-400 border-gray-500/20",
   web_pendiente: "bg-purple-500/10 text-purple-500 border-purple-500/20",
 }
 
@@ -87,7 +89,7 @@ export default function AdminDemosPage() {
       const response = await clientsAPI.getAll(token, filters)
       if (response.success) {
         // Filtrar solo demos (no webs activadas ni bajas)
-        const demoStatuses = ["demo_pendiente", "demo_enviada", "web_pendiente"]
+        const demoStatuses = ["demo_pendiente", "demo_enviada", "demo_pausada", "web_pendiente"]
         setDemos(response.clients.filter(c => demoStatuses.includes(c.status)))
       }
     } catch (error) {
@@ -151,6 +153,7 @@ export default function AdminDemosPage() {
     total: demos.length,
     demoPendiente: demos.filter(d => d.status === "demo_pendiente").length,
     demoEnviada: demos.filter(d => d.status === "demo_enviada").length,
+    demoPausada: demos.filter(d => d.status === "demo_pausada").length,
     webPendiente: demos.filter(d => d.status === "web_pendiente").length,
   }
 
@@ -180,7 +183,7 @@ export default function AdminDemosPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -223,6 +226,19 @@ export default function AdminDemosPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-500/10">
+                  <Clock className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.demoPausada}</p>
+                  <p className="text-sm text-muted-foreground">Pausadas</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
                   <CheckCircle className="h-5 w-5 text-purple-500" />
                 </div>
@@ -256,6 +272,7 @@ export default function AdminDemosPage() {
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="demo_pendiente">Demo Pendiente</SelectItem>
                   <SelectItem value="demo_enviada">Demo Enviada</SelectItem>
+                  <SelectItem value="demo_pausada">Demo Pausada</SelectItem>
                   <SelectItem value="web_pendiente">Web Pendiente</SelectItem>
                 </SelectContent>
               </Select>
@@ -295,18 +312,21 @@ export default function AdminDemosPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Prospecto</TableHead>
-                      <TableHead>Negocio</TableHead>
-                      <TableHead>Vendedor</TableHead>
+                      <TableHead>Fecha Demo</TableHead>
+                      <TableHead>Cliente / Celular</TableHead>
+                      <TableHead>Nombre Web</TableHead>
+                      <TableHead>Dominio</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Estado</TableHead>
-                      <TableHead>Demo URL</TableHead>
-                      <TableHead>Fecha</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredDemos.map((demo) => (
                       <TableRow key={demo._id}>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(demo.createdAt).toLocaleDateString("es-AR")}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{demo.name}</p>
@@ -316,36 +336,32 @@ export default function AdminDemosPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{demo.businessName}</p>
-                            {demo.businessType && (
-                              <p className="text-sm text-muted-foreground">{demo.businessType}</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{getSellerName(demo.sellerId)}</TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[demo.status]}>
-                            {statusLabels[demo.status] || demo.status}
-                          </Badge>
+                          <p className="font-medium">{demo.businessName}</p>
                         </TableCell>
                         <TableCell>
                           {demo.demoUrl ? (
                             <a
-                              href={demo.demoUrl}
+                              href={demo.demoUrl.startsWith("http") ? demo.demoUrl : `https://${demo.demoUrl}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                              className="flex items-center gap-1 text-sm text-primary hover:underline max-w-[200px] truncate"
                             >
-                              Ver demo
-                              <ExternalLink className="h-3 w-3" />
+                              {demo.demoUrl.replace(/^https?:\/\//, "")}
+                              <ExternalLink className="h-3 w-3 flex-shrink-0" />
                             </a>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {new Date(demo.createdAt).toLocaleDateString("es-AR")}
+                          <span className="text-sm text-muted-foreground">
+                            {demo.email || "-"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[demo.status]}>
+                            {statusLabels[demo.status] || demo.status}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -370,7 +386,7 @@ export default function AdminDemosPage() {
                                 <ArrowRight className="mr-2 h-4 w-4" />
                                 Cambiar estado
                               </DropdownMenuItem>
-                              {demo.status === "demo_enviada" && (
+                              {(demo.status === "demo_enviada" || demo.status === "web_pendiente") && (
                                 <DropdownMenuItem asChild>
                                   <Link href={`/admin/demos/${demo._id}/convert`}>
                                     <CheckCircle className="mr-2 h-4 w-4" />
@@ -407,6 +423,7 @@ export default function AdminDemosPage() {
                 <SelectContent>
                   <SelectItem value="demo_pendiente">Demo Pendiente</SelectItem>
                   <SelectItem value="demo_enviada">Demo Enviada</SelectItem>
+                  <SelectItem value="demo_pausada">Demo Pausada</SelectItem>
                   <SelectItem value="web_pendiente">Web Pendiente</SelectItem>
                   <SelectItem value="web_activada">Web Activada</SelectItem>
                 </SelectContent>

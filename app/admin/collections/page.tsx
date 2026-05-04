@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Mail, Send, AlertTriangle, Clock, DollarSign, CheckCircle, Users, CreditCard } from "lucide-react"
+import { Mail, Send, AlertTriangle, Clock, DollarSign, CheckCircle, Users, CreditCard, Calendar, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
@@ -28,15 +28,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { collectionsAPI, clientsAPI, CollectionItem, Payment } from "@/lib/api"
+import { collectionsAPI, clientsAPI, CollectionItem, Payment, Client } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Spinner } from "@/components/ui/spinner"
+
+// Helper to get last N months
+function getLastMonths(count: number): { value: string; label: string }[] {
+  const months = []
+  const now = new Date()
+  for (let i = 0; i < count; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    const label = date.toLocaleDateString("es-AR", { month: "short", year: "2-digit" }).toUpperCase()
+    months.push({ value, label })
+  }
+  return months.reverse()
+}
+
+interface ClientPaymentHistory {
+  client: Client
+  payments: Record<string, number> // month -> amount paid
+}
 
 export default function CollectionsPage() {
   const router = useRouter()
@@ -44,18 +68,22 @@ export default function CollectionsPage() {
   const { currentCompany } = useCompany()
   
   const [collections, setCollections] = useState<CollectionItem[]>([])
+  const [paymentHistories, setPaymentHistories] = useState<ClientPaymentHistory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false)
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [selectedCollection, setSelectedCollection] = useState<CollectionItem | null>(null)
   const [reminderType, setReminderType] = useState<"5_dias" | "15_dias" | "30_dias" | "manual">("manual")
   const [isSending, setIsSending] = useState(false)
+  const [activeTab, setActiveTab] = useState<"pendientes" | "historial">("pendientes")
   
   const [paymentData, setPaymentData] = useState({
     amount: 0,
     period: new Date().toISOString().slice(0, 7), // YYYY-MM
     paymentMethod: "transferencia",
   })
+  
+  const monthColumns = getLastMonths(5)
 
   useEffect(() => {
     if (currentCompany.id !== "tupaginaya") {
@@ -77,6 +105,31 @@ export default function CollectionsPage() {
       setIsLoading(true)
       const response = await collectionsAPI.getAll(token)
       setCollections(response.collections)
+      
+      // Fetch payment history for each client
+      const histories: ClientPaymentHistory[] = []
+      for (const collection of response.collections) {
+        try {
+          const paymentsRes = await clientsAPI.getPayments(token, collection.client._id)
+          const paymentsByMonth: Record<string, number> = {}
+          
+          for (const payment of paymentsRes.payments || []) {
+            const month = payment.period?.slice(0, 7) || new Date(payment.paymentDate).toISOString().slice(0, 7)
+            paymentsByMonth[month] = (paymentsByMonth[month] || 0) + payment.amount
+          }
+          
+          histories.push({
+            client: collection.client,
+            payments: paymentsByMonth,
+          })
+        } catch {
+          histories.push({
+            client: collection.client,
+            payments: {},
+          })
+        }
+      }
+      setPaymentHistories(histories)
     } catch (error) {
       console.error("Error fetching collections:", error)
       toast({
@@ -302,16 +355,30 @@ export default function CollectionsPage() {
         </Card>
       </div>
 
-      {/* Collections Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Clientes Activos</CardTitle>
-          <CardDescription>
-            Lista de clientes con webs activas ordenados por dias de mora
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
+      {/* Tabs for different views */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pendientes" | "historial")}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="pendientes" className="gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Pendientes
+          </TabsTrigger>
+          <TabsTrigger value="historial" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Historial Mensual
+          </TabsTrigger>
+        </TabsList>
+        
+        {/* Pendientes Tab */}
+        <TabsContent value="pendientes" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Clientes con Pagos Pendientes</CardTitle>
+              <CardDescription>
+                Lista de clientes ordenados por dias de mora
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
@@ -384,8 +451,80 @@ export default function CollectionsPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Historial Mensual Tab */}
+        <TabsContent value="historial" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historial de Pagos Mensuales</CardTitle>
+              <CardDescription>
+                Tracking de pagos por cliente de los ultimos 5 meses
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sticky left-0 bg-background">Cliente</TableHead>
+                      <TableHead>Dominio</TableHead>
+                      {monthColumns.map((month) => (
+                        <TableHead key={month.value} className="text-center min-w-[100px]">
+                          {month.label}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentHistories.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No hay historial de pagos
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paymentHistories.map((history) => (
+                        <TableRow key={history.client._id}>
+                          <TableCell className="sticky left-0 bg-background">
+                            <div>
+                              <p className="font-medium">{history.client.name}</p>
+                              <p className="text-sm text-muted-foreground">{history.client.phone || "-"}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {history.client.domain || "-"}
+                          </TableCell>
+                          {monthColumns.map((month) => {
+                            const payment = history.payments[month.value]
+                            const expectedAmount = history.client.monthlyPrice || 0
+                            const isPaid = payment && payment >= expectedAmount
+                            const isPartial = payment && payment > 0 && payment < expectedAmount
+                            
+                            return (
+                              <TableCell key={month.value} className="text-center">
+                                {payment ? (
+                                  <span className={`font-medium ${isPaid ? "text-green-500" : isPartial ? "text-yellow-500" : "text-muted-foreground"}`}>
+                                    ${payment.toLocaleString()}
+                                  </span>
+                                ) : (
+                                  <span className="text-red-500/60">-</span>
+                                )}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Reminder Dialog */}
       <Dialog open={isReminderDialogOpen} onOpenChange={setIsReminderDialogOpen}>

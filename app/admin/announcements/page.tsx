@@ -148,34 +148,46 @@ export default function AnnouncementsPage() {
     }
 
     setIsSending(true)
+    
+    // Cerrar dialogo inmediatamente para mejor UX
+    const savedFormData = { ...formData }
+    const savedAttachments = [...attachments]
+    setFormData(initialFormData)
+    setAttachments([])
+    setIsDialogOpen(false)
+    
     try {
       const formDataToSend = new FormData()
-      formDataToSend.append("title", formData.title)
-      formDataToSend.append("message", formData.message)
-      formDataToSend.append("type", formData.type)
-      formDataToSend.append("priority", formData.priority)
-      formDataToSend.append("recipientType", formData.recipientType)
+      formDataToSend.append("title", savedFormData.title)
+      formDataToSend.append("message", savedFormData.message)
+      formDataToSend.append("type", savedFormData.type)
+      formDataToSend.append("priority", savedFormData.priority)
+      formDataToSend.append("recipientType", savedFormData.recipientType)
 
-      if (formData.recipientType === "selected" && formData.recipients.length > 0) {
-        formDataToSend.append("recipients", JSON.stringify(formData.recipients))
+      if (savedFormData.recipientType === "selected" && savedFormData.recipients.length > 0) {
+        formDataToSend.append("recipients", JSON.stringify(savedFormData.recipients))
       }
 
-      if (formData.type === "meeting" && formData.meetingDate) {
+      if (savedFormData.type === "meeting" && savedFormData.meetingDate) {
         const meetingInfo = {
-          date: formData.meetingDate,
-          time: formData.meetingTime || "00:00",
-          link: formData.meetingLink || null,
-          location: formData.meetingLocation || null,
+          date: savedFormData.meetingDate,
+          time: savedFormData.meetingTime || "00:00",
+          link: savedFormData.meetingLink || null,
+          location: savedFormData.meetingLocation || null,
         }
         formDataToSend.append("meetingInfo", JSON.stringify(meetingInfo))
       }
 
-      attachments.forEach((file) => {
+      savedAttachments.forEach((file) => {
         formDataToSend.append("attachments", file)
       })
 
       // Obtener el companyId actual
       const companyId = localStorage.getItem("selectedCompanyId") || "prosegur"
+      
+      // AbortController para timeout de 30 segundos
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
       
       const response = await fetch(`${API_URL}/api/notifications`, {
         method: "POST",
@@ -184,7 +196,10 @@ export default function AnnouncementsPage() {
           "X-Company-ID": companyId,
         },
         body: formDataToSend,
+        signal: controller.signal,
       })
+      
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const error = await response.json()
@@ -195,17 +210,18 @@ export default function AnnouncementsPage() {
 
       toast({
         title: "Anuncio enviado",
-        description: "El anuncio ha sido enviado y los vendedores recibiran un email",
+        description: "Los emails se estan enviando en segundo plano",
       })
 
       setRecentAnnouncements((prev) => [result.notification, ...prev])
-      setFormData(initialFormData)
-      setAttachments([])
-      setIsDialogOpen(false)
     } catch (error: any) {
+      // Si hay error, mostrar mensaje pero el dialogo ya se cerro
+      const errorMessage = error.name === 'AbortError' 
+        ? "La solicitud tardo demasiado. El anuncio puede haberse enviado igualmente."
+        : (error.message || "No se pudo enviar el anuncio")
       toast({
         title: "Error",
-        description: error.message || "No se pudo enviar el anuncio",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
