@@ -29,6 +29,8 @@ import { DollarSign, TrendingUp, TrendingDown, Edit2, Users, Award, FileSpreadsh
 import { Textarea } from "@/components/ui/textarea"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
+import { useCompany } from "@/lib/company-context"
+import { TuPaginaYaCommissionsPanel } from "@/components/tupaginaya-commissions-panel"
 
 // Constantes
 const SUPERVISOR_BASE_COMMISSION = 750000
@@ -103,6 +105,7 @@ export default function AdminCommissionsPage() {
   })
   const [isSavingAdvance, setIsSavingAdvance] = useState(false)
   const { toast } = useToast()
+  const { currentCompany } = useCompany()
 
   useEffect(() => {
     fetchData()
@@ -1492,6 +1495,19 @@ const [isSendingEmail, setIsSendingEmail] = useState(false)
         <div className="flex items-center justify-center h-[60vh]">
           <Spinner className="h-8 w-8 text-primary" />
         </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Panel especial para TuPaginaYa
+  if (currentCompany.id === "tupaginaya") {
+    return (
+      <DashboardLayout requiredRole="admin">
+        <TuPaginaYaCommissionsPanel 
+          users={users} 
+          sales={sales} 
+          isLoading={isLoading} 
+        />
       </DashboardLayout>
     )
   }
