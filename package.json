@@ -21,6 +21,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-toast": "^1.2.4",
     "@radix-ui/react-tabs": "^1.0.0",
+    
     "axios": "^1.15.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
