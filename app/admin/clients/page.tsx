@@ -37,18 +37,24 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, Client, CreateClientData, usersAPI, User } from "@/lib/api"
+import { clientsAPI, Client, CreateClientData, usersAPI, User, TPY_STATUS_LABELS } from "@/lib/api"
 import { useCompany } from "@/lib/company-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Spinner } from "@/components/ui/spinner"
 
+// Estados TuPaginaYa actualizados
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  demo_pendiente: { label: "Demo Pendiente", color: "bg-amber-500", icon: Pause },
-  demo_enviada: { label: "Demo Enviada", color: "bg-purple-500", icon: Eye },
+  pendiente_demo: { label: "Pendiente de Demo", color: "bg-yellow-500", icon: Pause },
+  demo_enviada: { label: "Demo Enviada", color: "bg-blue-500", icon: Eye },
+  demo_pausada: { label: "Demo Pausada", color: "bg-orange-500", icon: Pause },
+  pendiente_web: { label: "Pendiente Web", color: "bg-purple-500", icon: Globe },
   web_activada: { label: "Web Activada", color: "bg-emerald-500", icon: Globe },
-  web_pausada: { label: "Web Pausada", color: "bg-gray-500", icon: Pause },
-  cliente_baja: { label: "Cliente Baja", color: "bg-red-500", icon: UserX },
+  baja: { label: "Baja", color: "bg-red-500", icon: UserX },
+  // Mantener compatibilidad con valores antiguos
+  demo_pendiente: { label: "Pendiente de Demo", color: "bg-yellow-500", icon: Pause },
+  web_pausada: { label: "Demo Pausada", color: "bg-orange-500", icon: Pause },
+  cliente_baja: { label: "Baja", color: "bg-red-500", icon: UserX },
 }
 
 export default function ClientsPage() {
@@ -415,23 +421,44 @@ export default function ClientsPage() {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "pendiente_demo")}
+                                disabled={client.status === "pendiente_demo"}
+                              >
+                                <Pause className="mr-2 h-4 w-4" />
+                                Pendiente de Demo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "demo_enviada")}
+                                disabled={client.status === "demo_enviada"}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Demo Enviada
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "demo_pausada")}
+                                disabled={client.status === "demo_pausada"}
+                              >
+                                <Pause className="mr-2 h-4 w-4" />
+                                Demo Pausada
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(client._id, "pendiente_web")}
+                                disabled={client.status === "pendiente_web"}
+                              >
+                                <Globe className="mr-2 h-4 w-4" />
+                                Pendiente Web
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
                                 onClick={() => handleStatusChange(client._id, "web_activada")}
                                 disabled={client.status === "web_activada"}
                               >
                                 <Globe className="mr-2 h-4 w-4" />
-                                Marcar como Activa
+                                Web Activada
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(client._id, "web_pausada")}
-                                disabled={client.status === "web_pausada"}
-                              >
-                                <Pause className="mr-2 h-4 w-4" />
-                                Pausar Web
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusChange(client._id, "cliente_baja")}
+                                onClick={() => handleStatusChange(client._id, "baja")}
                                 className="text-destructive"
-                                disabled={client.status === "cliente_baja"}
+                                disabled={client.status === "baja"}
                               >
                                 <UserX className="mr-2 h-4 w-4" />
                                 Dar de Baja

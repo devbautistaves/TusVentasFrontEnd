@@ -1514,3 +1514,358 @@ export const materialsAPI = {
       token,
     }),
 }
+
+// ========================================
+// TUPAGINAYA API (TPY_*)
+// Endpoints separados para TuPaginaYa
+// ========================================
+
+// Estados de TuPaginaYa
+export const TPY_STATUS = {
+  PENDIENTE_DEMO: "pendiente_demo",
+  DEMO_ENVIADA: "demo_enviada",
+  DEMO_PAUSADA: "demo_pausada",
+  PENDIENTE_WEB: "pendiente_web",
+  WEB_ACTIVADA: "web_activada",
+  BAJA: "baja",
+} as const
+
+export const TPY_STATUS_LABELS: Record<string, string> = {
+  pendiente_demo: "Pendiente de Demo",
+  demo_enviada: "Demo Enviada",
+  demo_pausada: "Demo Pausada",
+  pendiente_web: "Pendiente Web",
+  web_activada: "Web Activada",
+  baja: "Baja",
+}
+
+export const TPY_STATUS_COLORS: Record<string, string> = {
+  pendiente_demo: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  demo_enviada: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  demo_pausada: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  pendiente_web: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  web_activada: "bg-green-500/20 text-green-400 border-green-500/30",
+  baja: "bg-red-500/20 text-red-400 border-red-500/30",
+}
+
+// Interfaces TPY
+export interface TPY_Client {
+  _id: string
+  name: string
+  phone: string
+  email?: string
+  webName: string
+  domain?: string
+  demoUrl?: string
+  status: keyof typeof TPY_STATUS_LABELS
+  activationPrice: number
+  monthlyPrice: number
+  createdDate: string
+  activationDate?: string
+  cancellationDate?: string
+  cancellationReason?: string
+  sellerId?: string | { _id: string; name: string; email?: string }
+  sellerName?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TPY_Demo {
+  _id: string
+  clientId?: string | TPY_Client
+  name: string
+  phone?: string
+  email?: string
+  webName: string
+  demoUrl?: string
+  status: keyof typeof TPY_STATUS_LABELS
+  activationPrice: number
+  monthlyPrice: number
+  demoDate: string
+  sellerId?: string | { _id: string; name: string }
+  sellerName?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TPY_Sale {
+  _id: string
+  clientId: string | TPY_Client
+  clientName: string
+  clientPhone?: string
+  webName: string
+  domain?: string
+  status: keyof typeof TPY_STATUS_LABELS
+  activationPrice: number
+  monthlyPrice: number
+  saleDate: string
+  activationDate?: string
+  sellerId: string | { _id: string; name: string }
+  sellerName: string
+  commission: number
+  commissionPaid: boolean
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TPY_Transaction {
+  _id: string
+  type: "ingreso" | "egreso"
+  category: string
+  concept: string
+  amount: number
+  date: string
+  month: string
+  clientId?: string | TPY_Client
+  clientName?: string
+  recordedBy?: string | { _id: string; name: string }
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TPY_Collection {
+  _id: string
+  clientId: string | TPY_Client
+  clientName: string
+  clientPhone?: string
+  webName: string
+  domain?: string
+  month: string
+  expectedAmount: number
+  paidAmount: number
+  status: "pendiente" | "pagado" | "parcial" | "vencido"
+  paymentDate?: string
+  recordedBy?: string | { _id: string; name: string }
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TPY_Stats {
+  clientsByStatus: Record<string, number>
+  activeClients: number
+  totalDemos: number
+  salesThisMonth: number
+  collections: {
+    total: number
+    paid: number
+    pending: number
+    expectedAmount: number
+    paidAmount: number
+  }
+  transactions: {
+    ingresos: number
+    egresos: number
+    balance: number
+  }
+}
+
+// TPY Clients API
+export const tpyClientsAPI = {
+  getAll: (token: string, filters?: { status?: string; month?: string; search?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.search) params.append("search", filters.search)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; clients: TPY_Client[] }>(`/api/tpy/clients${query}`, { token })
+  },
+
+  getById: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; client: TPY_Client }>(`/api/tpy/clients/${id}`, { token }),
+
+  create: (token: string, data: Partial<TPY_Client>) =>
+    fetchAPI<{ success: boolean; client: TPY_Client }>("/api/tpy/clients", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  update: (token: string, id: string, data: Partial<TPY_Client>) =>
+    fetchAPI<{ success: boolean; client: TPY_Client }>(`/api/tpy/clients/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  updateStatus: (token: string, id: string, status: string) =>
+    fetchAPI<{ success: boolean; client: TPY_Client }>(`/api/tpy/clients/${id}/status`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ status }),
+    }),
+
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; message: string }>(`/api/tpy/clients/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+}
+
+// TPY Demos API
+export const tpyDemosAPI = {
+  getAll: (token: string, filters?: { status?: string; month?: string; search?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.search) params.append("search", filters.search)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; demos: TPY_Demo[] }>(`/api/tpy/demos${query}`, { token })
+  },
+
+  create: (token: string, data: Partial<TPY_Demo>) =>
+    fetchAPI<{ success: boolean; demo: TPY_Demo }>("/api/tpy/demos", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  update: (token: string, id: string, data: Partial<TPY_Demo>) =>
+    fetchAPI<{ success: boolean; demo: TPY_Demo }>(`/api/tpy/demos/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  updateStatus: (token: string, id: string, status: string) =>
+    fetchAPI<{ success: boolean; demo: TPY_Demo }>(`/api/tpy/demos/${id}/status`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ status }),
+    }),
+
+  convert: (token: string, id: string, data: { domain?: string; activationPrice?: number; monthlyPrice?: number }) =>
+    fetchAPI<{ success: boolean; client: TPY_Client; sale: TPY_Sale; demo: TPY_Demo }>(`/api/tpy/demos/${id}/convert`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; message: string }>(`/api/tpy/demos/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+}
+
+// TPY Sales API
+export const tpySalesAPI = {
+  getAll: (token: string, filters?: { status?: string; month?: string; search?: string; sellerId?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.search) params.append("search", filters.search)
+    if (filters?.sellerId) params.append("sellerId", filters.sellerId)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ success: boolean; sales: TPY_Sale[] }>(`/api/tpy/sales${query}`, { token })
+  },
+
+  create: (token: string, data: Partial<TPY_Sale>) =>
+    fetchAPI<{ success: boolean; sale: TPY_Sale }>("/api/tpy/sales", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  update: (token: string, id: string, data: Partial<TPY_Sale>) =>
+    fetchAPI<{ success: boolean; sale: TPY_Sale }>(`/api/tpy/sales/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  updateStatus: (token: string, id: string, status: string) =>
+    fetchAPI<{ success: boolean; sale: TPY_Sale }>(`/api/tpy/sales/${id}/status`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ status }),
+    }),
+}
+
+// TPY Transactions API (Caja)
+export const tpyTransactionsAPI = {
+  getAll: (token: string, filters?: { type?: string; month?: string; category?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.type) params.append("type", filters.type)
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.category) params.append("category", filters.category)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ 
+      success: boolean
+      transactions: TPY_Transaction[]
+      totals: { ingresos: number; egresos: number; balance: number }
+    }>(`/api/tpy/transactions${query}`, { token })
+  },
+
+  create: (token: string, data: Partial<TPY_Transaction>) =>
+    fetchAPI<{ success: boolean; transaction: TPY_Transaction }>("/api/tpy/transactions", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  update: (token: string, id: string, data: Partial<TPY_Transaction>) =>
+    fetchAPI<{ success: boolean; transaction: TPY_Transaction }>(`/api/tpy/transactions/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  delete: (token: string, id: string) =>
+    fetchAPI<{ success: boolean; message: string }>(`/api/tpy/transactions/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+}
+
+// TPY Collections API (Cobranzas)
+export const tpyCollectionsAPI = {
+  getAll: (token: string, filters?: { month?: string; status?: string; search?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.month) params.append("month", filters.month)
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.search) params.append("search", filters.search)
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return fetchAPI<{ 
+      success: boolean
+      collections: TPY_Collection[]
+      totals: { expected: number; paid: number; pending: number }
+    }>(`/api/tpy/collections${query}`, { token })
+  },
+
+  generate: (token: string, month: string) =>
+    fetchAPI<{ success: boolean; message: string; created: number; skipped: number }>("/api/tpy/collections/generate", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ month }),
+    }),
+
+  update: (token: string, id: string, data: { paidAmount?: number; status?: string; paymentDate?: string; notes?: string }) =>
+    fetchAPI<{ success: boolean; collection: TPY_Collection }>(`/api/tpy/collections/${id}`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify(data),
+    }),
+}
+
+// TPY Stats API
+export const tpyStatsAPI = {
+  get: (token: string, month?: string) => {
+    const query = month ? `?month=${month}` : ""
+    return fetchAPI<{ success: boolean; stats: TPY_Stats }>(`/api/tpy/stats${query}`, { token })
+  },
+}
+
+// TPY Import API
+export const tpyImportAPI = {
+  import: (token: string, type: "clients" | "demos" | "sales" | "transactions" | "collections", data: unknown[]) =>
+    fetchAPI<{ success: boolean; message: string; imported: number; errors: { index: number; error: string }[] }>("/api/tpy/import", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ type, data }),
+    }),
+}
