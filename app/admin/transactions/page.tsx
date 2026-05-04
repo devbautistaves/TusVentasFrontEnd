@@ -76,7 +76,7 @@ export default function TransactionsPage() {
   const [activationTotal, setActivationTotal] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [selectedMonth, setSelectedMonth] = useState("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
@@ -109,7 +109,8 @@ export default function TransactionsPage() {
 
     try {
       setIsLoading(true)
-      const filters: { type?: string; month?: string } = { month: selectedMonth }
+      const filters: { type?: string; month?: string } = {}
+      if (selectedMonth !== "all") filters.month = selectedMonth
       if (typeFilter !== "all") filters.type = typeFilter
       
       // Usar nueva API TPY
@@ -238,7 +239,7 @@ export default function TransactionsPage() {
           <Card className="border-emerald-500/30 bg-emerald-500/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-emerald-500">
-                Ingresos del Mes
+                {selectedMonth === "all" ? "Total Ingresos" : "Ingresos del Mes"}
               </CardTitle>
               <ArrowUpRight className="h-5 w-5 text-emerald-500" />
             </CardHeader>
@@ -252,7 +253,7 @@ export default function TransactionsPage() {
           <Card className="border-red-500/30 bg-red-500/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-red-500">
-                Egresos del Mes
+                {selectedMonth === "all" ? "Total Egresos" : "Egresos del Mes"}
               </CardTitle>
               <ArrowDownRight className="h-5 w-5 text-red-500" />
             </CardHeader>
@@ -280,7 +281,7 @@ export default function TransactionsPage() {
           <Card className="border-purple-500/30 bg-purple-500/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-purple-500">
-                Activaciones del Mes
+                {selectedMonth === "all" ? "Total Activaciones" : "Activaciones del Mes"}
               </CardTitle>
               <Zap className="h-5 w-5 text-purple-500" />
             </CardHeader>
@@ -302,12 +303,19 @@ export default function TransactionsPage() {
           <div className="flex flex-col gap-4 md:flex-row">
             <div className="space-y-2">
               <Label>Mes</Label>
-              <Input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full md:w-48"
-              />
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Seleccionar mes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los meses</SelectItem>
+                  <SelectItem value="2026-05">Mayo 2026</SelectItem>
+                  <SelectItem value="2026-04">Abril 2026</SelectItem>
+                  <SelectItem value="2026-03">Marzo 2026</SelectItem>
+                  <SelectItem value="2026-02">Febrero 2026</SelectItem>
+                  <SelectItem value="2026-01">Enero 2026</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
@@ -354,7 +362,7 @@ export default function TransactionsPage() {
                 {transactions.filter(t => t.type === "ingreso").length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                      Sin ingresos este mes
+                      {selectedMonth === "all" ? "Sin ingresos registrados" : "Sin ingresos este mes"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -403,7 +411,7 @@ export default function TransactionsPage() {
                 {transactions.filter(t => t.type === "egreso").length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                      Sin egresos este mes
+                      {selectedMonth === "all" ? "Sin egresos registrados" : "Sin egresos este mes"}
                     </TableCell>
                   </TableRow>
                 ) : (
