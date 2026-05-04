@@ -18,8 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { tpyDemosAPI, TPY_Demo } from "@/lib/api"
-import { ArrowLeft, Save, ExternalLink, Globe, User, Phone, Mail, Calendar, FileText } from "lucide-react"
+import { tpyDemosAPI, TPY_Demo, usersAPI, User as UserType } from "@/lib/api"
+import { ArrowLeft, Save, ExternalLink, Globe, User, Phone, Mail, Calendar, FileText, UserCheck } from "lucide-react"
 import Link from "next/link"
 
 const statusLabels: Record<string, string> = {
@@ -48,6 +48,7 @@ export default function DemoDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [sellers, setSellers] = useState<UserType[]>([])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -58,11 +59,27 @@ export default function DemoDetailPage() {
     demoUrl: "",
     status: "",
     notes: "",
+    sellerId: "",
   })
 
   useEffect(() => {
     loadDemo()
+    loadSellers()
   }, [demoId])
+
+  const loadSellers = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const response = await usersAPI.getAll(token)
+      if (response.success) {
+        setSellers(response.users.filter(u => u.role === "seller" || u.role === "supervisor"))
+      }
+    } catch (error) {
+      console.error("Error loading sellers:", error)
+    }
+  }
 
   const loadDemo = async () => {
     try {
@@ -76,6 +93,9 @@ export default function DemoDetailPage() {
       const response = await tpyDemosAPI.getById(token, demoId)
       if (response.demo) {
         setDemo(response.demo)
+        const sellerId = typeof response.demo.sellerId === 'object' && response.demo.sellerId 
+          ? response.demo.sellerId._id 
+          : response.demo.sellerId || ""
         setFormData({
           name: response.demo.name || "",
           phone: response.demo.phone || "",
@@ -84,6 +104,7 @@ export default function DemoDetailPage() {
           demoUrl: response.demo.demoUrl || "",
           status: response.demo.status || "",
           notes: response.demo.notes || "",
+          sellerId: sellerId,
         })
       }
     } catch (error) {
@@ -182,6 +203,9 @@ export default function DemoDetailPage() {
                 <Button variant="outline" onClick={() => {
                   setIsEditing(false)
                   // Reset form
+                  const sellerId = typeof demo.sellerId === 'object' && demo.sellerId 
+                    ? demo.sellerId._id 
+                    : demo.sellerId || ""
                   setFormData({
                     name: demo.name || "",
                     phone: demo.phone || "",
@@ -190,6 +214,7 @@ export default function DemoDetailPage() {
                     demoUrl: demo.demoUrl || "",
                     status: demo.status || "",
                     notes: demo.notes || "",
+                    sellerId: sellerId,
                   })
                 }}>
                   Cancelar
@@ -257,6 +282,32 @@ export default function DemoDetailPage() {
                   />
                 ) : (
                   <p className="text-lg">{demo.email || "-"}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Vendedor Asignado
+                </Label>
+                {isEditing ? (
+                  <Select value={formData.sellerId} onValueChange={(v) => handleInputChange("sellerId", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin asignar</SelectItem>
+                      {sellers.map((seller) => (
+                        <SelectItem key={seller._id} value={seller._id}>
+                          {seller.name} ({seller.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-lg">
+                    {demo.sellerName || (typeof demo.sellerId === 'object' && demo.sellerId ? demo.sellerId.name : "-")}
+                  </p>
                 )}
               </div>
             </CardContent>

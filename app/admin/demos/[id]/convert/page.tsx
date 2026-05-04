@@ -10,13 +10,13 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, Client, ConvertDemoData } from "@/lib/api"
+import { tpyDemosAPI, TPY_Demo } from "@/lib/api"
 import { ArrowLeft, Upload, X, CheckCircle, Globe, DollarSign } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
 export default function AdminConvertDemoPage() {
-  const [client, setClient] = useState<Client | null>(null)
+  const [demo, setDemo] = useState<TPY_Demo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null)
@@ -24,22 +24,22 @@ export default function AdminConvertDemoPage() {
   const params = useParams()
   const { toast } = useToast()
 
-  const [formData, setFormData] = useState<ConvertDemoData>({
+  const [formData, setFormData] = useState({
     name: "",
     email: "",
-    whatsapp: "",
+    phone: "",
     domain: "",
     monthlyPrice: 0,
-    setupPrice: 0,
+    activationPrice: 0,
     paymentProofUrl: "",
     activateNow: true,
   })
 
   useEffect(() => {
-    loadClient()
+    loadDemo()
   }, [params.id])
 
-  const loadClient = async () => {
+  const loadDemo = async () => {
     try {
       setIsLoading(true)
       const token = localStorage.getItem("token")
@@ -48,13 +48,14 @@ export default function AdminConvertDemoPage() {
         return
       }
 
-      const response = await clientsAPI.getById(token, params.id as string)
-      if (response.success) {
-        setClient(response.client)
+      const response = await tpyDemosAPI.getById(token, params.id as string)
+      if (response.success && response.demo) {
+        setDemo(response.demo)
         setFormData((prev) => ({
           ...prev,
-          name: response.client.name,
-          whatsapp: response.client.whatsapp || response.client.phone || "",
+          name: response.demo.name,
+          email: response.demo.email || "",
+          phone: response.demo.phone || "",
         }))
       }
     } catch (error) {
@@ -97,10 +98,10 @@ export default function AdminConvertDemoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.email || !formData.domain || !formData.monthlyPrice) {
+    if (!formData.domain || !formData.activationPrice) {
       toast({
         title: "Error",
-        description: "Email, dominio y monto mensual son requeridos",
+        description: "Dominio y precio de activacion son requeridos",
         variant: "destructive",
       })
       return
@@ -114,7 +115,11 @@ export default function AdminConvertDemoPage() {
         return
       }
 
-      const response = await clientsAPI.convertDemo(token, params.id as string, formData)
+      const response = await tpyDemosAPI.convert(token, params.id as string, {
+        domain: formData.domain,
+        activationPrice: formData.activationPrice,
+        monthlyPrice: formData.monthlyPrice,
+      })
       if (response.success) {
         toast({
           title: "Venta registrada",
@@ -145,7 +150,7 @@ export default function AdminConvertDemoPage() {
     )
   }
 
-  if (!client) {
+  if (!demo) {
     return (
       <DashboardLayout requiredRole="admin">
         <div className="flex flex-col items-center justify-center py-12">
@@ -171,7 +176,7 @@ export default function AdminConvertDemoPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Convertir Demo a Venta</h1>
             <p className="text-muted-foreground">
-              Completa los datos para registrar la venta de {client.businessName}
+              Completa los datos para registrar la venta de {demo.webName}
             </p>
           </div>
         </div>
@@ -188,19 +193,19 @@ export default function AdminConvertDemoPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm text-muted-foreground">Negocio</p>
-                <p className="font-medium">{client.businessName}</p>
+                <p className="font-medium">{demo.webName}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Contacto</p>
-                <p className="font-medium">{client.name}</p>
+                <p className="font-medium">{demo.name}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Telefono</p>
-                <p className="font-medium">{client.phone || "-"}</p>
+                <p className="font-medium">{demo.phone || "-"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Tipo</p>
-                <p className="font-medium">{client.businessType || "-"}</p>
+                <p className="text-sm text-muted-foreground">URL Demo</p>
+                <p className="font-medium text-sm truncate">{demo.demoUrl || "-"}</p>
               </div>
             </div>
           </CardContent>
@@ -239,10 +244,10 @@ export default function AdminConvertDemoPage() {
                     />
                   </Field>
                   <Field>
-                    <FieldLabel required>Numero de WhatsApp</FieldLabel>
+                    <FieldLabel required>Telefono / WhatsApp</FieldLabel>
                     <Input
-                      name="whatsapp"
-                      value={formData.whatsapp}
+                      name="phone"
+                      value={formData.phone}
                       onChange={handleChange}
                       placeholder="+54 9 11 1234-5678"
                       required
@@ -278,11 +283,11 @@ export default function AdminConvertDemoPage() {
                   <Field>
                     <FieldLabel required>Monto de Activacion (Setup)</FieldLabel>
                     <Input
-                      name="setupPrice"
+                      name="activationPrice"
                       type="number"
-                      value={formData.setupPrice}
+                      value={formData.activationPrice}
                       onChange={handleChange}
-                      placeholder="15000"
+                      placeholder="50000"
                       min="0"
                       required
                     />
