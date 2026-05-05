@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { dashboardAPI, salesAPI, usersAPI, leadsAPI, advancesAPI, DashboardStats, Sale, Lead, Advance } from "@/lib/api"
+import { dashboardAPI, salesAPI, usersAPI, leadsAPI, advancesAPI, tpyClientsAPI, DashboardStats, Sale, Lead, Advance } from "@/lib/api"
+import { useCompany } from "@/lib/company-context"
 import { getCommissionPerSale, calculateTotalCommission } from "@/lib/commissions"
 import {
   DollarSign,
@@ -43,13 +44,23 @@ interface UserProfile {
   fixedCommissionPerSale?: number | null
 }
 
+interface TPYClient {
+  _id: string
+  name: string
+  status: string
+  monthlyPrice: number
+  billingDay: number
+}
+
 export default function SellerDashboardPage() {
+  const { currentCompany } = useCompany()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [mySales, setMySales] = useState<Sale[]>([])
   const [myLeads, setMyLeads] = useState<Lead[]>([])
   const [myAdvances, setMyAdvances] = useState<Advance[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [tpyClients, setTpyClients] = useState<TPYClient[]>([])
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
@@ -61,18 +72,25 @@ export default function SellerDashboardPage() {
       if (!token) return
 
       try {
-        const [statsRes, salesRes, profileRes, leadsRes, advancesRes] = await Promise.all([
-          dashboardAPI.getStats(token),
-          salesAPI.getMySales(token),
-          usersAPI.getProfile(token),
-          leadsAPI.getMyLeads(token),
-          advancesAPI.getMine(token, selectedMonth),
-        ])
-        setStats(statsRes)
-        setMySales(salesRes.sales)
-        setUserProfile(profileRes.user as UserProfile)
-        setMyLeads(leadsRes.leads || [])
-        setMyAdvances(advancesRes.advances || [])
+        if (currentCompany === "tupaginaya") {
+          // For TuPaginaYa, only fetch clients assigned to the seller
+          const clientsRes = await tpyClientsAPI.getMyClients(token)
+          setTpyClients(clientsRes.clients || [])
+        } else {
+          // For Prosegur, fetch all sales data
+          const [statsRes, salesRes, profileRes, leadsRes, advancesRes] = await Promise.all([
+            dashboardAPI.getStats(token),
+            salesAPI.getMySales(token),
+            usersAPI.getProfile(token),
+            leadsAPI.getMyLeads(token),
+            advancesAPI.getMine(token, selectedMonth),
+          ])
+          setStats(statsRes)
+          setMySales(salesRes.sales)
+          setUserProfile(profileRes.user as UserProfile)
+          setMyLeads(leadsRes.leads || [])
+          setMyAdvances(advancesRes.advances || [])
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -81,7 +99,7 @@ export default function SellerDashboardPage() {
     }
 
     fetchData()
-  }, [selectedMonth])
+  }, [selectedMonth, currentCompany])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", {

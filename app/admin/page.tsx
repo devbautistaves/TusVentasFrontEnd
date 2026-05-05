@@ -414,7 +414,6 @@ export default function AdminDashboardPage() {
     // Usar datos de la nueva API TPY
     const statusCounts = tpyStats?.clientsByStatus || {}
     const totalClients = Object.values(statusCounts).reduce((sum, count) => sum + (count as number), 0)
-    const pendingCollections = tpyStats?.collections?.pending || 0
     
     return (
       <DashboardLayout requiredRole="admin">
@@ -443,46 +442,50 @@ export default function AdminDashboardPage() {
                   Ver Clientes
                 </Button>
               </Link>
-              <Link href="/admin/collections">
-                <Button className="gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Cobranzas
-                </Button>
-              </Link>
             </div>
           </div>
 
+          {/* Balance General Card */}
+          <Card className={`${(financeSummary?.balance || 0) >= 0 ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10" : "border-red-500/30 bg-gradient-to-br from-red-500/10"} via-card to-card`}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Balance General</p>
+                  <p className={`text-4xl font-bold ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {formatCurrency(financeSummary?.balance || 0)}
+                  </p>
+                </div>
+                <div className="flex gap-6">
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Ingresos</p>
+                    <p className="text-lg font-semibold text-emerald-400">{formatCurrency(financeSummary?.ingresos || 0)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Egresos</p>
+                    <p className="text-lg font-semibold text-red-400">{formatCurrency(financeSummary?.egresos || 0)}</p>
+                  </div>
+                </div>
+                <div className={`h-12 w-12 rounded-xl ${(financeSummary?.balance || 0) >= 0 ? "bg-emerald-500/20" : "bg-red-500/20"} flex items-center justify-center`}>
+                  <DollarSign className={`h-6 w-6 ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Stats Cards usando tpyStats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Webs Activas</p>
-                    <p className="text-4xl font-bold text-foreground">{tpyStats?.activeClients || 0}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Clientes Totales</p>
+                    <p className="text-4xl font-bold text-foreground">{totalClients}</p>
                     <p className="text-xs text-muted-foreground pt-1">
-                      {totalClients} clientes totales
+                      {statusCounts.cliente_activo || 0} webs activas
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
                     <Users className="h-6 w-6 text-blue-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Ingresos del Mes</p>
-                    <p className="text-4xl font-bold text-green-400">{formatCurrency(financeSummary?.ingresos || 0)}</p>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Balance: {formatCurrency(financeSummary?.balance || 0)}
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                    <Banknote className="h-6 w-6 text-green-400" />
                   </div>
                 </div>
               </CardContent>
@@ -529,7 +532,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Bajas de Clientes</p>
-                    <p className="text-4xl font-bold text-red-400">{statusCounts.baja || 0}</p>
+                    <p className="text-4xl font-bold text-red-400">{statusCounts.cliente_baja || 0}</p>
                     <p className="text-xs text-muted-foreground pt-1">
                       Clientes dados de baja
                     </p>
@@ -540,69 +543,7 @@ export default function AdminDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className={`${pendingCollections > 0 ? "border-orange-500/30 bg-gradient-to-br from-orange-500/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10"} via-card to-card`}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Cobranzas Pendientes</p>
-                    <p className={`text-4xl font-bold ${pendingCollections > 0 ? "text-orange-400" : "text-emerald-400"}`}>
-                      {pendingCollections}
-                    </p>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      {tpyStats?.collections?.paid || 0} pagadas
-                    </p>
-                  </div>
-                  <div className={`h-12 w-12 rounded-xl ${pendingCollections > 0 ? "bg-orange-500/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
-                    <AlertTriangle className={`h-6 w-6 ${pendingCollections > 0 ? "text-orange-400" : "text-emerald-400"}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
-
-          {/* Finance Summary */}
-          {financeSummary && (
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="border-emerald-500/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-emerald-500 flex items-center gap-2">
-                    <ArrowUpRight className="h-4 w-4" />
-                    Ingresos del Mes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-emerald-400">{formatCurrency(financeSummary.ingresos)}</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-red-500/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-red-500 flex items-center gap-2">
-                    <TrendingDown className="h-4 w-4" />
-                    Egresos del Mes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-red-400">{formatCurrency(financeSummary.egresos)}</p>
-                </CardContent>
-              </Card>
-              
-              <Card className={financeSummary.balance >= 0 ? "border-blue-500/30" : "border-orange-500/30"}>
-                <CardHeader className="pb-2">
-                  <CardTitle className={`text-sm flex items-center gap-2 ${financeSummary.balance >= 0 ? "text-blue-500" : "text-orange-500"}`}>
-                    <DollarSign className="h-4 w-4" />
-                    Balance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-3xl font-bold ${financeSummary.balance >= 0 ? "text-blue-400" : "text-orange-400"}`}>
-                    {formatCurrency(financeSummary.balance)}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           {/* Quick Actions */}
           <Card>
@@ -611,7 +552,7 @@ export default function AdminDashboardPage() {
               <CardDescription>Accede a las funciones principales</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Link href="/admin/demos">
                   <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
                     <ShoppingCart className="h-6 w-6" />
@@ -624,16 +565,10 @@ export default function AdminDashboardPage() {
                     <span>Clientes Activos</span>
                   </Button>
                 </Link>
-                <Link href="/admin/collections">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                    <DollarSign className="h-6 w-6" />
-                    <span>Cobranzas</span>
-                  </Button>
-                </Link>
                 <Link href="/admin/transactions">
                   <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
                     <Banknote className="h-6 w-6" />
-                    <span>Ingresos/Egresos</span>
+                    <span>Transacciones</span>
                   </Button>
                 </Link>
                 <Link href="/admin/liquidations">
