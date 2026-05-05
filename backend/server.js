@@ -15,17 +15,9 @@ const multer = require("multer")
 const path = require("path")
 const fs = require("fs")
 
-// Firebase es opcional - si no esta configurado, los archivos se guardan localmente
+// Firebase deshabilitado - usamos almacenamiento local en VPS
 let bucket = null;
-try {
-  bucket = require('./firebaseAdmin');
-  if (bucket) {
-    console.log('Firebase Storage configurado correctamente');
-  }
-} catch (error) {
-  console.warn('Firebase Admin no configurado. Los archivos se guardaran localmente.');
-  console.warn('Para habilitar Firebase, crea el archivo firebaseAdmin.js con las credenciales.');
-}
+console.log('Almacenamiento local VPS configurado. Los archivos se guardaran en /uploads/');
 
 
 
@@ -160,7 +152,7 @@ async function enviarEmailNuevaVenta(sale, seller, plan) {
           </div>
           ` : ''}
           <div style="text-align: center; margin-top: 30px;">
-            <a href="https://tusventas.netlify.app" style="display:inline-block; padding:12px 30px; background-color:#f59e0b; color:#1a1a2e; text-decoration:none; border-radius:6px; font-weight: bold;">Ver en la plataforma</a>
+            <a href="https://grupojv.tusventas.digital" style="display:inline-block; padding:12px 30px; background-color:#f59e0b; color:#1a1a2e; text-decoration:none; border-radius:6px; font-weight: bold;">Ver en la plataforma</a>
           </div>
         </div>
         <div style="background-color: #1a1a2e; padding: 15px; text-align: center;">
@@ -285,7 +277,7 @@ async function enviarEmailNuevoLead(lead, seller, assignedBy) {
             </p>
 
             <div style="text-align: center; margin-top: 30px;">
-              <a href="https://tusventas.netlify.app/seller/leads"
+              <a href="https://grupojv.tusventas.digital/seller/leads"
                 style="display:inline-block; padding:12px 30px; background-color:#f59e0b; color:#1a1a2e; text-decoration:none; border-radius:6px; font-weight: bold;">
                 Ver mis leads
               </a>
@@ -1920,6 +1912,31 @@ const tpyDemoSchema = new mongoose.Schema(
     notes: {
       type: String,
       trim: true,
+    },
+    // Archivos adjuntos
+    flyerUrl: {
+      type: String,
+      trim: true,
+    },
+    logoUrl: {
+      type: String,
+      trim: true,
+    },
+    // Tipo de negocio y detalles
+    businessType: {
+      type: String,
+      trim: true,
+    },
+    whatTheySell: {
+      type: String,
+      trim: true,
+    },
+    // Redes sociales
+    socialNetworks: {
+      instagram: { type: String, trim: true },
+      facebook: { type: String, trim: true },
+      tiktok: { type: String, trim: true },
+      website: { type: String, trim: true },
     },
   },
   {
@@ -4303,34 +4320,31 @@ if (recipientType === "all") {
 
 let parsedMeetingInfo = meetingInfo ? (typeof meetingInfo === "string" ? JSON.parse(meetingInfo) : meetingInfo) : null;
 
-    // Aquí viene la modificación importante: subir los archivos a Firebase
+    // Subir archivos - almacenamiento local en VPS
     const attachments = await Promise.all(
       (req.files || []).map(async (file) => {
-        const fileName = `attachments/${Date.now()}_${file.originalname}`;
-        const fileUpload = bucket.file(fileName);
+        const uniqueName = `${Date.now()}_${file.originalname}`;
+        
+        // Almacenamiento local en VPS
+        const uploadsDir = path.join(__dirname, 'uploads', 'attachments');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        
+        const localPath = path.join(uploadsDir, uniqueName);
+        fs.writeFileSync(localPath, file.buffer);
+        const localUrl = `/uploads/attachments/${uniqueName}`;
 
-        // Subir archivo buffer a Firebase Storage
-        await fileUpload.save(file.buffer, {
-          metadata: {
-            contentType: file.mimetype,
-          },
-        });
+        console.log(`[Upload] Archivo guardado: ${localUrl}`);
 
-        // Obtener URL firmada (válida por 1 hora)
-    // Hacer el archivo público (acceso libre)
-    await fileUpload.makePublic();
-
-    // Construir URL pública fija
-    const publicUrl = `https://storage.googleapis.com/probandocositas-8c425.appspot.com/${fileName}`;
-
-    return {
-      originalName: file.originalname,
-      url: publicUrl,  // URL fija y pública
-      size: file.size,
-      type: file.mimetype,
-    };
-  })
-);
+        return {
+          originalName: file.originalname,
+          url: localUrl,
+          size: file.size,
+          type: file.mimetype,
+        };
+      })
+    );
 
 const notification = new Notification({
       companyId,
@@ -4374,7 +4388,7 @@ for (const user of usuarios) {
           <h2>Hola ${user.name} tenes una notificacion pendiente de:📌 ${title}</h2>
           <p><strong>Tipo:</strong> ${type}</p>
           <p>${message}</p>
-          <p><a href="https://tusventas.netlify.app" style="display:inline-block; padding:10px 15px; background-color:#0b6efd; color:white; text-decoration:none; border-radius:5px;">Ver en la plataforma</a></p>
+          <p><a href="https://grupojv.tusventas.digital" style="display:inline-block; padding:10px 15px; background-color:#0b6efd; color:white; text-decoration:none; border-radius:5px;">Ver en la plataforma</a></p>
           <hr />
           <small>Este mensaje fue enviado automáticamente por el sistema TusVentas.</small>
         </div>
@@ -8131,6 +8145,155 @@ app.delete("/api/tpy/demos/:id", authenticateToken, async (req, res) => {
     res.json({ success: true, message: "Demo deleted" })
   } catch (error) {
     handleError(res, error, "Failed to delete TPY demo")
+  }
+})
+
+// Upload files for TPY demo
+app.post("/api/tpy/demos/:id/upload", authenticateToken, upload.fields([
+  { name: 'flyer', maxCount: 1 },
+  { name: 'logo', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const demo = await TPY_Demo.findById(req.params.id)
+    if (!demo) {
+      return res.status(404).json({ success: false, error: "Demo not found" })
+    }
+
+    const uploadsDir = path.join(__dirname, 'uploads', 'tpy-demos')
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+
+    const updateData = {}
+    const files = req.files
+
+    // Procesar flyer
+    if (files.flyer && files.flyer[0]) {
+      const file = files.flyer[0]
+      const uniqueName = `${Date.now()}_flyer_${file.originalname}`
+      const localPath = path.join(uploadsDir, uniqueName)
+      fs.writeFileSync(localPath, file.buffer)
+      updateData.flyerUrl = `/uploads/tpy-demos/${uniqueName}`
+    }
+
+    // Procesar logo
+    if (files.logo && files.logo[0]) {
+      const file = files.logo[0]
+      const uniqueName = `${Date.now()}_logo_${file.originalname}`
+      const localPath = path.join(uploadsDir, uniqueName)
+      fs.writeFileSync(localPath, file.buffer)
+      updateData.logoUrl = `/uploads/tpy-demos/${uniqueName}`
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      const updatedDemo = await TPY_Demo.findByIdAndUpdate(
+        req.params.id,
+        { $set: updateData },
+        { new: true }
+      )
+      res.json({ success: true, demo: updatedDemo })
+    } else {
+      res.json({ success: true, demo, message: "No files uploaded" })
+    }
+  } catch (error) {
+    handleError(res, error, "Failed to upload files for TPY demo")
+  }
+})
+
+// Create TPY demo with files
+app.post("/api/tpy/demos/with-files", authenticateToken, upload.fields([
+  { name: 'flyer', maxCount: 1 },
+  { name: 'logo', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const uploadsDir = path.join(__dirname, 'uploads', 'tpy-demos')
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+
+    // Parse form data
+    const demoData = {
+      name: req.body.name,
+      phone: req.body.phone,
+      email: req.body.email,
+      webName: req.body.webName || req.body.businessName,
+      demoUrl: req.body.demoUrl,
+      status: req.body.status || "pendiente_demo",
+      activationPrice: parseFloat(req.body.activationPrice) || 0,
+      monthlyPrice: parseFloat(req.body.monthlyPrice) || 0,
+      notes: req.body.notes,
+      businessType: req.body.businessType,
+      whatTheySell: req.body.whatTheySell,
+      sellerId: req.body.sellerId || req.user.userId,
+      sellerName: req.body.sellerName || req.user.name,
+    }
+
+    // Parse social networks if provided
+    if (req.body.socialNetworks) {
+      try {
+        demoData.socialNetworks = typeof req.body.socialNetworks === 'string' 
+          ? JSON.parse(req.body.socialNetworks) 
+          : req.body.socialNetworks
+      } catch (e) {
+        console.error("Error parsing socialNetworks:", e)
+      }
+    }
+
+    const files = req.files
+
+    // Procesar flyer
+    if (files && files.flyer && files.flyer[0]) {
+      const file = files.flyer[0]
+      const uniqueName = `${Date.now()}_flyer_${file.originalname}`
+      const localPath = path.join(uploadsDir, uniqueName)
+      fs.writeFileSync(localPath, file.buffer)
+      demoData.flyerUrl = `/uploads/tpy-demos/${uniqueName}`
+    }
+
+    // Procesar logo
+    if (files && files.logo && files.logo[0]) {
+      const file = files.logo[0]
+      const uniqueName = `${Date.now()}_logo_${file.originalname}`
+      const localPath = path.join(uploadsDir, uniqueName)
+      fs.writeFileSync(localPath, file.buffer)
+      demoData.logoUrl = `/uploads/tpy-demos/${uniqueName}`
+    }
+
+    const demo = new TPY_Demo(demoData)
+    await demo.save()
+
+    res.status(201).json({ success: true, demo })
+  } catch (error) {
+    handleError(res, error, "Failed to create TPY demo with files")
+  }
+})
+
+// General file upload endpoint
+app.post("/api/upload", authenticateToken, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file provided" })
+    }
+
+    const folder = req.body.folder || "general"
+    const uploadsDir = path.join(__dirname, 'uploads', folder)
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+
+    const uniqueName = `${Date.now()}_${req.file.originalname}`
+    const localPath = path.join(uploadsDir, uniqueName)
+    fs.writeFileSync(localPath, req.file.buffer)
+    const url = `/uploads/${folder}/${uniqueName}`
+
+    res.json({ 
+      success: true, 
+      url, 
+      filename: req.file.originalname,
+      type: req.file.mimetype 
+    })
+  } catch (error) {
+    handleError(res, error, "Failed to upload file")
   }
 })
 

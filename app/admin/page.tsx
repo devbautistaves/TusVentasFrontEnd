@@ -620,17 +620,17 @@ export default function AdminDashboardPage() {
     <DashboardLayout requiredRole="admin">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
               Resumen general del negocio
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[200px] bg-secondary/50">
-                <Calendar className="mr-2 h-4 w-4" />
+              <SelectTrigger className="w-[160px] sm:w-[200px] bg-secondary/50">
+                <Calendar className="mr-2 h-4 w-4 shrink-0" />
                 <SelectValue placeholder="Seleccionar mes" />
               </SelectTrigger>
               <SelectContent>
@@ -644,30 +644,31 @@ export default function AdminDashboardPage() {
             <Link href="/admin/sales">
               <Button variant="outline" className="gap-2">
                 <Filter className="h-4 w-4" />
-                Ver Todas
+                <span className="hidden sm:inline">Ver Todas</span>
+                <span className="sm:hidden">Ver</span>
               </Button>
             </Link>
           </div>
         </div>
 
         {/* Main Stats - Hero Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           {/* Total Ventas del Mes */}
           <Card className="border-border/50 bg-gradient-to-br from-primary/10 via-card to-card">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Ventas del Mes</p>
-                  <p className="text-4xl font-bold text-foreground">{monthSales.length}</p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="inline-flex items-center gap-1 text-sm text-green-400">
+                <div className="space-y-1 sm:space-y-2 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Ventas del Mes</p>
+                  <p className="text-2xl sm:text-4xl font-bold text-foreground">{monthSales.length}</p>
+                  <div className="flex items-center gap-1 sm:gap-2 pt-1">
+                    <span className="inline-flex items-center gap-1 text-xs sm:text-sm text-green-400">
                       <CheckCircle className="h-3 w-3" />
-                      {activatedSales.length} activadas
+                      {activatedSales.length} activ.
                     </span>
                   </div>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <ShoppingCart className="h-6 w-6 text-primary" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -675,17 +676,17 @@ export default function AdminDashboardPage() {
 
           {/* Ingresos Totales */}
           <Card className="border-green-500/30 bg-gradient-to-br from-green-500/10 via-card to-card">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Ingresos Totales</p>
-                  <p className="text-4xl font-bold text-green-400">{formatCurrency(totalRevenue)}</p>
-                  <p className="text-xs text-muted-foreground pt-1">
-                    {activatedSales.length} x $750.000
+                <div className="space-y-1 sm:space-y-2 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Ingresos</p>
+                  <p className="text-xl sm:text-4xl font-bold text-green-400 truncate">{formatCurrency(totalRevenue)}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground pt-1">
+                    {activatedSales.length} x $750k
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <Banknote className="h-6 w-6 text-green-400" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
+                  <Banknote className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
                 </div>
               </div>
             </CardContent>
@@ -693,17 +694,17 @@ export default function AdminDashboardPage() {
 
           {/* Costo Administracion */}
           <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Costo Administracion</p>
-                  <p className="text-4xl font-bold text-blue-400">{formatCurrency(totalAdminCost)}</p>
-                  <p className="text-xs text-muted-foreground pt-1">
-                    {activatedSales.length} x $35.000
+                <div className="space-y-1 sm:space-y-2 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Costo Admin</p>
+                  <p className="text-xl sm:text-4xl font-bold text-blue-400 truncate">{formatCurrency(totalAdminCost)}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground pt-1">
+                    {activatedSales.length} x $35k
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-blue-400" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -711,19 +712,19 @@ export default function AdminDashboardPage() {
 
           {/* Ganancia Neta */}
           <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Ganancia Neta</p>
-                  <p className={`text-4xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-red-400'}`}>
+                <div className="space-y-1 sm:space-y-2 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Ganancia Neta</p>
+                  <p className={`text-xl sm:text-4xl font-bold truncate ${netProfit >= 0 ? 'text-primary' : 'text-red-400'}`}>
                     {formatCurrency(netProfit)}
                   </p>
-                  <p className="text-xs text-muted-foreground pt-1">
-                    Ingresos - Todos los costos
+                  <p className="text-[10px] sm:text-xs text-muted-foreground pt-1">
+                    Ing. - Costos
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-primary" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -731,19 +732,17 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Costs Breakdown Row */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           {/* Costos de Instalacion */}
           <Card className="border-red-500/30 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                    <Wrench className="h-5 w-5 text-red-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Costos Instalacion</p>
-                    <p className="text-xl font-bold text-red-400">-{formatCurrency(totalInstallationCosts)}</p>
-                  </div>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                  <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Inst.</p>
+                  <p className="text-base sm:text-xl font-bold text-red-400 truncate">-{formatCurrency(totalInstallationCosts)}</p>
                 </div>
               </div>
             </CardContent>
@@ -751,16 +750,14 @@ export default function AdminDashboardPage() {
 
           {/* Comisiones Vendedores */}
           <Card className="border-amber-500/30 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <UserCheck className="h-5 w-5 text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Comisiones Vendedores</p>
-                    <p className="text-xl font-bold text-amber-400">-{formatCurrency(totalSellerCommissions)}</p>
-                  </div>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                  <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Com. Vend.</p>
+                  <p className="text-base sm:text-xl font-bold text-amber-400 truncate">-{formatCurrency(totalSellerCommissions)}</p>
                 </div>
               </div>
             </CardContent>
@@ -768,16 +765,14 @@ export default function AdminDashboardPage() {
 
           {/* Comisiones Supervisores */}
           <Card className="border-purple-500/30 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <UserCog className="h-5 w-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Comisiones Supervisores</p>
-                    <p className="text-xl font-bold text-purple-400">-{formatCurrency(totalSupervisorCommissions)}</p>
-                  </div>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                  <UserCog className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Com. Sup.</p>
+                  <p className="text-base sm:text-xl font-bold text-purple-400 truncate">-{formatCurrency(totalSupervisorCommissions)}</p>
                 </div>
               </div>
             </CardContent>
@@ -785,16 +780,14 @@ export default function AdminDashboardPage() {
 
           {/* Total Costos */}
           <Card className="border-gray-500/30 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-gray-500/10 flex items-center justify-center">
-                    <TrendingDown className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total Costos</p>
-                    <p className="text-xl font-bold text-gray-400">-{formatCurrency(totalCosts)}</p>
-                  </div>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-gray-500/10 flex items-center justify-center shrink-0">
+                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total</p>
+                  <p className="text-base sm:text-xl font-bold text-gray-400 truncate">-{formatCurrency(totalCosts)}</p>
                 </div>
               </div>
             </CardContent>

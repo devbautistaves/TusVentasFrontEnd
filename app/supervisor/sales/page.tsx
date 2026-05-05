@@ -259,8 +259,8 @@ export default function SupervisorSalesPage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha Turno</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Costos</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
@@ -300,6 +300,20 @@ export default function SupervisorSalesPage() {
                       </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={sale.status} />
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {sale.appointedDate ? (
+                          <div>
+                            <span>{new Date(sale.appointedDate).toLocaleDateString("es-AR")}</span>
+                            {sale.appointmentSlot && (
+                              <span className="ml-1 text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                                {sale.appointmentSlot}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/50">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <div className="text-xs space-y-1">
@@ -358,7 +372,7 @@ export default function SupervisorSalesPage() {
                   ))}
                   {filteredSales.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={10} className="py-8 text-center text-muted-foreground">
                         No se encontraron ventas
                       </td>
                     </tr>
@@ -538,6 +552,41 @@ export default function SupervisorSalesPage() {
                               <Download className="h-4 w-4" />
                             </a>
                           </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Historial de Estados */}
+                {selectedSale.statusHistory && selectedSale.statusHistory.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      Historial de Estados
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedSale.statusHistory.map((history, index) => (
+                        <div key={index} className="p-3 rounded-lg bg-secondary/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <StatusBadge status={history.status} />
+                              {history.changedBy && (
+                                <span className="text-xs text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded">
+                                  por {history.changedBy}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(history.changedAt).toLocaleString("es-AR")}
+                            </span>
+                          </div>
+                          {history.notes && (
+                            <div className="text-sm text-foreground bg-secondary/30 p-2 rounded border-l-2 border-primary/50">
+                              <span className="text-xs text-muted-foreground block mb-1">Comentario:</span>
+                              {history.notes}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
