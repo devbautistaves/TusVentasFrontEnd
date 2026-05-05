@@ -32,8 +32,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, Client, ClientStatus, tpyDemosAPI, TPY_Demo } from "@/lib/api"
-import { Plus, Search, Eye, Send, ArrowRight, Globe, Clock, CheckCircle, MoreHorizontal, ExternalLink } from "lucide-react"
+import { clientsAPI, Client, ClientStatus, tpyDemosAPI, TPY_Demo, usersAPI, User } from "@/lib/api"
+import { Plus, Search, Eye, Send, ArrowRight, Globe, Clock, CheckCircle, MoreHorizontal, ExternalLink, UserPlus } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,14 +65,32 @@ export default function AdminDemosPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedDemo, setSelectedDemo] = useState<TPY_Demo | null>(null)
   const [showStatusDialog, setShowStatusDialog] = useState(false)
+  const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [newStatus, setNewStatus] = useState<ClientStatus | "">("")
+  const [selectedSellerId, setSelectedSellerId] = useState<string>("")
+  const [sellers, setSellers] = useState<User[]>([])
   const [isUpdating, setIsUpdating] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
     loadDemos()
+    loadSellers()
   }, [statusFilter])
+
+  const loadSellers = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const response = await usersAPI.getAll(token)
+      if (response.success) {
+        setSellers(response.users.filter(u => (u.role === "seller" || u.role === "supervisor") && u.isActive))
+      }
+    } catch (error) {
+      console.error("Error loading sellers:", error)
+    }
+  }
 
   const loadDemos = async () => {
     try {
@@ -132,6 +150,43 @@ export default function AdminDemosPage() {
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleAssignSeller = async () => {
+    if (!selectedDemo) return
+
+    try {
+      setIsUpdating(true)
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const seller = sellers.find(s => s._id === selectedSellerId)
+      const response = await tpyDemosAPI.update(token, selectedDemo._id, {
+        sellerId: selectedSellerId || null,
+        sellerName: seller?.name || null,
+      })
+
+      if (response.success || response.demo) {
+        toast({
+          title: "Vendedor asignado",
+          description: selectedSellerId 
+            ? `La demo fue asignada a ${seller?.name}` 
+            : "Se removio la asignacion del vendedor",
+        })
+        setShowAssignDialog(false)
+        setSelectedDemo(null)
+        setSelectedSellerId("")
+        loadDemos()
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo asignar el vendedor",
         variant: "destructive",
       })
     } finally {
@@ -316,7 +371,7 @@ export default function AdminDemosPage() {
                       <TableHead>Cliente / Celular</TableHead>
                       <TableHead>Nombre Web</TableHead>
                       <TableHead>Dominio</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>Vendedor</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -355,7 +410,7 @@ export default function AdminDemosPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-muted-foreground">
-                            {demo.email || "-"}
+                            {getSellerName(demo.sellerId)}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -376,6 +431,16 @@ export default function AdminDemosPage() {
                                   <Eye className="mr-2 h-4 w-4" />
                                   Ver detalle
                                 </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedDemo(demo)
+                                  setSelectedSellerId(typeof demo.sellerId === 'object' && demo.sellerId ? demo.sellerId._id : demo.sellerId || "")
+                                  setShowAssignDialog(true)
+                                }}
+                              >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Asignar vendedor
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
@@ -450,6 +515,49 @@ export default function AdminDemosPage() {
               <Button onClick={handleStatusChange} disabled={!newStatus || isUpdating}>
                 {isUpdating ? <Spinner className="mr-2 h-4 w-4" /> : null}
                 Guardar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Seller Dialog */}
+        <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Asignar Vendedor</DialogTitle>
+              <DialogDescription>
+                Asigna un vendedor a la demo de {selectedDemo?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <Select value={selectedSellerId} onValueChange={setSelectedSellerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin asignar</SelectItem>
+                  {sellers.map((seller) => (
+                    <SelectItem key={seller._id} value={seller._id}>
+                      {seller.name} ({seller.role === "supervisor" ? "Supervisor" : "Vendedor"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAssignDialog(false)
+                  setSelectedDemo(null)
+                  setSelectedSellerId("")
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleAssignSeller} disabled={isUpdating}>
+                {isUpdating ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                Asignar
               </Button>
             </DialogFooter>
           </DialogContent>

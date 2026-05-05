@@ -1753,6 +1753,58 @@ export const tpyDemosAPI = {
       method: "DELETE",
       token,
     }),
+
+  // Create demo with file uploads
+  createWithFiles: async (token: string, formData: FormData) => {
+    const response = await fetch(`${API_URL}/api/tpy/demos/with-files`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || "Error creating demo")
+    }
+    return response.json() as Promise<{ success: boolean; demo: TPY_Demo }>
+  },
+
+  // Upload files to existing demo
+  uploadFiles: async (token: string, id: string, formData: FormData) => {
+    const response = await fetch(`${API_URL}/api/tpy/demos/${id}/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || "Error uploading files")
+    }
+    return response.json() as Promise<{ success: boolean; demo: TPY_Demo }>
+  },
+}
+
+// General file upload utility
+export const uploadFile = async (token: string, file: File, folder: string = "general") => {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("folder", folder)
+  
+  const response = await fetch(`${API_URL}/api/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || "Error uploading file")
+  }
+  return response.json() as Promise<{ success: boolean; url: string; filename: string; type: string }>
 }
 
 // TPY Sales API

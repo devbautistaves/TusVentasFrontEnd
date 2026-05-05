@@ -17,21 +17,40 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { clientsAPI, usersAPI, CreateDemoData, SocialNetworks, User, tpyDemosAPI } from "@/lib/api"
+import { usersAPI, User, tpyDemosAPI } from "@/lib/api"
 import { ArrowLeft, Upload, X, Instagram, Facebook, Globe, Smartphone } from "lucide-react"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
 import Link from "next/link"
 import Image from "next/image"
+
+interface DemoFormData {
+  name: string
+  phone: string
+  businessName: string
+  businessType: string
+  whatTheySell: string
+  socialNetworks: {
+    instagram: string
+    facebook: string
+    tiktok: string
+    website: string
+  }
+  notes: string
+}
 
 export default function AdminNewDemoPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sellers, setSellers] = useState<User[]>([])
   const [selectedSellerId, setSelectedSellerId] = useState<string>("")
+  const [flyerFile, setFlyerFile] = useState<File | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
   const [flyerPreview, setFlyerPreview] = useState<string | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
-  const [formData, setFormData] = useState<CreateDemoData>({
+  const [formData, setFormData] = useState<DemoFormData>({
     name: "",
     phone: "",
     businessName: "",
@@ -43,8 +62,6 @@ export default function AdminNewDemoPage() {
       tiktok: "",
       website: "",
     },
-    flyerUrl: "",
-    logoUrl: "",
     notes: "",
   })
 
@@ -71,7 +88,7 @@ export default function AdminNewDemoPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSocialChange = (network: keyof SocialNetworks, value: string) => {
+  const handleSocialChange = (network: keyof DemoFormData["socialNetworks"], value: string) => {
     setFormData((prev) => ({
       ...prev,
       socialNetworks: {
@@ -84,15 +101,21 @@ export default function AdminNewDemoPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "flyer" | "logo") => {
     const file = e.target.files?.[0]
     if (file) {
+      // Store the actual file
+      if (type === "flyer") {
+        setFlyerFile(file)
+      } else {
+        setLogoFile(file)
+      }
+      
+      // Create preview
       const reader = new FileReader()
       reader.onloadend = () => {
-        const base64 = reader.result as string
+        const preview = reader.result as string
         if (type === "flyer") {
-          setFlyerPreview(base64)
-          setFormData((prev) => ({ ...prev, flyerUrl: base64 }))
+          setFlyerPreview(preview)
         } else {
-          setLogoPreview(base64)
-          setFormData((prev) => ({ ...prev, logoUrl: base64 }))
+          setLogoPreview(preview)
         }
       }
       reader.readAsDataURL(file)
@@ -101,11 +124,11 @@ export default function AdminNewDemoPage() {
 
   const removeFile = (type: "flyer" | "logo") => {
     if (type === "flyer") {
+      setFlyerFile(null)
       setFlyerPreview(null)
-      setFormData((prev) => ({ ...prev, flyerUrl: "" }))
     } else {
+      setLogoFile(null)
       setLogoPreview(null)
-      setFormData((prev) => ({ ...prev, logoUrl: "" }))
     }
   }
 
@@ -129,32 +152,61 @@ export default function AdminNewDemoPage() {
         return
       }
 
-      // Admin creates demo using TPY API
-      const dataToSend = {
-        name: formData.name,
-        phone: formData.phone,
-        webName: formData.businessName,
-        email: "",
-        demoUrl: "",
-        status: "demo_pausada",
-        activationPrice: 0,
-        monthlyPrice: 0,
-        notes: formData.notes,
-        sellerId: selectedSellerId || undefined,
+      // Use FormData to send files to backend
+      const submitData = new FormData()
+      submitData.append("name", formData.name)
+      submitData.append("phone", formData.phone || "")
+      submitData.append("webName", formData.businessName)
+      submitData.append("businessType", formData.businessType || "")
+      submitData.append("whatTheySell", formData.whatTheySell || "")
+      submitData.append("email", "")
+      submitData.append("demoUrl", "")
+      submitData.append("status", "pendiente_demo")
+      submitData.append("activationPrice", "0")
+      submitData.append("monthlyPrice", "0")
+      submitData.append("notes", formData.notes || "")
+      
+      if (selectedSellerId) {
+        submitData.append("sellerId", selectedSellerId)
+      }
+      
+      // Add social networks as JSON
+      submitData.append("socialNetworks", JSON.stringify(formData.socialNetworks))
+      
+      // Add files if present
+      if (flyerFile) {
+        submitData.append("flyer", flyerFile)
+      }
+      if (logoFile) {
+        submitData.append("logo", logoFile)
       }
 
-      const response = await tpyDemosAPI.create(token, dataToSend)
-      if (response.success || response.demo) {
+      const response = await fetch(`${API_URL}/api/tpy/demos/with-files`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: submitData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error creating demo")
+      }
+
+      const result = await response.json()
+      if (result.success || result.demo) {
         toast({
           title: "Demo creada",
-          description: "La demo fue creada exitosamente",
+          description: "La demo fue creada exitosamente con los archivos adjuntos",
         })
         router.push("/admin/demos")
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error creating demo:", error)
       toast({
         title: "Error",
-        description: "No se pudo crear la demo",
+        description: error.message || "No se pudo crear la demo",
         variant: "destructive",
       })
     } finally {
