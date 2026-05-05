@@ -422,17 +422,17 @@ export default function AdminDashboardPage() {
       <DashboardLayout requiredRole="admin">
         <div className="space-y-6">
           {/* Header con selector de periodo */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Dashboard TuPaginaYa</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard TuPaginaYa</h1>
+              <p className="text-sm text-muted-foreground">
                 {viewMode === "historico" ? "Estadisticas generales (historico)" : `Estadisticas de ${getAvailableMonths().find(m => m.value === selectedMonth)?.label || selectedMonth}`}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center">
               <Select value={viewMode} onValueChange={(v) => setViewMode(v as "historico" | "mensual")}>
-                <SelectTrigger className="w-40">
-                  <Filter className="mr-2 h-4 w-4" />
+                <SelectTrigger className="w-32 sm:w-40">
+                  <Filter className="mr-2 h-4 w-4 shrink-0" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -442,8 +442,8 @@ export default function AdminDashboardPage() {
               </Select>
               {viewMode === "mensual" && (
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-48">
-                    <Calendar className="mr-2 h-4 w-4" />
+                  <SelectTrigger className="w-40 sm:w-48">
+                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -453,146 +453,157 @@ export default function AdminDashboardPage() {
                   </SelectContent>
                 </Select>
               )}
-              <Link href="/admin/clients">
-                <Button variant="outline" className="gap-2">
+              <Link href="/admin/clients" className="ml-auto sm:ml-0">
+                <Button variant="outline" size="sm" className="gap-2">
                   <Users className="h-4 w-4" />
-                  Ver Clientes
+                  <span className="hidden sm:inline">Ver Clientes</span>
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Balance General Card */}
-          <Card className={`${(financeSummary?.balance || 0) >= 0 ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10" : "border-red-500/30 bg-gradient-to-br from-red-500/10"} via-card to-card`}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {viewMode === "historico" ? "Balance General (Historico)" : "Balance del Mes"}
-                  </p>
-                  <p className={`text-4xl font-bold ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    {formatCurrency(financeSummary?.balance || 0)}
-                  </p>
-                </div>
-                <div className="flex gap-6">
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Ingresos</p>
-                    <p className="text-lg font-semibold text-emerald-400">{formatCurrency(financeSummary?.ingresos || 0)}</p>
+          {/* Balance General Card - Responsive */}
+          <Card className={`overflow-hidden ${(financeSummary?.balance || 0) >= 0 ? "border-emerald-500/20" : "border-red-500/20"}`}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col gap-4">
+                {/* Balance principal */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                      {viewMode === "historico" ? "Balance General" : "Balance del Mes"}
+                    </p>
+                    <p className={`text-2xl sm:text-4xl font-bold ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+                      {formatCurrency(financeSummary?.balance || 0)}
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Egresos</p>
-                    <p className="text-lg font-semibold text-red-400">{formatCurrency(financeSummary?.egresos || 0)}</p>
+                  <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl ${(financeSummary?.balance || 0) >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"} flex items-center justify-center shrink-0`}>
+                    <DollarSign className={`h-5 w-5 sm:h-6 sm:w-6 ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-500" : "text-red-500"}`} />
                   </div>
                 </div>
-                <div className={`h-12 w-12 rounded-xl ${(financeSummary?.balance || 0) >= 0 ? "bg-emerald-500/20" : "bg-red-500/20"} flex items-center justify-center`}>
-                  <DollarSign className={`h-6 w-6 ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`} />
+                {/* Ingresos y Egresos */}
+                <div className="flex gap-4 sm:gap-8 pt-2 border-t border-border/50">
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Ingresos</p>
+                    <p className="text-base sm:text-xl font-semibold text-emerald-500">{formatCurrency(financeSummary?.ingresos || 0)}</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Egresos</p>
+                    <p className="text-base sm:text-xl font-semibold text-red-500">{formatCurrency(financeSummary?.egresos || 0)}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Stats Cards usando tpyStats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Clientes Totales</p>
-                    <p className="text-4xl font-bold text-foreground">{totalClients}</p>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      {statusCounts.cliente_activo || 0} webs activas
-                    </p>
+          {/* Stats Cards - Grid responsive */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Clientes</p>
+                    <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Users className="h-4 w-4 text-blue-500" />
+                    </div>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-blue-400" />
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">{totalClients}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {statusCounts.cliente_activo || 0} activos
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-card to-card">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Demos Enviadas</p>
-                    <p className="text-4xl font-bold text-purple-400">{statusCounts.demo_enviada || 0}</p>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      {tpyStats?.totalDemos || 0} demos totales
-                    </p>
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Demos Enviadas</p>
+                    <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 text-purple-500" />
+                    </div>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-purple-400" />
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-bold text-purple-500">{statusCounts.demo_enviada || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tpyStats?.totalDemos || 0} totales
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Demos Pendientes</p>
-                    <p className="text-4xl font-bold text-amber-400">
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Pendientes</p>
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-amber-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-bold text-amber-500">
                       {(statusCounts.pendiente_demo || 0) + (statusCounts.demo_pausada || 0)}
                     </p>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      {statusCounts.pendiente_web || 0} webs pendientes
+                    <p className="text-xs text-muted-foreground">
+                      {statusCounts.pendiente_web || 0} webs pend.
                     </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-amber-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Bajas de Clientes</p>
-                    <p className="text-4xl font-bold text-red-400">{statusCounts.cliente_baja || 0}</p>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Clientes dados de baja
-                    </p>
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Bajas</p>
+                    <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    </div>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                    <XCircle className="h-6 w-6 text-red-400" />
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-bold text-red-500">{statusCounts.cliente_baja || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Clientes baja
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions - Responsive grid */}
           <Card>
-            <CardHeader>
-              <CardTitle>Acciones Rapidas</CardTitle>
-              <CardDescription>Accede a las funciones principales</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Acciones Rapidas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link href="/admin/demos">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                    <ShoppingCart className="h-6 w-6" />
-                    <span>Gestionar Demos</span>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Link href="/admin/demos" className="block">
+                  <Button variant="outline" className="w-full h-16 sm:h-20 flex flex-col gap-1.5 text-xs sm:text-sm">
+                    <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span>Demos</span>
                   </Button>
                 </Link>
-                <Link href="/admin/clients">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                    <Users className="h-6 w-6" />
-                    <span>Clientes Activos</span>
+                <Link href="/admin/clients" className="block">
+                  <Button variant="outline" className="w-full h-16 sm:h-20 flex flex-col gap-1.5 text-xs sm:text-sm">
+                    <Users className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span>Clientes</span>
                   </Button>
                 </Link>
-                <Link href="/admin/transactions">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                    <Banknote className="h-6 w-6" />
+                <Link href="/admin/transactions" className="block">
+                  <Button variant="outline" className="w-full h-16 sm:h-20 flex flex-col gap-1.5 text-xs sm:text-sm">
+                    <Banknote className="h-5 w-5 sm:h-6 sm:w-6" />
                     <span>Transacciones</span>
                   </Button>
                 </Link>
-                <Link href="/admin/liquidations">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                    <UserCheck className="h-6 w-6" />
+                <Link href="/admin/liquidations" className="block">
+                  <Button variant="outline" className="w-full h-16 sm:h-20 flex flex-col gap-1.5 text-xs sm:text-sm">
+                    <UserCheck className="h-5 w-5 sm:h-6 sm:w-6" />
                     <span>Liquidaciones</span>
                   </Button>
                 </Link>
