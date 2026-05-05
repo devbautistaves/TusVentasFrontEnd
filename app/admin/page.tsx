@@ -81,6 +81,7 @@ export default function AdminDashboardPage() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [supervisorAdCosts, setSupervisorAdCosts] = useState<SupervisorAdCost[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<"historico" | "mensual">("historico")
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
@@ -103,9 +104,11 @@ export default function AdminDashboardPage() {
         
         if (currentCompany.id === "tupaginaya") {
           // Cargar datos de TuPaginaYa usando nuevas APIs TPY
+          // Si es historico, no pasamos mes para obtener todos los datos
+          const monthParam = viewMode === "historico" ? undefined : selectedMonth
           const [statsRes, transactionsRes] = await Promise.all([
-            tpyStatsAPI.get(token, selectedMonth),
-            tpyTransactionsAPI.getAll(token, { month: selectedMonth }),
+            tpyStatsAPI.get(token, monthParam),
+            tpyTransactionsAPI.getAll(token, monthParam ? { month: monthParam } : {}),
           ])
           setTpyStats(statsRes.stats)
           setFinanceSummary(transactionsRes.totals)
@@ -144,7 +147,7 @@ export default function AdminDashboardPage() {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [currentCompany.id, selectedMonth])
+  }, [currentCompany.id, selectedMonth, viewMode])
 
   const fetchOnlineUsers = async (token: string, usersList?: User[]) => {
     try {
@@ -418,24 +421,38 @@ export default function AdminDashboardPage() {
     return (
       <DashboardLayout requiredRole="admin">
         <div className="space-y-6">
-          {/* Header con selector de mes */}
+          {/* Header con selector de periodo */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground">Dashboard TuPaginaYa</h1>
-              <p className="text-muted-foreground">Gestion de paginas web</p>
+              <p className="text-muted-foreground">
+                {viewMode === "historico" ? "Estadisticas generales (historico)" : `Estadisticas de ${getAvailableMonths().find(m => m.value === selectedMonth)?.label || selectedMonth}`}
+              </p>
             </div>
             <div className="flex gap-2 items-center">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-48">
-                  <Calendar className="mr-2 h-4 w-4" />
+              <Select value={viewMode} onValueChange={(v) => setViewMode(v as "historico" | "mensual")}>
+                <SelectTrigger className="w-40">
+                  <Filter className="mr-2 h-4 w-4" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getAvailableMonths().map(m => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
+                  <SelectItem value="historico">Historico</SelectItem>
+                  <SelectItem value="mensual">Por Mes</SelectItem>
                 </SelectContent>
               </Select>
+              {viewMode === "mensual" && (
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-48">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableMonths().map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Link href="/admin/clients">
                 <Button variant="outline" className="gap-2">
                   <Users className="h-4 w-4" />
@@ -450,7 +467,9 @@ export default function AdminDashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Balance General</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {viewMode === "historico" ? "Balance General (Historico)" : "Balance del Mes"}
+                  </p>
                   <p className={`text-4xl font-bold ${(financeSummary?.balance || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                     {formatCurrency(financeSummary?.balance || 0)}
                   </p>

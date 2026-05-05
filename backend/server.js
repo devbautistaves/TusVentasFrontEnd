@@ -803,11 +803,10 @@ planPrice: {
         lowercase: true,
         match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please enter a valid customer email"],
       },
-      phone: {
-        type: String,
-        required: [true, "Customer phone is required"],
-        trim: true,
-      },
+    phone: {
+      type: String,
+      trim: true,
+    },
       dni: {
         type: String,
         required: [true, "Customer DNI is required"],
@@ -1768,6 +1767,390 @@ const liquidationSchema = new mongoose.Schema(
 // Index para liquidaciones
 liquidationSchema.index({ userId: 1, period: 1, companyId: 1 }, { unique: true })
 
+// ========================================
+// TUPAGINAYA SPECIFIC SCHEMAS (TPY_*)
+// Schemas separados para TuPaginaYa
+// ========================================
+
+// TPY_Client Schema - Clientes de TuPaginaYa
+const tpyClientSchema = new mongoose.Schema(
+  {
+    // Datos del cliente
+    name: {
+      type: String,
+      required: [true, "Client name is required"],
+      trim: true,
+    },
+    phone: {
+      type: String,
+      required: [true, "Phone is required"],
+      trim: true,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    // Datos del negocio/web
+    webName: {
+      type: String,
+      required: [true, "Web name is required"],
+      trim: true,
+    },
+    domain: {
+      type: String,
+      trim: true,
+    },
+    demoUrl: {
+      type: String,
+      trim: true,
+    },
+    // Estado del cliente (flujo TuPaginaYa)
+    status: {
+      type: String,
+      enum: ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada", "baja"],
+      default: "pendiente_demo",
+    },
+    // Precios
+    activationPrice: {
+      type: Number,
+      default: 0,
+    },
+    monthlyPrice: {
+      type: Number,
+      default: 0,
+    },
+    // Fechas importantes
+    createdDate: {
+      type: Date,
+      default: Date.now,
+    },
+    activationDate: {
+      type: Date,
+    },
+    cancellationDate: {
+      type: Date,
+    },
+    cancellationReason: {
+      type: String,
+      trim: true,
+    },
+    // Vendedor asignado
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    sellerName: {
+      type: String,
+      trim: true,
+    },
+    // Notas
+    notes: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+// TPY_Demo Schema - Demos de TuPaginaYa
+const tpyDemoSchema = new mongoose.Schema(
+  {
+    // Relacion con cliente
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TPY_Client",
+    },
+    // Datos basicos (para demos sin cliente asociado aun)
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    webName: {
+      type: String,
+      required: [true, "Web name is required"],
+      trim: true,
+    },
+    demoUrl: {
+      type: String,
+      trim: true,
+    },
+    // Estado de la demo
+    status: {
+      type: String,
+      enum: ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada"],
+      default: "pendiente_demo",
+    },
+    // Precios cotizados
+    activationPrice: {
+      type: Number,
+      default: 0,
+    },
+    monthlyPrice: {
+      type: Number,
+      default: 0,
+    },
+    // Fecha de la demo
+    demoDate: {
+      type: Date,
+      default: Date.now,
+    },
+    // Vendedor que creo la demo
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    sellerName: {
+      type: String,
+      trim: true,
+    },
+    // Notas
+    notes: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+// TPY_Sale Schema - Ventas de TuPaginaYa (webs activadas)
+const tpySaleSchema = new mongoose.Schema(
+  {
+    // Relacion con cliente
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TPY_Client",
+      required: true,
+    },
+    // Datos del cliente (denormalizados)
+    clientName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    clientPhone: {
+      type: String,
+      trim: true,
+    },
+    // Datos de la web
+    webName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    domain: {
+      type: String,
+      trim: true,
+    },
+    // Estado de la venta
+    status: {
+      type: String,
+      enum: ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada", "baja"],
+      default: "pendiente_web",
+    },
+    // Precios
+    activationPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    monthlyPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    // Fechas
+    saleDate: {
+      type: Date,
+      default: Date.now,
+    },
+    activationDate: {
+      type: Date,
+    },
+    // Vendedor
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    sellerName: {
+      type: String,
+      trim: true,
+    },
+    // Comision
+    commission: {
+      type: Number,
+      default: 0,
+    },
+    commissionPaid: {
+      type: Boolean,
+      default: false,
+    },
+    // Notas
+    notes: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+// TPY_Transaction Schema - Transacciones de caja TuPaginaYa
+const tpyTransactionSchema = new mongoose.Schema(
+  {
+    // Tipo de transaccion
+    type: {
+      type: String,
+      enum: ["ingreso", "egreso"],
+      required: true,
+    },
+    // Categoria
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    // Concepto/descripcion
+    concept: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    // Monto
+    amount: {
+      type: Number,
+      required: true,
+    },
+    // Fecha de la transaccion
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+    // Mes al que pertenece (para filtros)
+    month: {
+      type: String,
+      required: true,
+      match: [/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"],
+    },
+    // Referencia a cliente (si aplica)
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TPY_Client",
+    },
+    clientName: {
+      type: String,
+      trim: true,
+    },
+    // Quien registro
+    recordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    // Notas
+    notes: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+// TPY_Collection Schema - Cobranzas mensuales de TuPaginaYa
+const tpyCollectionSchema = new mongoose.Schema(
+  {
+    // Cliente
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TPY_Client",
+      required: true,
+    },
+    clientName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    clientPhone: {
+      type: String,
+      trim: true,
+    },
+    webName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    domain: {
+      type: String,
+      trim: true,
+    },
+    // Periodo (mes)
+    month: {
+      type: String,
+      required: true,
+      match: [/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"],
+    },
+    // Monto esperado
+    expectedAmount: {
+      type: Number,
+      required: true,
+    },
+    // Monto pagado
+    paidAmount: {
+      type: Number,
+      default: 0,
+    },
+    // Estado de la cobranza
+    status: {
+      type: String,
+      enum: ["pendiente", "pagado", "parcial", "vencido"],
+      default: "pendiente",
+    },
+    // Fecha de pago
+    paymentDate: {
+      type: Date,
+    },
+    // Quien registro el pago
+    recordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    // Notas
+    notes: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+// Index para cobranzas (un registro por cliente/mes)
+tpyCollectionSchema.index({ clientId: 1, month: 1 }, { unique: true })
+
+// Models TuPaginaYa
+const TPY_Client = mongoose.model("TPY_Client", tpyClientSchema)
+const TPY_Demo = mongoose.model("TPY_Demo", tpyDemoSchema)
+const TPY_Sale = mongoose.model("TPY_Sale", tpySaleSchema)
+const TPY_Transaction = mongoose.model("TPY_Transaction", tpyTransactionSchema)
+const TPY_Collection = mongoose.model("TPY_Collection", tpyCollectionSchema)
+
 // PaymentReminder Schema (Recordatorios enviados)
 const paymentReminderSchema = new mongoose.Schema(
   {
@@ -1926,6 +2309,61 @@ const liquidationEmailSchema = new mongoose.Schema(
 );
 
 const LiquidationEmail = mongoose.model("LiquidationEmail", liquidationEmailSchema);
+
+// Marketing Materials Schema
+const marketingMaterialSchema = new mongoose.Schema(
+  {
+    companyId: {
+      type: String,
+      required: true,
+      enum: ["prosegur", "tupaginaya"],
+      default: "tupaginaya",
+    },
+    category: {
+      type: String,
+      required: true,
+      enum: ["induccion", "publicidad", "demos_entregadas"],
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    fileType: {
+      type: String,
+      enum: ["image", "video", "document", "other"],
+      default: "other",
+    },
+    fileName: {
+      type: String,
+      required: true,
+    },
+    fileUrl: {
+      type: String,
+      required: true,
+    },
+    mimeType: {
+      type: String,
+    },
+    fileSize: {
+      type: Number,
+    },
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const MarketingMaterial = mongoose.model("MarketingMaterial", marketingMaterialSchema);
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage()
@@ -6649,7 +7087,15 @@ app.get("/api/company-settings/:companyId", authenticateToken, requireAdmin, asy
 app.put("/api/company-settings/:companyId", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { companyId } = req.params;
-    const { baseCommissionPerSale, settings: additionalSettings } = req.body;
+    const { 
+      baseCommissionPerSale, 
+      basePrice,
+      commissionScales,
+      supervisorFixedCommission,
+      settings: additionalSettings 
+    } = req.body;
+    
+    console.log(`[CompanySettings] Updating settings for ${companyId}:`, req.body);
     
     if (!["prosegur", "tupaginaya"].includes(companyId)) {
       return res.status(400).json({ success: false, error: "Company ID invalido" });
@@ -6662,11 +7108,25 @@ app.put("/api/company-settings/:companyId", authenticateToken, requireAdmin, asy
       companySettings = new CompanySettings({
         companyId,
         baseCommissionPerSale: baseCommissionPerSale || 200000,
+        basePrice: basePrice || 15000,
+        commissionScales: commissionScales || [],
+        supervisorFixedCommission: supervisorFixedCommission || 0,
         settings: additionalSettings || {},
       });
     } else {
+      // Actualizar campos individuales
       if (baseCommissionPerSale !== undefined) {
         companySettings.baseCommissionPerSale = baseCommissionPerSale;
+      }
+      if (basePrice !== undefined) {
+        companySettings.basePrice = basePrice;
+      }
+      if (commissionScales !== undefined) {
+        companySettings.commissionScales = commissionScales;
+        console.log(`[CompanySettings] Updated commissionScales:`, commissionScales);
+      }
+      if (supervisorFixedCommission !== undefined) {
+        companySettings.supervisorFixedCommission = supervisorFixedCommission;
       }
       if (additionalSettings) {
         companySettings.settings = { ...companySettings.settings, ...additionalSettings };
@@ -6674,11 +7134,12 @@ app.put("/api/company-settings/:companyId", authenticateToken, requireAdmin, asy
     }
     
     await companySettings.save();
+    console.log(`[CompanySettings] Saved settings for ${companyId}:`, companySettings);
     
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Configuracion actualizada correctamente",
-      settings: companySettings 
+      settings: companySettings
     });
   } catch (error) {
     handleError(res, error, "Failed to update company settings");
@@ -6759,8 +7220,8 @@ async function enviarEmailAnuncio(notification, recipients) {
     </div>
   `;
 
-  // Enviar emails en lotes paralelos (maximo 5 a la vez para no saturar SMTP)
-  const BATCH_SIZE = 5;
+  // Enviar emails en lotes paralelos (maximo 10 a la vez para velocidad optima)
+  const BATCH_SIZE = 10;
   let emailsSent = 0;
   
   for (let i = 0; i < validRecipients.length; i += BATCH_SIZE) {
@@ -6785,9 +7246,9 @@ async function enviarEmailAnuncio(notification, recipients) {
       }
     });
     
-    // Pequeña pausa entre lotes para no saturar
+    // Pausa minima entre lotes (solo si hay mas lotes)
     if (i + BATCH_SIZE < validRecipients.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
   }
 
@@ -6893,7 +7354,7 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
       }
     }
 
-    // Procesar archivos adjuntos si hay
+    // Procesar archivos adjuntos EN PARALELO para mayor velocidad
     let attachments = [];
     if (req.files && req.files.length > 0) {
       // Crear directorio de uploads si no existe
@@ -6902,65 +7363,55 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
       
-      for (const file of req.files) {
+      // Procesar todos los archivos en paralelo
+      const uploadPromises = req.files.map(async (file, index) => {
+        const uniqueName = `${Date.now()}_${index}_${file.originalname}`;
+        
         try {
           // Intentar subir a Firebase si esta configurado
           if (bucket) {
-            const fileName = `notifications/${Date.now()}_${file.originalname}`;
+            const fileName = `notifications/${uniqueName}`;
             const fileUpload = bucket.file(fileName);
             
             await fileUpload.save(file.buffer, {
-              metadata: {
-                contentType: file.mimetype,
-              },
+              metadata: { contentType: file.mimetype },
             });
             
             await fileUpload.makePublic();
             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
             
-            attachments.push({
-              filename: file.originalname,
-              url: publicUrl,
-              type: file.mimetype,
-            });
             console.log(`[Anuncio] Archivo subido a Firebase: ${file.originalname}`);
+            return { filename: file.originalname, url: publicUrl, type: file.mimetype };
           } else {
-            // Fallback: guardar localmente si Firebase no esta configurado
-            const uniqueName = `${Date.now()}_${file.originalname}`;
+            // Guardar localmente si Firebase no esta configurado
             const localPath = path.join(uploadsDir, uniqueName);
             fs.writeFileSync(localPath, file.buffer);
-            
-            // Generar URL local (relativa al servidor)
             const localUrl = `/uploads/notifications/${uniqueName}`;
             
-            attachments.push({
-              filename: file.originalname,
-              url: localUrl,
-              type: file.mimetype,
-            });
             console.log(`[Anuncio] Archivo guardado localmente: ${file.originalname}`);
+            return { filename: file.originalname, url: localUrl, type: file.mimetype };
           }
         } catch (uploadError) {
           console.error("Error subiendo archivo:", uploadError.message);
           
           // Fallback a local si Firebase falla
           try {
-            const uniqueName = `${Date.now()}_${file.originalname}`;
             const localPath = path.join(uploadsDir, uniqueName);
             fs.writeFileSync(localPath, file.buffer);
-            
             const localUrl = `/uploads/notifications/${uniqueName}`;
-            attachments.push({
-              filename: file.originalname,
-              url: localUrl,
-              type: file.mimetype,
-            });
+            
             console.log(`[Anuncio] Archivo guardado localmente (fallback): ${file.originalname}`);
+            return { filename: file.originalname, url: localUrl, type: file.mimetype };
           } catch (localError) {
             console.error("Error guardando archivo localmente:", localError.message);
+            return null;
           }
         }
-      }
+      });
+      
+      // Esperar todos los uploads en paralelo
+      const results = await Promise.all(uploadPromises);
+      attachments = results.filter(r => r !== null);
     }
 
     const notification = new Notification({
@@ -7177,6 +7628,997 @@ app.get("/api/test-email", authenticateToken, async (req, res) => {
     });
   }
 });
+
+// ========================================
+// MARKETING MATERIALS ENDPOINTS
+// ========================================
+
+// Get all materials for a category (accessible by all authenticated users)
+app.get("/api/materials", authenticateToken, async (req, res) => {
+  try {
+    const { category } = req.query;
+    const companyId = req.headers["x-company-id"] || "tupaginaya";
+    
+    const query = { companyId };
+    if (category) {
+      query.category = category;
+    }
+    
+    const materials = await MarketingMaterial.find(query)
+      .populate("uploadedBy", "name")
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, materials });
+  } catch (error) {
+    handleError(res, error, "Failed to get materials");
+  }
+});
+
+// Upload new material (admin only)
+app.post("/api/materials", authenticateToken, requireAdmin, upload.single("file"), async (req, res) => {
+  try {
+    const { category, name, description } = req.body;
+    const companyId = req.headers["x-company-id"] || "tupaginaya";
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No se ha subido ningún archivo" });
+    }
+    
+    if (!category || !name) {
+      return res.status(400).json({ success: false, error: "Categoría y nombre son requeridos" });
+    }
+    
+    // Determine file type from mimetype
+    let fileType = "other";
+    if (req.file.mimetype.startsWith("image/")) fileType = "image";
+    else if (req.file.mimetype.startsWith("video/")) fileType = "video";
+    else if (req.file.mimetype.includes("pdf") || req.file.mimetype.includes("document") || req.file.mimetype.includes("word")) fileType = "document";
+    
+    // Create uploads directory if it doesn't exist
+    const materialsDir = path.join(__dirname, "uploads", "materials", category);
+    if (!fs.existsSync(materialsDir)) {
+      fs.mkdirSync(materialsDir, { recursive: true });
+    }
+    
+    let fileUrl;
+    
+    // Try to upload to Firebase if available
+    if (bucket) {
+      try {
+        const fileName = `materials/${category}/${Date.now()}_${req.file.originalname}`;
+        const fileUpload = bucket.file(fileName);
+        
+        await fileUpload.save(req.file.buffer, {
+          metadata: { contentType: req.file.mimetype },
+        });
+        
+        await fileUpload.makePublic();
+        fileUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        console.log(`[Materials] Archivo subido a Firebase: ${req.file.originalname}`);
+      } catch (firebaseError) {
+        console.error("Error subiendo a Firebase, guardando localmente:", firebaseError.message);
+        // Fallback to local storage
+        const uniqueName = `${Date.now()}_${req.file.originalname}`;
+        const localPath = path.join(materialsDir, uniqueName);
+        fs.writeFileSync(localPath, req.file.buffer);
+        fileUrl = `/uploads/materials/${category}/${uniqueName}`;
+        console.log(`[Materials] Archivo guardado localmente: ${req.file.originalname}`);
+      }
+    } else {
+      // Save locally if Firebase not configured
+      const uniqueName = `${Date.now()}_${req.file.originalname}`;
+      const localPath = path.join(materialsDir, uniqueName);
+      fs.writeFileSync(localPath, req.file.buffer);
+      fileUrl = `/uploads/materials/${category}/${uniqueName}`;
+      console.log(`[Materials] Archivo guardado localmente: ${req.file.originalname}`);
+    }
+    
+    const material = new MarketingMaterial({
+      companyId,
+      category,
+      name,
+      description,
+      fileType,
+      fileName: req.file.originalname,
+      fileUrl,
+      mimeType: req.file.mimetype,
+      fileSize: req.file.size,
+      uploadedBy: req.user.userId,
+    });
+    
+    await material.save();
+    await material.populate("uploadedBy", "name");
+    
+    res.json({ success: true, material, message: "Material subido correctamente" });
+  } catch (error) {
+    handleError(res, error, "Failed to upload material");
+  }
+});
+
+// Delete material (admin only)
+app.delete("/api/materials/:id", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const material = await MarketingMaterial.findById(req.params.id);
+    
+    if (!material) {
+      return res.status(404).json({ success: false, error: "Material no encontrado" });
+    }
+    
+    // Try to delete the file
+    if (material.fileUrl.startsWith("/uploads/")) {
+      const filePath = path.join(__dirname, material.fileUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    await MarketingMaterial.findByIdAndDelete(req.params.id);
+    
+    res.json({ success: true, message: "Material eliminado correctamente" });
+  } catch (error) {
+    handleError(res, error, "Failed to delete material");
+  }
+});
+
+// ========================================
+// TUPAGINAYA API ROUTES (TPY_*)
+// Endpoints separados para TuPaginaYa
+// ========================================
+
+// Mapeo de estados para display
+const TPY_STATUS_LABELS = {
+  "pendiente_demo": "Pendiente de Demo",
+  "demo_enviada": "Demo Enviada",
+  "demo_pausada": "Demo Pausada",
+  "pendiente_web": "Pendiente Web",
+  "web_activada": "Web Activada",
+  "baja": "Baja"
+}
+
+// ---------- TPY_CLIENTS ----------
+
+// GET all TPY clients
+app.get("/api/tpy/clients", authenticateToken, async (req, res) => {
+  try {
+    const { status, month, search } = req.query
+    let query = {}
+    
+    if (status && status !== "all") {
+      query.status = status
+    }
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { webName: { $regex: search, $options: "i" } },
+        { domain: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ]
+    }
+    
+    // Filtro por mes si se proporciona
+    if (month) {
+      const [year, monthNum] = month.split("-").map(Number)
+      const startDate = new Date(year, monthNum - 1, 1)
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59)
+      query.createdAt = { $gte: startDate, $lte: endDate }
+    }
+    
+    const clients = await TPY_Client.find(query)
+      .populate("sellerId", "name email")
+      .sort({ createdAt: -1 })
+    
+    res.json({ success: true, clients })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY clients")
+  }
+})
+
+// GET single TPY client
+app.get("/api/tpy/clients/:id", authenticateToken, async (req, res) => {
+  try {
+    const client = await TPY_Client.findById(req.params.id)
+      .populate("sellerId", "name email")
+    
+    if (!client) {
+      return res.status(404).json({ success: false, error: "Client not found" })
+    }
+    
+    res.json({ success: true, client })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY client")
+  }
+})
+
+// CREATE TPY client
+app.post("/api/tpy/clients", authenticateToken, async (req, res) => {
+  try {
+    const clientData = {
+      ...req.body,
+      sellerId: req.body.sellerId || req.user.userId,
+      sellerName: req.body.sellerName || req.user.name,
+    }
+    
+    const client = new TPY_Client(clientData)
+    await client.save()
+    
+    res.status(201).json({ success: true, client })
+  } catch (error) {
+    handleError(res, error, "Failed to create TPY client")
+  }
+})
+
+// UPDATE TPY client
+app.put("/api/tpy/clients/:id", authenticateToken, async (req, res) => {
+  try {
+    const client = await TPY_Client.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+    
+    if (!client) {
+      return res.status(404).json({ success: false, error: "Client not found" })
+    }
+    
+    res.json({ success: true, client })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY client")
+  }
+})
+
+// UPDATE TPY client status
+app.patch("/api/tpy/clients/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.body
+    const validStatuses = ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada", "baja"]
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` 
+      })
+    }
+    
+    const updateData = { status }
+    
+    // Si se activa la web, guardar fecha de activacion
+    if (status === "web_activada") {
+      updateData.activationDate = new Date()
+    }
+    
+    // Si es baja, guardar fecha de baja
+    if (status === "baja") {
+      updateData.cancellationDate = new Date()
+    }
+    
+    const client = await TPY_Client.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+    
+    if (!client) {
+      return res.status(404).json({ success: false, error: "Client not found" })
+    }
+    
+    res.json({ success: true, client })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY client status")
+  }
+})
+
+// DELETE TPY client
+app.delete("/api/tpy/clients/:id", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const client = await TPY_Client.findByIdAndDelete(req.params.id)
+    
+    if (!client) {
+      return res.status(404).json({ success: false, error: "Client not found" })
+    }
+    
+    res.json({ success: true, message: "Client deleted" })
+  } catch (error) {
+    handleError(res, error, "Failed to delete TPY client")
+  }
+})
+
+// ---------- TPY_DEMOS ----------
+
+// GET all TPY demos
+app.get("/api/tpy/demos", authenticateToken, async (req, res) => {
+  try {
+    const { status, month, search } = req.query
+    let query = {}
+    
+    if (status && status !== "all") {
+      query.status = status
+    }
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { webName: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ]
+    }
+    
+    // Filtro por mes
+    if (month) {
+      const [year, monthNum] = month.split("-").map(Number)
+      const startDate = new Date(year, monthNum - 1, 1)
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59)
+      query.demoDate = { $gte: startDate, $lte: endDate }
+    }
+    
+    const demos = await TPY_Demo.find(query)
+      .populate("sellerId", "name email")
+      .sort({ demoDate: -1 })
+    
+    res.json({ success: true, demos })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY demos")
+  }
+})
+
+// GET TPY demo by ID
+app.get("/api/tpy/demos/:id", authenticateToken, async (req, res) => {
+  try {
+    const demo = await TPY_Demo.findById(req.params.id)
+      .populate("sellerId", "name email")
+    
+    if (!demo) {
+      return res.status(404).json({ success: false, error: "Demo not found" })
+    }
+    
+    res.json({ success: true, demo })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY demo")
+  }
+})
+
+// CREATE TPY demo
+app.post("/api/tpy/demos", authenticateToken, async (req, res) => {
+  try {
+    const demoData = {
+      ...req.body,
+      sellerId: req.body.sellerId || req.user.userId,
+      sellerName: req.body.sellerName || req.user.name,
+    }
+    
+    const demo = new TPY_Demo(demoData)
+    await demo.save()
+    
+    res.status(201).json({ success: true, demo })
+  } catch (error) {
+    handleError(res, error, "Failed to create TPY demo")
+  }
+})
+
+// UPDATE TPY demo
+app.put("/api/tpy/demos/:id", authenticateToken, async (req, res) => {
+  try {
+    const demo = await TPY_Demo.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+    
+    if (!demo) {
+      return res.status(404).json({ success: false, error: "Demo not found" })
+    }
+    
+    res.json({ success: true, demo })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY demo")
+  }
+})
+
+// UPDATE TPY demo status
+app.patch("/api/tpy/demos/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.body
+    const validStatuses = ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada"]
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` 
+      })
+    }
+    
+    const demo = await TPY_Demo.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    )
+    
+    if (!demo) {
+      return res.status(404).json({ success: false, error: "Demo not found" })
+    }
+    
+    res.json({ success: true, demo })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY demo status")
+  }
+})
+
+// CONVERT TPY demo to client (activar web)
+app.post("/api/tpy/demos/:id/convert", authenticateToken, async (req, res) => {
+  try {
+    const demo = await TPY_Demo.findById(req.params.id)
+    
+    if (!demo) {
+      return res.status(404).json({ success: false, error: "Demo not found" })
+    }
+    
+    // Crear cliente a partir de la demo
+    const clientData = {
+      name: demo.name,
+      phone: demo.phone,
+      email: demo.email,
+      webName: demo.webName,
+      domain: req.body.domain || demo.demoUrl,
+      status: "web_activada",
+      activationPrice: req.body.activationPrice || demo.activationPrice,
+      monthlyPrice: req.body.monthlyPrice || demo.monthlyPrice,
+      activationDate: new Date(),
+      sellerId: demo.sellerId,
+      sellerName: demo.sellerName,
+    }
+    
+    const client = new TPY_Client(clientData)
+    await client.save()
+    
+    // Actualizar demo
+    demo.status = "web_activada"
+    demo.clientId = client._id
+    await demo.save()
+    
+    // Crear venta
+    const saleData = {
+      clientId: client._id,
+      clientName: client.name,
+      clientPhone: client.phone,
+      webName: client.webName,
+      domain: client.domain,
+      status: "web_activada",
+      activationPrice: client.activationPrice,
+      monthlyPrice: client.monthlyPrice,
+      saleDate: new Date(),
+      activationDate: new Date(),
+      sellerId: demo.sellerId,
+      sellerName: demo.sellerName,
+    }
+    
+    const sale = new TPY_Sale(saleData)
+    await sale.save()
+    
+    // Crear transaccion de ingreso por activacion
+    if (client.activationPrice && client.activationPrice > 0) {
+      const activationDate = new Date()
+      const month = `${activationDate.getFullYear()}-${String(activationDate.getMonth() + 1).padStart(2, '0')}`
+      
+      const transaction = new TPY_Transaction({
+        type: "ingreso",
+        category: "Activacion Web",
+        concept: `Activacion web - ${client.name} (${client.webName || client.domain})`,
+        amount: client.activationPrice,
+        date: activationDate,
+        month: month,
+        clientId: client._id,
+        clientName: client.name,
+        recordedBy: req.user._id,
+      })
+      await transaction.save()
+    }
+    
+    res.json({ success: true, client, sale, demo })
+  } catch (error) {
+    handleError(res, error, "Failed to convert TPY demo")
+  }
+})
+
+// DELETE TPY demo
+app.delete("/api/tpy/demos/:id", authenticateToken, async (req, res) => {
+  try {
+    const demo = await TPY_Demo.findByIdAndDelete(req.params.id)
+    
+    if (!demo) {
+      return res.status(404).json({ success: false, error: "Demo not found" })
+    }
+    
+    res.json({ success: true, message: "Demo deleted" })
+  } catch (error) {
+    handleError(res, error, "Failed to delete TPY demo")
+  }
+})
+
+// ---------- TPY_SALES ----------
+
+// GET all TPY sales
+app.get("/api/tpy/sales", authenticateToken, async (req, res) => {
+  try {
+    const { status, month, search, sellerId } = req.query
+    let query = {}
+    
+    if (status && status !== "all") {
+      query.status = status
+    }
+    
+    if (sellerId) {
+      query.sellerId = sellerId
+    }
+    
+    if (search) {
+      query.$or = [
+        { clientName: { $regex: search, $options: "i" } },
+        { webName: { $regex: search, $options: "i" } },
+        { domain: { $regex: search, $options: "i" } },
+      ]
+    }
+    
+    // Filtro por mes
+    if (month) {
+      const [year, monthNum] = month.split("-").map(Number)
+      const startDate = new Date(year, monthNum - 1, 1)
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59)
+      query.saleDate = { $gte: startDate, $lte: endDate }
+    }
+    
+    const sales = await TPY_Sale.find(query)
+      .populate("sellerId", "name email")
+      .populate("clientId", "name phone")
+      .sort({ saleDate: -1 })
+    
+    res.json({ success: true, sales })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY sales")
+  }
+})
+
+// CREATE TPY sale
+app.post("/api/tpy/sales", authenticateToken, async (req, res) => {
+  try {
+    const saleData = {
+      ...req.body,
+      sellerId: req.body.sellerId || req.user.userId,
+      sellerName: req.body.sellerName || req.user.name,
+    }
+    
+    const sale = new TPY_Sale(saleData)
+    await sale.save()
+    
+    res.status(201).json({ success: true, sale })
+  } catch (error) {
+    handleError(res, error, "Failed to create TPY sale")
+  }
+})
+
+// UPDATE TPY sale
+app.put("/api/tpy/sales/:id", authenticateToken, async (req, res) => {
+  try {
+    const sale = await TPY_Sale.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+    
+    if (!sale) {
+      return res.status(404).json({ success: false, error: "Sale not found" })
+    }
+    
+    res.json({ success: true, sale })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY sale")
+  }
+})
+
+// UPDATE TPY sale status
+app.patch("/api/tpy/sales/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.body
+    const validStatuses = ["pendiente_demo", "demo_enviada", "demo_pausada", "pendiente_web", "web_activada", "baja"]
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` 
+      })
+    }
+    
+    const updateData = { status }
+    
+    if (status === "web_activada" && !req.body.activationDate) {
+      updateData.activationDate = new Date()
+    }
+    
+    const sale = await TPY_Sale.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    )
+    
+    if (!sale) {
+      return res.status(404).json({ success: false, error: "Sale not found" })
+    }
+    
+    // Actualizar cliente asociado tambien
+    if (sale.clientId) {
+      await TPY_Client.findByIdAndUpdate(sale.clientId, { status })
+    }
+    
+    res.json({ success: true, sale })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY sale status")
+  }
+})
+
+// ---------- TPY_TRANSACTIONS ----------
+
+// GET all TPY transactions
+app.get("/api/tpy/transactions", authenticateToken, async (req, res) => {
+  try {
+    const { type, month, category } = req.query
+    let query = {}
+    
+    if (type && type !== "all") {
+      query.type = type
+    }
+    
+    if (category) {
+      query.category = { $regex: category, $options: "i" }
+    }
+    
+    // Filtro por mes (obligatorio para transacciones)
+    if (month) {
+      query.month = month
+    }
+    
+    const transactions = await TPY_Transaction.find(query)
+      .populate("clientId", "name webName")
+      .populate("recordedBy", "name")
+      .sort({ date: -1 })
+    
+    // Calcular totales
+    const ingresos = transactions.filter(t => t.type === "ingreso").reduce((sum, t) => sum + t.amount, 0)
+    const egresos = transactions.filter(t => t.type === "egreso").reduce((sum, t) => sum + t.amount, 0)
+    const balance = ingresos - egresos
+    
+    res.json({ success: true, transactions, totals: { ingresos, egresos, balance } })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY transactions")
+  }
+})
+
+// CREATE TPY transaction
+app.post("/api/tpy/transactions", authenticateToken, async (req, res) => {
+  try {
+    const date = new Date(req.body.date || Date.now())
+    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    
+    const transactionData = {
+      ...req.body,
+      month,
+      recordedBy: req.user.userId,
+    }
+    
+    const transaction = new TPY_Transaction(transactionData)
+    await transaction.save()
+    
+    res.status(201).json({ success: true, transaction })
+  } catch (error) {
+    handleError(res, error, "Failed to create TPY transaction")
+  }
+})
+
+// UPDATE TPY transaction
+app.put("/api/tpy/transactions/:id", authenticateToken, async (req, res) => {
+  try {
+    const transaction = await TPY_Transaction.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+    
+    if (!transaction) {
+      return res.status(404).json({ success: false, error: "Transaction not found" })
+    }
+    
+    res.json({ success: true, transaction })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY transaction")
+  }
+})
+
+// DELETE TPY transaction
+app.delete("/api/tpy/transactions/:id", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const transaction = await TPY_Transaction.findByIdAndDelete(req.params.id)
+    
+    if (!transaction) {
+      return res.status(404).json({ success: false, error: "Transaction not found" })
+    }
+    
+    res.json({ success: true, message: "Transaction deleted" })
+  } catch (error) {
+    handleError(res, error, "Failed to delete TPY transaction")
+  }
+})
+
+// ---------- TPY_COLLECTIONS ----------
+
+// GET all TPY collections (cobranzas)
+app.get("/api/tpy/collections", authenticateToken, async (req, res) => {
+  try {
+    const { month, status, search } = req.query
+    let query = {}
+    
+    if (month) {
+      query.month = month
+    }
+    
+    if (status && status !== "all") {
+      query.status = status
+    }
+    
+    if (search) {
+      query.$or = [
+        { clientName: { $regex: search, $options: "i" } },
+        { webName: { $regex: search, $options: "i" } },
+        { domain: { $regex: search, $options: "i" } },
+      ]
+    }
+    
+    const collections = await TPY_Collection.find(query)
+      .populate("clientId", "name phone email")
+      .populate("recordedBy", "name")
+      .sort({ clientName: 1 })
+    
+    // Calcular totales
+    const totalExpected = collections.reduce((sum, c) => sum + c.expectedAmount, 0)
+    const totalPaid = collections.reduce((sum, c) => sum + c.paidAmount, 0)
+    const totalPending = totalExpected - totalPaid
+    
+    res.json({ 
+      success: true, 
+      collections, 
+      totals: { expected: totalExpected, paid: totalPaid, pending: totalPending } 
+    })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY collections")
+  }
+})
+
+// GENERATE monthly collections for active clients
+app.post("/api/tpy/collections/generate", authenticateToken, requireAdminOrSupervisor, async (req, res) => {
+  try {
+    const { month } = req.body
+    
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ success: false, error: "Month is required in YYYY-MM format" })
+    }
+    
+    // Obtener todos los clientes activos (web_activada)
+    const activeClients = await TPY_Client.find({ status: "web_activada" })
+    
+    let created = 0
+    let skipped = 0
+    
+    for (const client of activeClients) {
+      try {
+        // Verificar si ya existe cobranza para este cliente/mes
+        const existing = await TPY_Collection.findOne({ clientId: client._id, month })
+        
+        if (existing) {
+          skipped++
+          continue
+        }
+        
+        // Crear cobranza
+        const collection = new TPY_Collection({
+          clientId: client._id,
+          clientName: client.name,
+          clientPhone: client.phone,
+          webName: client.webName,
+          domain: client.domain,
+          month,
+          expectedAmount: client.monthlyPrice || 0,
+          status: "pendiente",
+        })
+        
+        await collection.save()
+        created++
+      } catch (err) {
+        // Ignorar errores individuales (duplicados, etc)
+        skipped++
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Created ${created} collections, skipped ${skipped} (existing or errors)`,
+      created,
+      skipped
+    })
+  } catch (error) {
+    handleError(res, error, "Failed to generate TPY collections")
+  }
+})
+
+// UPDATE TPY collection (registrar pago)
+app.put("/api/tpy/collections/:id", authenticateToken, async (req, res) => {
+  try {
+    const { paidAmount, status, paymentDate, notes } = req.body
+    
+    const updateData = {
+      ...req.body,
+      recordedBy: req.user.userId,
+    }
+    
+    // Si se paga completo, marcar como pagado
+    const collection = await TPY_Collection.findById(req.params.id)
+    if (collection && paidAmount >= collection.expectedAmount) {
+      updateData.status = "pagado"
+      updateData.paymentDate = paymentDate || new Date()
+    } else if (paidAmount > 0 && paidAmount < collection.expectedAmount) {
+      updateData.status = "parcial"
+    }
+    
+    const updated = await TPY_Collection.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    
+    if (!updated) {
+      return res.status(404).json({ success: false, error: "Collection not found" })
+    }
+    
+    // Si se marco como pagado, crear transaccion de ingreso
+    if (updateData.status === "pagado" && paidAmount > 0) {
+      const transaction = new TPY_Transaction({
+        type: "ingreso",
+        category: "Suscripcion",
+        concept: `${updated.webName} - ${updated.month}`,
+        amount: paidAmount,
+        date: paymentDate || new Date(),
+        month: updated.month,
+        clientId: updated.clientId,
+        clientName: updated.clientName,
+        recordedBy: req.user.userId,
+      })
+      await transaction.save()
+    }
+    
+    res.json({ success: true, collection: updated })
+  } catch (error) {
+    handleError(res, error, "Failed to update TPY collection")
+  }
+})
+
+// ---------- TPY STATS ----------
+
+// GET TPY dashboard stats
+app.get("/api/tpy/stats", authenticateToken, async (req, res) => {
+  try {
+    const { month } = req.query
+    
+    // Conteos por estado
+    const clientsByStatus = await TPY_Client.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ])
+    
+    // Clientes activos
+    const activeClients = await TPY_Client.countDocuments({ status: "web_activada" })
+    
+    // Total demos
+    const totalDemos = await TPY_Demo.countDocuments()
+    
+    // Ventas del mes
+    let monthQuery = {}
+    if (month) {
+      const [year, monthNum] = month.split("-").map(Number)
+      const startDate = new Date(year, monthNum - 1, 1)
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59)
+      monthQuery = { saleDate: { $gte: startDate, $lte: endDate } }
+    }
+    
+    const salesThisMonth = await TPY_Sale.countDocuments(monthQuery)
+    
+    // Cobranzas del mes
+    const collections = month 
+      ? await TPY_Collection.find({ month })
+      : []
+    
+    const collectionStats = {
+      total: collections.length,
+      paid: collections.filter(c => c.status === "pagado").length,
+      pending: collections.filter(c => c.status === "pendiente").length,
+      expectedAmount: collections.reduce((sum, c) => sum + c.expectedAmount, 0),
+      paidAmount: collections.reduce((sum, c) => sum + c.paidAmount, 0),
+    }
+    
+    // Transacciones del mes
+    const transactions = month
+      ? await TPY_Transaction.find({ month })
+      : []
+    
+    const transactionStats = {
+      ingresos: transactions.filter(t => t.type === "ingreso").reduce((sum, t) => sum + t.amount, 0),
+      egresos: transactions.filter(t => t.type === "egreso").reduce((sum, t) => sum + t.amount, 0),
+    }
+    transactionStats.balance = transactionStats.ingresos - transactionStats.egresos
+    
+    res.json({
+      success: true,
+      stats: {
+        clientsByStatus: clientsByStatus.reduce((acc, s) => ({ ...acc, [s._id]: s.count }), {}),
+        activeClients,
+        totalDemos,
+        salesThisMonth,
+        collections: collectionStats,
+        transactions: transactionStats,
+      }
+    })
+  } catch (error) {
+    handleError(res, error, "Failed to fetch TPY stats")
+  }
+})
+
+// ---------- TPY DATA IMPORT ----------
+
+// Bulk import TPY data (for CSV import)
+app.post("/api/tpy/import", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { type, data } = req.body
+    
+    if (!type || !data || !Array.isArray(data)) {
+      return res.status(400).json({ success: false, error: "Type and data array are required" })
+    }
+    
+    let imported = 0
+    let errors = []
+    
+    for (let i = 0; i < data.length; i++) {
+      try {
+        const item = data[i]
+        
+        switch (type) {
+          case "clients":
+            await TPY_Client.create(item)
+            break
+          case "demos":
+            await TPY_Demo.create(item)
+            break
+          case "sales":
+            await TPY_Sale.create(item)
+            break
+          case "transactions":
+            await TPY_Transaction.create(item)
+            break
+          case "collections":
+            await TPY_Collection.create(item)
+            break
+          default:
+            throw new Error(`Unknown type: ${type}`)
+        }
+        imported++
+      } catch (err) {
+        errors.push({ index: i, error: err.message })
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Imported ${imported} records, ${errors.length} errors`,
+      imported,
+      errors
+    })
+  } catch (error) {
+    handleError(res, error, "Failed to import TPY data")
+  }
+})
 
 // Start the server
 app.listen(PORT, () => {
