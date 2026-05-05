@@ -1207,13 +1207,10 @@ const notificationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    attachments: [{
-      originalName: String,
-      filename: String,
-      url: String,
-      size: Number,
-      type: String,
-    }],
+    attachments: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
+    },
     meetingInfo: {
       date: String,
       time: String,
@@ -4284,138 +4281,8 @@ app.get("/api/notifications", authenticateToken, async (req, res) => {
   }
 })
 
-app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("attachments", 5), async (req, res) => {
-  try {
-const { title, message, type, priority, recipients, meetingInfo } = req.body;
-const { recipientType } = req.body;
-const companyId = getCompanyId(req);
-
-    // Parsear attachments si vienen en string (por si acaso)
-    if (typeof req.body.attachments === 'string') {
-      try {
-        req.body.attachments = JSON.parse(req.body.attachments);
-      } catch (error) {
-        return res.status(400).json({ success: false, error: 'attachments inválidos' });
-      }
-    }
-
-    if (!title || !message) {
-      return res.status(400).json({ success: false, error: "Title and message are required" });
-    }
-
-
-let parsedRecipients = recipients ? (typeof recipients === "string" ? JSON.parse(recipients) : recipients) : [];
-
-
-
-if (recipientType === "all") {
-  // Buscar TODOS los usuarios activos con email
-  const allUsuarios = await User.find({ 
-    isActive: true,
-    email: { $exists: true, $ne: "" }
-  }).select("_id email name");
-  parsedRecipients = allUsuarios.map(u => u._id.toString());
-  console.log(`[Anuncio] recipientType=all, enviando a TODOS: ${allUsuarios.length} usuarios`);
-}
-
-let parsedMeetingInfo = meetingInfo ? (typeof meetingInfo === "string" ? JSON.parse(meetingInfo) : meetingInfo) : null;
-
-    // Subir archivos - almacenamiento local en VPS
-    const attachments = await Promise.all(
-      (req.files || []).map(async (file) => {
-        const uniqueName = `${Date.now()}_${file.originalname}`;
-        
-        // Almacenamiento local en VPS
-        const uploadsDir = path.join(__dirname, 'uploads', 'attachments');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        
-        const localPath = path.join(uploadsDir, uniqueName);
-        fs.writeFileSync(localPath, file.buffer);
-        const localUrl = `/uploads/attachments/${uniqueName}`;
-
-        console.log(`[Upload] Archivo guardado: ${localUrl}`);
-
-        return {
-          originalName: file.originalname,
-          url: localUrl,
-          size: file.size,
-          type: file.mimetype,
-        };
-      })
-    );
-
-const notification = new Notification({
-      companyId,
-      title,
-      message,
-      type: type || "info",
-      priority: priority || "medium",
-      recipients: parsedRecipients,
-      createdBy: req.user.userId,
-      attachments,
-      meetingInfo: parsedMeetingInfo,
-    });
-
-    await notification.save();
-
-    const transporter = nodemailer.createTransport({
-  service: 'gmail', // o tu proveedor SMTP
-  auth: {
-    user: process.env.EMAIL_SMTP,
-    pass: process.env.PASSWORD_SMTP // Gmail requiere contraseña de aplicación
-  }
-});
-
-
-        // Buscar emails de usuarios destinatarios
-    const usuarios = await User.find({ _id: { $in: parsedRecipients } }).select("email name");
-
-console.log("Usuarios destinatarios:", usuarios.map(u => u.email));
-
-
-for (const user of usuarios) {
-  try {
-    console.log(`Enviando correo a: ${user.email}`);
-    await transporter.sendMail({
-      from: '"TusVentas" <tucorreo@gmail.com>',
-      to: user.email,
-      subject: `🔔 Nueva notificación de el equipo de TusVentas: ${title}`,
-      html: `
-        <div style="font-family: sans-serif; line-height: 1.5;">
-          <img src="cid:logoTusVentas" style="max-width: 700px; margin-bottom: 20px;" alt="TusVentas" />
-          <h2>Hola ${user.name} tenes una notificacion pendiente de:📌 ${title}</h2>
-          <p><strong>Tipo:</strong> ${type}</p>
-          <p>${message}</p>
-          <p><a href="https://grupojv.tusventas.digital" style="display:inline-block; padding:10px 15px; background-color:#0b6efd; color:white; text-decoration:none; border-radius:5px;">Ver en la plataforma</a></p>
-          <hr />
-          <small>Este mensaje fue enviado automáticamente por el sistema TusVentas.</small>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: 'bannertusventas.png',
-          path: './bannertusventas.png', // o desde Firebase si lo descargás
-          cid: 'logoTusVentas' // este ID es el que usás en src="cid:logoTusVentas"
-        }
-      ]
-    });
-  } catch (err) {
-    console.error(`Error enviando correo a ${user.email}:`, err.message);
-  }
-}
-
-    res.status(201).json({
-      success: true,
-      message: "Notification created successfully",
-      notification,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: error.message || "Failed to create notification" });
-  }
-});
+// NOTA: Este endpoint estaba duplicado - se usa el de mas abajo en linea ~7355 que es mas completo
+// app.post("/api/notifications" ... comentado para evitar conflicto
 
 app.put("/api/notifications/:id/read", authenticateToken, async (req, res) => {
   try {
@@ -7207,6 +7074,42 @@ async function enviarEmailAnuncio(notification, recipients) {
     `;
   }
 
+  // Generar HTML para attachments
+  const baseUrl = process.env.BACKEND_URL || 'https://api.tusventas.digital';
+  let attachmentsHtml = '';
+  if (notification.attachments && notification.attachments.length > 0) {
+    const attachmentItems = notification.attachments.map(att => {
+      const fullUrl = att.url.startsWith('http') ? att.url : `${baseUrl}${att.url}`;
+      const isImage = att.type && att.type.startsWith('image/');
+      const fileName = att.originalName || att.filename || 'archivo';
+      const fileSize = att.size ? `(${(att.size / 1024).toFixed(1)} KB)` : '';
+      
+      if (isImage) {
+        return `
+          <div style="margin-bottom: 15px; text-align: center;">
+            <img src="${fullUrl}" alt="${fileName}" style="max-width: 100%; max-height: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">${fileName} ${fileSize}</p>
+          </div>
+        `;
+      } else {
+        return `
+          <div style="margin-bottom: 10px; padding: 12px; background-color: #e5e7eb; border-radius: 6px;">
+            <a href="${fullUrl}" download="${fileName}" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
+              📎 ${fileName} ${fileSize}
+            </a>
+          </div>
+        `;
+      }
+    }).join('');
+
+    attachmentsHtml = `
+      <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+        <h4 style="margin: 0 0 15px 0; color: #374151;">Archivos Adjuntos</h4>
+        ${attachmentItems}
+      </div>
+    `;
+  }
+
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
       <div style="background-color: #1a1a2e; padding: 20px; text-align: center;">
@@ -7220,6 +7123,7 @@ async function enviarEmailAnuncio(notification, recipients) {
         <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p style="white-space: pre-wrap; margin: 0; color: #333;">${notification.message}</p>
         </div>
+        ${attachmentsHtml}
         ${meetingHtml}
         <div style="text-align: center; margin-top: 30px;">
           <a href="https://tusventas.netlify.app"
@@ -7395,7 +7299,7 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
             
             console.log(`[Anuncio] Archivo subido a Firebase: ${file.originalname}`);
-            return { filename: file.originalname, url: publicUrl, type: file.mimetype };
+            return { originalName: file.originalname, filename: file.originalname, url: publicUrl, type: file.mimetype, size: file.size || 0 };
           } else {
             // Guardar localmente si Firebase no esta configurado
             const localPath = path.join(uploadsDir, uniqueName);
@@ -7403,7 +7307,7 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
             const localUrl = `/uploads/notifications/${uniqueName}`;
             
             console.log(`[Anuncio] Archivo guardado localmente: ${file.originalname}`);
-            return { filename: file.originalname, url: localUrl, type: file.mimetype };
+            return { originalName: file.originalname, filename: file.originalname, url: localUrl, type: file.mimetype, size: file.size || 0 };
           }
         } catch (uploadError) {
           console.error("Error subiendo archivo:", uploadError.message);
@@ -7415,7 +7319,7 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
             const localUrl = `/uploads/notifications/${uniqueName}`;
             
             console.log(`[Anuncio] Archivo guardado localmente (fallback): ${file.originalname}`);
-            return { filename: file.originalname, url: localUrl, type: file.mimetype };
+            return { originalName: file.originalname, filename: file.originalname, url: localUrl, type: file.mimetype, size: file.size || 0 };
           } catch (localError) {
             console.error("Error guardando archivo localmente:", localError.message);
             return null;
@@ -7428,7 +7332,7 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
       attachments = results.filter(r => r !== null);
     }
 
-    const notification = new Notification({
+const notification = new Notification({
       companyId,
       title,
       message,
@@ -7437,7 +7341,7 @@ app.post("/api/notifications", authenticateToken, requireAdmin, upload.array("at
       recipientType: recipientType || "all",
       recipients: recipientType === "selected" ? parsedRecipients : [],
       meetingInfo: parsedMeetingInfo,
-      attachments,
+      attachments: attachments,
       createdBy: req.user.userId,
       readBy: [],
     });

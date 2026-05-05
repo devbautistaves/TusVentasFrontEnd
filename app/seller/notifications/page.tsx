@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { useToast } from "@/hooks/use-toast"
 import { notificationsAPI, Notification } from "@/lib/api"
-import { Bell, BellOff, Check, CheckCheck, ShoppingCart, Info, TrendingUp } from "lucide-react"
+import { Bell, BellOff, Check, CheckCheck, ShoppingCart, Info, TrendingUp, Paperclip, Download, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function SellerNotificationsPage() {
@@ -202,6 +202,54 @@ export default function SellerNotificationsPage() {
                           <p className="text-sm text-muted-foreground mt-1">
                             {notification.message}
                           </p>
+                          {/* Attachments */}
+                          {notification.attachments && notification.attachments.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                <Paperclip className="h-3 w-3" />
+                                Archivos adjuntos ({notification.attachments.length})
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {notification.attachments.map((att: any, idx: number) => {
+                                  const isImage = att.type?.startsWith('image/');
+                                  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.tusventas.digital';
+                                  const fullUrl = att.url?.startsWith('http') ? att.url : `${baseUrl}${att.url}`;
+                                  const fileName = att.originalName || att.filename || 'archivo';
+                                  
+                                  if (isImage) {
+                                    return (
+                                      <a 
+                                        key={idx} 
+                                        href={fullUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="block"
+                                      >
+                                        <img 
+                                          src={fullUrl} 
+                                          alt={fileName}
+                                          className="max-w-[200px] max-h-[150px] rounded-lg border border-border object-cover hover:opacity-90 transition-opacity"
+                                        />
+                                      </a>
+                                    );
+                                  } else {
+                                    return (
+                                      <a
+                                        key={idx}
+                                        href={fullUrl}
+                                        download={fileName}
+                                        className="flex items-center gap-2 px-3 py-2 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors text-sm"
+                                      >
+                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                        <span className="truncate max-w-[150px]">{fileName}</span>
+                                        <Download className="h-3 w-3 text-muted-foreground" />
+                                      </a>
+                                    );
+                                  }
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {new Date(notification.createdAt).toLocaleDateString("es-AR", {

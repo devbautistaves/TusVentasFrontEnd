@@ -382,34 +382,6 @@ export default function SupervisorSettingsPage() {
             </form>
           </CardContent>
         </Card>
-
-        {/* Stats Card */}
-        <Card className="border-border/50 bg-card/50">
-          <CardHeader>
-            <CardTitle>Mis Estadisticas</CardTitle>
-            <CardDescription>
-              Resumen de tu actividad
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 grid-cols-2">
-              <div className="p-4 rounded-lg bg-secondary/30 border border-border/50 text-center">
-                <p className="text-2xl font-bold text-primary">{user?.totalSales || 0}</p>
-                <p className="text-sm text-muted-foreground">Ventas Totales</p>
-              </div>
-              <div className="p-4 rounded-lg bg-secondary/30 border border-border/50 text-center">
-                <p className="text-2xl font-bold text-green-400">
-                  {new Intl.NumberFormat("es-AR", {
-                    style: "currency",
-                    currency: "ARS",
-                    minimumFractionDigits: 0,
-                  }).format(user?.totalCommissions || 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">Comisiones</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   )
