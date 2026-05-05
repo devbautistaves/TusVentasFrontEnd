@@ -442,7 +442,13 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true })
 }
 
-
+// Serve static files from uploads directory with CORS headers
+app.use("/uploads", (req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*")
+  res.header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+  next()
+}, express.static(uploadsDir))
 
 const requireAdmin = (req, res, next) => {
   if (req.user.role !== "admin") {
@@ -963,6 +969,11 @@ planPrice: {
       type: Number,
       default: 0,
       min: [0, "Baja amount must be 0 or greater"],
+    },
+    // Archivos adjuntos de la venta
+    installationAttachments: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
     },
   },
   {
@@ -3912,6 +3923,187 @@ app.put("/api/sales/:id/assign", authenticateToken, async (req, res) => {
     });
   } catch (error) {
     handleError(error, res, "Failed to assign sale");
+  }
+});
+
+// ============================================
+// ENDPOINTS DE ARCHIVOS ADJUNTOS DE VENTAS
+// ============================================
+
+// Subir archivo adjunto a una venta
+app.post("/api/sales/:id/attachments", authenticateToken, upload.single("file"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const userRole = req.user.role;
+
+    const sale = await Sale.findById(id);
+    if (!sale) {
+      return res.status(404).json({ success: false, error: "Venta no encontrada" });
+    }
+
+    // Verificar permisos:
+    // - Admin y Support pueden adjuntar a cualquier venta
+    // - Supervisor puede adjuntar a ventas de su equipo
+    // - Seller solo puede adjuntar a sus propias ventas
+    if (userRole === "seller" && sale.sellerId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: "Solo puedes adjuntar archivos a tus propias ventas",
+      });
+    }
+    
+    if (userRole === "supervisor") {
+      const isSupervisorSale = sale.supervisorId?.toString() === userId || sale.sellerId.toString() === userId;
+      if (!isSupervisorSale) {
+        // Verificar si es venta de un vendedor de su equipo
+        const seller = await User.findById(sale.sellerId);
+        if (!seller || seller.supervisorId?.toString() !== userId) {
+          return res.status(403).json({
+            success: false,
+            error: "Solo puedes adjuntar archivos a ventas de tu equipo",
+          });
+        }
+      }
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No se recibio ningun archivo" });
+    }
+
+    const file = req.file;
+    const uniqueName = `${Date.now()}_${file.originalname}`;
+    
+    // Almacenamiento local en VPS
+    const uploadsDir = path.join(__dirname, 'uploads', 'sales');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    const localPath = path.join(uploadsDir, uniqueName);
+    fs.writeFileSync(localPath, file.buffer);
+    const fileUrl = `/uploads/sales/${uniqueName}`;
+
+    const attachment = {
+      _id: new mongoose.Types.ObjectId(),
+      originalName: file.originalname,
+      filename: uniqueName,
+      url: fileUrl,
+      size: file.size,
+      mimetype: file.mimetype,
+      uploadedAt: new Date(),
+      uploadedBy: userId,
+    };
+
+    // Inicializar array si no existe
+    if (!sale.installationAttachments) {
+      sale.installationAttachments = [];
+    }
+    
+    sale.installationAttachments.push(attachment);
+    await sale.save();
+
+    // Agregar al historial
+    const currentUser = await User.findById(userId);
+    sale.statusHistory.push({
+      status: sale.status,
+      changedBy: currentUser ? currentUser.name : userId,
+      changedAt: new Date(),
+      notes: `Archivo adjuntado: ${file.originalname}`,
+    });
+    await sale.save();
+
+    res.json({
+      success: true,
+      message: "Archivo subido correctamente",
+      attachment,
+      sale,
+    });
+  } catch (error) {
+    console.error("Error uploading attachment:", error);
+    handleError(res, error, "Error al subir archivo");
+  }
+});
+
+// Eliminar archivo adjunto de una venta
+app.delete("/api/sales/:saleId/attachments/:attachmentId", authenticateToken, async (req, res) => {
+  try {
+    const { saleId, attachmentId } = req.params;
+    const userId = req.user.userId;
+    const userRole = req.user.role;
+
+    const sale = await Sale.findById(saleId);
+    if (!sale) {
+      return res.status(404).json({ success: false, error: "Venta no encontrada" });
+    }
+
+    // Verificar permisos (misma logica que para subir)
+    if (userRole === "seller" && sale.sellerId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: "Solo puedes eliminar archivos de tus propias ventas",
+      });
+    }
+    
+    if (userRole === "supervisor") {
+      const isSupervisorSale = sale.supervisorId?.toString() === userId || sale.sellerId.toString() === userId;
+      if (!isSupervisorSale) {
+        const seller = await User.findById(sale.sellerId);
+        if (!seller || seller.supervisorId?.toString() !== userId) {
+          return res.status(403).json({
+            success: false,
+            error: "Solo puedes eliminar archivos de ventas de tu equipo",
+          });
+        }
+      }
+    }
+
+    if (!sale.installationAttachments || sale.installationAttachments.length === 0) {
+      return res.status(404).json({ success: false, error: "No hay archivos adjuntos" });
+    }
+
+    const attachmentIndex = sale.installationAttachments.findIndex(
+      (att) => att._id.toString() === attachmentId
+    );
+
+    if (attachmentIndex === -1) {
+      return res.status(404).json({ success: false, error: "Archivo no encontrado" });
+    }
+
+    const attachment = sale.installationAttachments[attachmentIndex];
+    
+    // Eliminar archivo fisico
+    try {
+      const filePath = path.join(__dirname, attachment.url);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (fsError) {
+      console.error("Error eliminando archivo fisico:", fsError);
+    }
+
+    // Eliminar del array
+    sale.installationAttachments.splice(attachmentIndex, 1);
+    
+    // Agregar al historial
+    const currentUser = await User.findById(userId);
+    sale.statusHistory.push({
+      status: sale.status,
+      changedBy: currentUser ? currentUser.name : userId,
+      changedAt: new Date(),
+      notes: `Archivo eliminado: ${attachment.originalName}`,
+    });
+    
+    await sale.save();
+
+    res.json({
+      success: true,
+      message: "Archivo eliminado correctamente",
+      sale,
+    });
+  } catch (error) {
+    console.error("Error deleting attachment:", error);
+    handleError(res, error, "Error al eliminar archivo");
   }
 });
 
@@ -7675,6 +7867,98 @@ app.delete("/api/materials/:id", authenticateToken, requireAdmin, async (req, re
     res.json({ success: true, message: "Material eliminado correctamente" });
   } catch (error) {
     handleError(res, error, "Failed to delete material");
+  }
+});
+
+// Middleware para autenticar via header O query parameter (para links de descarga)
+const authenticateTokenFlexible = (req, res, next) => {
+  // Try header first
+  const authHeader = req.headers["authorization"];
+  let token = authHeader && authHeader.split(" ")[1];
+  
+  // If not in header, try query parameter
+  if (!token) {
+    token = req.query.token;
+  }
+  
+  if (!token) {
+    return res.status(401).json({ success: false, error: "Token requerido" });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "tusventassecretkey2024");
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ success: false, error: "Token invalido" });
+  }
+};
+
+// Download material file (accessible by all authenticated users)
+app.get("/api/materials/:id/download", authenticateTokenFlexible, async (req, res) => {
+  try {
+    const material = await MarketingMaterial.findById(req.params.id);
+    
+    if (!material) {
+      return res.status(404).json({ success: false, error: "Material no encontrado" });
+    }
+    
+    // If it's a local file
+    if (material.fileUrl.startsWith("/uploads/")) {
+      const filePath = path.join(__dirname, material.fileUrl);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: "Archivo no encontrado en el servidor" });
+      }
+      
+      // Set headers for download
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(material.fileName)}"`);
+      res.setHeader("Content-Type", material.mimeType || "application/octet-stream");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } else {
+      // External URL (Firebase, etc.) - redirect
+      res.redirect(material.fileUrl);
+    }
+  } catch (error) {
+    handleError(res, error, "Failed to download material");
+  }
+});
+
+// View material file (accessible by all authenticated users)
+app.get("/api/materials/:id/view", authenticateTokenFlexible, async (req, res) => {
+  try {
+    const material = await MarketingMaterial.findById(req.params.id);
+    
+    if (!material) {
+      return res.status(404).json({ success: false, error: "Material no encontrado" });
+    }
+    
+    // If it's a local file
+    if (material.fileUrl.startsWith("/uploads/")) {
+      const filePath = path.join(__dirname, material.fileUrl);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: "Archivo no encontrado en el servidor" });
+      }
+      
+      // Set headers for inline viewing
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(material.fileName)}"`);
+      res.setHeader("Content-Type", material.mimeType || "application/octet-stream");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } else {
+      // External URL (Firebase, etc.) - redirect
+      res.redirect(material.fileUrl);
+    }
+  } catch (error) {
+    handleError(res, error, "Failed to view material");
   }
 });
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -210,53 +210,61 @@ export default function SupervisorMaterialsPage() {
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {categoryMaterials.map((material) => (
-                  <Card key={material._id} className="overflow-hidden group">
-                    <div className="aspect-video bg-secondary flex items-center justify-center relative">
-                      {material.fileType === "image" ? (
-                        <img 
-                          src={material.fileUrl} 
-                          alt={material.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        getFileIcon(material.fileType)
-                      )}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <a 
-                          href={material.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          <Button size="sm" variant="secondary">
-                            <Eye className="h-4 w-4 mr-1" />
-                            Ver
-                          </Button>
-                        </a>
-                        <a 
-                          href={material.fileUrl} 
-                          download={material.fileName}
-                        >
-                          <Button size="sm" variant="secondary">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </a>
+                {categoryMaterials.map((material) => {
+                  const fileUrl = materialsAPI.getFileUrl(material.fileUrl)
+                  const viewUrl = materialsAPI.getViewUrl(material._id)
+                  const downloadUrl = materialsAPI.getDownloadUrl(material._id)
+                  const token = typeof window !== "undefined" ? localStorage.getItem("token") : ""
+                  
+                  return (
+                    <Card key={material._id} className="overflow-hidden group">
+                      <div className="aspect-video bg-secondary flex items-center justify-center relative">
+                        {material.fileType === "image" ? (
+                          <img 
+                            src={fileUrl} 
+                            alt={material.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          getFileIcon(material.fileType)
+                        )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <a 
+                            href={`${viewUrl}?token=${token}`}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Button size="sm" variant="secondary">
+                              <Eye className="h-4 w-4 mr-1" />
+                              Ver
+                            </Button>
+                          </a>
+                          <a 
+                            href={`${downloadUrl}?token=${token}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button size="sm" variant="secondary">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                    <CardContent className="pt-4">
-                      <h3 className="font-semibold truncate">{material.name}</h3>
-                      {material.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                          {material.description}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-                        <span>{material.fileName}</span>
-                        <span>{formatFileSize(material.fileSize)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <CardContent className="pt-4">
+                        <h3 className="font-semibold truncate">{material.name}</h3>
+                        {material.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                            {material.description}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                          <span>{material.fileName}</span>
+                          <span>{formatFileSize(material.fileSize)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             )}
           </CardContent>

@@ -1513,6 +1513,20 @@ export const materialsAPI = {
       method: "DELETE",
       token,
     }),
+
+  // Obtener URL completa para ver un archivo
+  getViewUrl: (materialId: string) => `${API_URL}/api/materials/${materialId}/view`,
+  
+  // Obtener URL completa para descargar un archivo
+  getDownloadUrl: (materialId: string) => `${API_URL}/api/materials/${materialId}/download`,
+  
+  // Obtener URL del archivo (resuelve URLs relativas a URLs completas del backend)
+  getFileUrl: (fileUrl: string) => {
+    if (fileUrl.startsWith("/uploads/")) {
+      return `${API_URL}${fileUrl}`
+    }
+    return fileUrl
+  },
 }
 
 // ========================================
