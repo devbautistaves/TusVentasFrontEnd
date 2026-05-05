@@ -23,7 +23,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { salesAPI, Sale } from "@/lib/api"
-import { Search, Filter, Eye, Plus, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Clock, Paperclip, Download, Image, File } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Search, Filter, Eye, Plus, Calendar, User, Phone, MapPin, Mail, CreditCard, UserPlus, FileText, Clock, Paperclip, Download, Image, File, Trash2 } from "lucide-react"
 
 export default function SellerSalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
@@ -33,6 +34,7 @@ export default function SellerSalesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchSales()
@@ -511,45 +513,127 @@ export default function SellerSalesPage() {
                 )}
 
                 {/* Archivos Adjuntos */}
-                {selectedSale.installationAttachments && selectedSale.installationAttachments.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
-                      <Paperclip className="h-4 w-4 text-primary" />
-                      Archivos Adjuntos ({selectedSale.installationAttachments.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {selectedSale.installationAttachments.map((attachment, index) => (
-                        <div key={attachment._id || index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border/30">
-                          <div className="flex items-center gap-3 min-w-0">
-                            {attachment.mimetype?.startsWith("image/") ? (
-                              <Image className="h-5 w-5 text-green-400 shrink-0" />
-                            ) : attachment.mimetype?.includes("pdf") ? (
-                              <FileText className="h-5 w-5 text-red-400 shrink-0" />
-                            ) : (
-                              <File className="h-5 w-5 text-blue-400 shrink-0" />
-                            )}
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{attachment.originalName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {(attachment.size / 1024).toFixed(1)} KB - {new Date(attachment.uploadedAt).toLocaleDateString("es-AR")}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                            className="h-8 w-8 text-primary hover:text-primary/80"
-                          >
-                            <a href={attachment.url} target="_blank" rel="noopener noreferrer" download>
-                              <Download className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-2">
+                    <Paperclip className="h-4 w-4 text-primary" />
+                    Archivos Adjuntos ({selectedSale.installationAttachments?.length || 0})
+                  </h4>
+                  
+                  {/* Boton para subir archivos */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      id="attachment-upload-seller"
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const token = localStorage.getItem("token")
+                        if (!token) return
+                        try {
+                          await salesAPI.uploadAttachment(token, selectedSale._id, file)
+                          toast({ title: "Archivo subido correctamente" })
+                          fetchSales()
+                          const updated = await salesAPI.getMySales(token)
+                          const updatedSale = updated.sales.find(s => s._id === selectedSale._id)
+                          if (updatedSale) setSelectedSale(updatedSale)
+                        } catch (err: any) {
+                          toast({ title: "Error al subir archivo", description: err.message, variant: "destructive" })
+                        }
+                        e.target.value = ""
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("attachment-upload-seller")?.click()}
+                      className="gap-2"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                      Adjuntar archivo
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Imagenes, PDF, Word, Excel
+                    </span>
                   </div>
-                )}
+                  
+                  {/* Lista de archivos */}
+                  {selectedSale.installationAttachments && selectedSale.installationAttachments.length > 0 && (
+                    <div className="space-y-2">
+                      {selectedSale.installationAttachments.map((attachment, index) => {
+                        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://vps-5905394-x.dattaweb.com"
+                        const fullUrl = attachment.url?.startsWith("http") ? attachment.url : `${baseUrl}${attachment.url}`
+                        const isImage = attachment.mimetype?.startsWith("image/")
+                        
+                        return (
+                          <div key={attachment._id || index} className="p-3 rounded-lg bg-secondary/20 border border-border/30">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {isImage ? (
+                                  <Image className="h-5 w-5 text-green-400 shrink-0" />
+                                ) : attachment.mimetype?.includes("pdf") ? (
+                                  <FileText className="h-5 w-5 text-red-400 shrink-0" />
+                                ) : (
+                                  <File className="h-5 w-5 text-blue-400 shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{attachment.originalName}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {(attachment.size / 1024).toFixed(1)} KB - {new Date(attachment.uploadedAt).toLocaleDateString("es-AR")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  asChild
+                                  className="h-8 w-8 text-primary hover:text-primary/80"
+                                >
+                                  <a href={fullUrl} target="_blank" rel="noopener noreferrer" download>
+                                    <Download className="h-4 w-4" />
+                                  </a>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token")
+                                    if (!token || !attachment._id) return
+                                    try {
+                                      await salesAPI.deleteAttachment(token, selectedSale._id, attachment._id)
+                                      toast({ title: "Archivo eliminado" })
+                                      fetchSales()
+                                      const updated = await salesAPI.getMySales(token)
+                                      const updatedSale = updated.sales.find(s => s._id === selectedSale._id)
+                                      if (updatedSale) setSelectedSale(updatedSale)
+                                    } catch {
+                                      toast({ title: "Error al eliminar", variant: "destructive" })
+                                    }
+                                  }}
+                                  className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            {/* Vista previa de imagen */}
+                            {isImage && (
+                              <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="block mt-2">
+                                <img 
+                                  src={fullUrl} 
+                                  alt={attachment.originalName}
+                                  className="max-w-full max-h-48 rounded-lg border border-border object-contain hover:opacity-90 transition-opacity"
+                                />
+                              </a>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </DialogContent>
