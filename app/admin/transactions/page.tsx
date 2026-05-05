@@ -79,7 +79,7 @@ export default function TransactionsPage() {
   const [selectedMonth, setSelectedMonth] = useState("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [transactionToDelete, setTransactionToDelete] = useState<TPY_Transaction | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -179,7 +179,18 @@ export default function TransactionsPage() {
     }
 
     try {
-      await tpyTransactionsAPI.create(token, formData as any)
+      // Mapear los campos del formulario al schema del backend
+      // El backend usa "concept" en lugar de "description"
+      const transactionData = {
+        type: formData.type,
+        category: formData.category,
+        concept: formData.description, // Mapear description -> concept
+        amount: formData.amount,
+        date: formData.date,
+        notes: formData.notes,
+      }
+      
+      await tpyTransactionsAPI.create(token, transactionData as any)
       toast({
         title: "Transaccion creada",
         description: `Se registro el ${formData.type} correctamente`,
@@ -380,7 +391,7 @@ export default function TransactionsPage() {
                         {new Date(transaction.date).toLocaleDateString("es-AR", { day: "numeric", month: "numeric" })}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
-                        {transaction.description}
+                        {transaction.concept}
                       </TableCell>
                       <TableCell className="text-right font-medium text-emerald-500">
                         ${transaction.amount.toLocaleString()}
@@ -429,7 +440,7 @@ export default function TransactionsPage() {
                         {new Date(transaction.date).toLocaleDateString("es-AR", { day: "numeric", month: "numeric" })}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
-                        {transaction.description}
+                        {transaction.concept}
                       </TableCell>
                       <TableCell className="text-right font-medium text-red-500">
                         ${transaction.amount.toLocaleString()}
@@ -485,7 +496,7 @@ export default function TransactionsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{transaction.category}</TableCell>
-                    <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
+                    <TableCell className="max-w-xs truncate">{transaction.concept}</TableCell>
                     <TableCell>
                       {typeof transaction.clientId === "object" 
                         ? transaction.clientId?.name || transaction.clientId?.businessName || "-"
@@ -635,7 +646,7 @@ export default function TransactionsPage() {
                 {transactionToDelete?.type === "ingreso" ? "Ingreso" : "Egreso"}: ${transactionToDelete?.amount.toLocaleString()}
               </strong>
               <br />
-              {transactionToDelete?.description}
+              {transactionToDelete?.concept}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
