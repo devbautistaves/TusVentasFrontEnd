@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Search, Filter, MoreHorizontal, Eye, Edit, Mail, Globe, Users, UserCheck, UserX, Pause } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, Eye, Edit, Mail, Globe, Users, UserCheck, UserX, Pause, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Select,
   SelectContent,
@@ -65,6 +75,9 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [clientToDelete, setClientToDelete] = useState<TPY_Client | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [stats, setStats] = useState<{ byStatus: Record<string, number>; totalActiveRevenue: number; total: number } | null>(null)
   
@@ -197,6 +210,37 @@ export default function ClientsPage() {
         variant: "destructive",
       })
     }
+  }
+
+  const handleDeleteClient = async () => {
+    const token = localStorage.getItem("token")
+    if (!token || !clientToDelete) return
+
+    try {
+      setIsDeleting(true)
+      await tpyClientsAPI.delete(token, clientToDelete._id)
+      toast({
+        title: "Cliente eliminado",
+        description: "El cliente se ha eliminado correctamente",
+      })
+      setIsDeleteDialogOpen(false)
+      setClientToDelete(null)
+      fetchData()
+    } catch (error) {
+      console.error("Error deleting client:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el cliente",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const openDeleteDialog = (client: TPY_Client) => {
+    setClientToDelete(client)
+    setIsDeleteDialogOpen(true)
   }
 
   const resetForm = () => {
@@ -477,6 +521,13 @@ export default function ClientsPage() {
                                 <UserX className="mr-2 h-4 w-4" />
                                 Dar de Baja
                               </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => openDeleteDialog(client)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar Cliente
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -654,6 +705,29 @@ export default function ClientsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar Cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta accion no se puede deshacer. Se eliminara permanentemente el cliente 
+              <span className="font-semibold"> {clientToDelete?.name}</span> y todos sus datos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteClient}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </DashboardLayout>
   )

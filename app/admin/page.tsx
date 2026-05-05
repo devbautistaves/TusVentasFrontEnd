@@ -453,7 +453,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Stats Cards usando tpyStats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
             <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -492,8 +492,8 @@ export default function AdminDashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Ventas del Mes</p>
-                    <p className="text-4xl font-bold text-purple-400">{tpyStats?.salesThisMonth || 0}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Demos Enviadas</p>
+                    <p className="text-4xl font-bold text-purple-400">{statusCounts.demo_enviada || 0}</p>
                     <p className="text-xs text-muted-foreground pt-1">
                       {tpyStats?.totalDemos || 0} demos totales
                     </p>
@@ -511,7 +511,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Demos Pendientes</p>
                     <p className="text-4xl font-bold text-amber-400">
-                      {(statusCounts.pendiente_demo || 0) + (statusCounts.demo_enviada || 0) + (statusCounts.demo_pausada || 0)}
+                      {(statusCounts.pendiente_demo || 0) + (statusCounts.demo_pausada || 0)}
                     </p>
                     <p className="text-xs text-muted-foreground pt-1">
                       {statusCounts.pendiente_web || 0} webs pendientes
@@ -524,20 +524,37 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className={`${pendingCollections > 0 ? "border-red-500/30 bg-gradient-to-br from-red-500/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10"} via-card to-card`}>
+            <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 via-card to-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Bajas de Clientes</p>
+                    <p className="text-4xl font-bold text-red-400">{statusCounts.baja || 0}</p>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Clientes dados de baja
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                    <XCircle className="h-6 w-6 text-red-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={`${pendingCollections > 0 ? "border-orange-500/30 bg-gradient-to-br from-orange-500/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10"} via-card to-card`}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Cobranzas Pendientes</p>
-                    <p className={`text-4xl font-bold ${pendingCollections > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                    <p className={`text-4xl font-bold ${pendingCollections > 0 ? "text-orange-400" : "text-emerald-400"}`}>
                       {pendingCollections}
                     </p>
                     <p className="text-xs text-muted-foreground pt-1">
                       {tpyStats?.collections?.paid || 0} pagadas
                     </p>
                   </div>
-                  <div className={`h-12 w-12 rounded-xl ${pendingCollections > 0 ? "bg-red-500/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
-                    <AlertTriangle className={`h-6 w-6 ${pendingCollections > 0 ? "text-red-400" : "text-emerald-400"}`} />
+                  <div className={`h-12 w-12 rounded-xl ${pendingCollections > 0 ? "bg-orange-500/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
+                    <AlertTriangle className={`h-6 w-6 ${pendingCollections > 0 ? "text-orange-400" : "text-emerald-400"}`} />
                   </div>
                 </div>
               </CardContent>

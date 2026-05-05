@@ -88,6 +88,7 @@ export function Sidebar({ role, userName, onLinkClick }: SidebarProps) {
 
   const tupaginayaSellerLinks = [
     { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/seller/clients", label: "Mis Clientes", icon: UserCheck },
     { href: "/seller/sales", label: "Mis Ventas", icon: ShoppingCart },
     { href: "/seller/demos", label: "Demos", icon: Globe },
     { href: "/seller/leads", label: "Mis Leads", icon: Target },
